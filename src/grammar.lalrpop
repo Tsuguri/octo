@@ -1,0 +1,25 @@
+use std::str::FromStr;
+
+grammar;
+
+pub Term: i32 = {
+    <n:Num> => n,
+    ParOpen <t:Term> ParClose => t,
+};
+
+pub Num: i32 = {
+    IntNumber => i32::from_str(<>).unwrap()
+};
+
+match
+{
+    r"[0-9]+" => IntNumber,
+	r"[0-9]+\.[0-9]+" => RealNumber,
+	r"[a-zA-Z]([a-zA-Z0-9_])*" => IdentLiteral,
+	"(" => ParOpen,
+	")" => ParClose,
+	"*" => MulOp,
+	"/" => DivOp,
+	"+" => AddOp,
+	"-" => SubOp
+}
