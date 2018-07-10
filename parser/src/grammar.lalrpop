@@ -1,13 +1,13 @@
 use std::str::FromStr;
 use lexer;
 
-grammar<'input>;
+grammar<>;
 extern {
     type Location = usize;
     type Error = lexer::LexicalError;
 
-    enum lexer::Token<'input> {
-        "ident" => lexer::Token::Identifier(<&'input str>),
+    enum lexer::Token<> {
+        "ident" => lexer::Token::Identifier(<String>),
         "string" => lexer::Token::StringLiteral(<String>),
         "int" => lexer::Token::IntLiteral(<i64>),
         "float" => lexer::Token::FloatLiteral(<f64>),
@@ -29,13 +29,26 @@ extern {
         "[" => lexer::Token::BracketOpen,
         "]" => lexer::Token::BracketClose,
         "?" => lexer::Token::Question,
+        "!" => lexer::Token::ExclMark,
+        "*" => lexer::Token::Star,
+        "+" => lexer::Token::Plus,
+        "-" => lexer::Token::Minus,
+        "!=" => lexer::Token::NotEqual,
+        "==" => lexer::Token::VeryEqual,
+        "=" => lexer::Token::Equal,        //
+        ">" => lexer::Token::Greater,      //
+        ">=" => lexer::Token::GreaterEqual, //
+        "<" => lexer::Token::Less,         //
+        "<=" => lexer::Token::LessEqual,    //
     }
     
 }
 
 
-pub Term: i32 = {
+pub Term: i64 = {
     "(" <t:Term> ")" => t,
+    "(" <t:Term> "*" <z:Term> ")"=> t*z,
     ";" => 2,
     "." => 13,
+    "int" => <>
 };

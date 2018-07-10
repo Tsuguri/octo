@@ -2,8 +2,8 @@ use std::fmt;
 use std::str::CharIndices;
 
 #[derive(Debug)]
-pub enum Token<'input> {
-    Identifier(&'input str),
+pub enum Token {
+    Identifier(String),
     StringLiteral(String),
     IntLiteral(i64),
     FloatLiteral(f64),
@@ -26,17 +26,19 @@ pub enum Token<'input> {
     BracketClose, //
     Question,     //
     ExclMark,     //
-    Star,
-    NotEqual,
-    VeryEqual,
-    Equal,
-    Greater,
-    GreaterEqual,
-    Less,
-    LessEqual,
+    Star,         //
+    Plus,         //
+    Minus,        //
+    NotEqual,     //
+    VeryEqual,    //
+    Equal,        //
+    Greater,      //
+    GreaterEqual, //
+    Less,         //
+    LessEqual,    //
 }
 
-impl<'input> fmt::Display for Token<'input> {
+impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::Token::*;
         let val = match *self {
@@ -63,6 +65,8 @@ impl<'input> fmt::Display for Token<'input> {
             Question => "QuestionMark".to_owned(),
             ExclMark => "ExclamationMark".to_owned(),
             Star => "Star".to_owned(),
+            Plus => "Plus".to_owned(),
+            Minus => "Minus".to_owned(),
             NotEqual => "NotEqual".to_owned(),
             VeryEqual => "VeryEqual".to_owned(),
             Equal => "Equal".to_owned(),
@@ -80,6 +84,8 @@ pub enum LexicalError {
     IsVeryBad,
     OpenComment(usize),
     UnexpectedCharacter(usize, char),
+    OpenStringLiteral(usize),
+    LiteralIntOverflow(usize),
 }
 impl fmt::Display for LexicalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -88,6 +94,8 @@ impl fmt::Display for LexicalError {
             LexicalError::IsVeryBad => "izverybad",
             LexicalError::OpenComment(_) => "Not closed block comment",
             LexicalError::UnexpectedCharacter(_, _) => "Unexpected character",
+            LexicalError::OpenStringLiteral(_) => "Not closed string literal",
+            LexicalError::LiteralIntOverflow(_) => "Literal int overflowed",
         };
         val.fmt(f)
     }
@@ -141,6 +149,41 @@ impl<'input> Lexer<'input> {
         }
     }
 
+    fn test_digit(&self) -> bool {
+        match self.lookahead {
+            None => false,
+            Some((_, x)) => x.is_digit(10),
+        }
+    }
+
+    fn read_string_literal(&mut self, start: usize) -> Result<String, LexicalError> {
+        let mut string = String::new();
+        while let Some((_, x)) = self.pop() {
+            match x {
+                '"' => return Result::Ok(string),
+                x => string.push(x),
+            }
+        }
+
+        Result::Err(LexicalError::OpenStringLiteral(start))
+    }
+
+    fn read_number(&mut self, first: char, start: usize) -> Result<Token, LexicalError> {
+        let mut string = String::new();
+        string.push(first);
+        while self.test_digit() {
+            match self.pop() {
+                None => unreachable!(),
+                Some((_, x)) => string.push(x),
+            }
+        }
+
+        match string.parse::<i64>() {
+            Result::Ok(literal) => Result::Ok(Token::IntLiteral(literal)),
+            Result::Err(_) => Result::Err(LexicalError::LiteralIntOverflow(start)),
+        }
+    }
+
     fn remove_block_comment(&mut self) -> Result<(), LexicalError> {
         let mut opened_blocks = 1u32;
 
@@ -189,7 +232,7 @@ macro_rules! err {
 }
 
 impl<'input> Iterator for Lexer<'input> {
-    type Item = Result<(usize, Token<'input>, usize), LexicalError>;
+    type Item = Result<(usize, Token, usize), LexicalError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -210,6 +253,9 @@ impl<'input> Iterator for Lexer<'input> {
                 Some((i, '{')) => return ok!(BraceOpen, i),
                 Some((i, '}')) => return ok!(BraceClose, i),
                 Some((i, '?')) => return ok!(Question, i),
+                Some((i, '*')) => return ok!(Star, i),
+                Some((i, '+')) => return ok!(Plus, i),
+                Some((i, '-')) => return ok!(Minus, i),
                 Some((i, '!')) => match self.peek() {
                     Some('=') => {
                         self.pop();
@@ -231,6 +277,13 @@ impl<'input> Iterator for Lexer<'input> {
                     }
                     _ => return ok!(Greater, i),
                 },
+                Some((i, '=')) => match self.peek() {
+                    Some('=') => {
+                        self.pop();
+                        return ok_m!(VeryEqual, i, 2);
+                    }
+                    _ => return ok!(Equal, i),
+                },
 
                 Some((i, '/')) => match self.peek() {
                     Some('/') => {
@@ -241,8 +294,18 @@ impl<'input> Iterator for Lexer<'input> {
                         Result::Ok(()) => continue,
                         Result::Err(er) => return err!(er),
                     },
-                    None => return ok!(Slash, i),
-                    Some(_) => return ok!(Slash, i), // next character is whatever so we emit normal slash
+                    _ => return ok!(Slash, i), // next character is whatever so we emit normal slash
+                },
+                Some((i, '\"')) => match self.read_string_literal(i) {
+                    Result::Ok(slice) => {
+                        let len = slice.len();
+                        return Some(Result::Ok((i, Token::StringLiteral(slice), i + len + 2))); // 2 because of two "s.
+                    }
+                    Result::Err(err) => return err!(err),
+                },
+                Some((i, ch)) if ch.is_digit(10) => match self.read_number(ch, i) {
+                    Result::Ok(result) => return Some(Result::Ok((i, result, i + 1))),
+                    Result::Err(err) => return err!(err),
                 },
                 Some((i, c)) => return err!(LexicalError::UnexpectedCharacter(i, c)),
             }
