@@ -1,5 +1,5 @@
 // auto-generated: "lalrpop 0.15.2"
-// sha256: efe4f61a1dfd48cdbc742366b31fb3ce7d5b15c44ead5574ffbd54a36d6460
+// sha256: f3c41e933441a54c2431a2e3474cdb8fad331430d3669b17e14917a4f9735b
 use std::str::FromStr;
 #[allow(unused_extern_crates)]
 extern crate lalrpop_util as __lalrpop_util;

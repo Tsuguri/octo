@@ -3,6 +3,8 @@ extern crate structopt;
 #[macro_use]
 extern crate clap;
 
+extern crate octo_parser;
+
 arg_enum!{
 #[derive(Debug)]
 pub enum Mode {
@@ -13,9 +15,7 @@ pub enum Mode {
 use std::io::{self, Read, Write};
 use structopt::StructOpt;
 
-mod grammar;
-
-use grammar::TermParser;
+use octo_parser::grammar::TermParser;
 
 #[derive(StructOpt, Debug)]
 struct Parameters {
