@@ -1,18 +1,10 @@
 #[macro_use]
 extern crate structopt;
-#[macro_use]
-extern crate clap;
 
 extern crate octo_parser;
 
-arg_enum!{
-#[derive(Debug)]
-pub enum Mode {
-    Interpreter,
-    File,
-}
-}
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
+use std::string::ToString;
 use structopt::StructOpt;
 
 use octo_parser::grammar::TermParser;
@@ -68,14 +60,17 @@ struct ParsingError {
 }
 
 fn parse(data: &str) -> Result<String, ParsingError> {
+    let lexer = octo_parser::lexer::Lexer::new(data);
     let parser = TermParser::new();
-    let result = parser.parse(data);
+
+    let result = parser.parse(lexer);
+    println!("{:?}", result);
     if result.is_ok() {
         Result::Ok("Working".to_string())
     } else {
         Result::Err(ParsingError {
             line: 0,
-            message: result.err().unwrap().to_string(),
+            message: "error".to_string() 
         })
     }
 }
