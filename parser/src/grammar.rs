@@ -1,5 +1,5 @@
 // auto-generated: "lalrpop 0.15.2"
-// sha256: 4c509cdceb260f8f49c4d96f1aec1edf14a7515789654c3dd76713aef956
+// sha256: 54b20473b433187f228c5d7f59fba2fe0258bf0ad55fb151d7c77afb5c829e8
 use std::str::FromStr;
 use lexer;
 #[allow(unused_extern_crates)]
@@ -26,30 +26,34 @@ mod __parse__Term {
     }
     const __ACTION: &'static [i8] = &[
         // State 0
-        0, 3, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 3, 0, 0, 4, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 1
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 2
-        0, 3, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 3, 0, 0, 4, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 3
-        0, 0, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, -3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 4
-        0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 5
+        0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        // State 6
         0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
     const __EOF_ACTION: &'static [i8] = &[
         // State 0
         0,
         // State 1
-        -3,
+        -4,
         // State 2
         0,
         // State 3
-        -2,
+        -3,
         // State 4
-        0,
+        -2,
         // State 5
+        0,
+        // State 6
         -1,
     ];
     const __GOTO: &'static [i8] = &[
@@ -58,12 +62,14 @@ mod __parse__Term {
         // State 1
         0, 0,
         // State 2
-        5, 0,
+        6, 0,
         // State 3
         0, 0,
         // State 4
         0, 0,
         // State 5
+        0, 0,
+        // State 6
         0, 0,
     ];
     fn __expected_tokens(__state: usize) -> Vec<::std::string::String> {
@@ -309,6 +315,9 @@ mod __parse__Term {
                 __reduce2(__action, __lookahead_start, __states, __symbols, ::std::marker::PhantomData::<()>)
             }
             3 => {
+                __reduce3(__action, __lookahead_start, __states, __symbols, ::std::marker::PhantomData::<()>)
+            }
+            4 => {
                 // __Term = Term => ActionFn(0);
                 let __sym0 = __pop_Variant5(__symbols);
                 let __start = __sym0.0.clone();
@@ -430,6 +439,24 @@ mod __parse__Term {
         let __symbol = (__start, __Symbol::Variant5(__nt), __end);
         (1, __symbol, 0)
     }
+    pub(crate) fn __reduce3<
+        'input,
+    >(
+        __action: i8,
+        __lookahead_start: Option<&usize>,
+        __states: &mut ::std::vec::Vec<i8>,
+        __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>,
+        _: ::std::marker::PhantomData<()>,
+    ) -> (usize, (usize,__Symbol<'input>,usize), usize)
+    {
+        // Term = "." => ActionFn(3);
+        let __sym0 = __pop_Variant0(__symbols);
+        let __start = __sym0.0.clone();
+        let __end = __sym0.2.clone();
+        let __nt = super::__action3::<>(__sym0);
+        let __symbol = (__start, __Symbol::Variant5(__nt), __end);
+        (1, __symbol, 0)
+    }
 }
 pub use self::__parse__Term::TermParser;
 
@@ -460,6 +487,15 @@ fn __action2<
 ) -> i32
 {
     2
+}
+
+fn __action3<
+    'input,
+>(
+    (_, __0, _): (usize, lexer::Token<'input>, usize),
+) -> i32
+{
+    13
 }
 
 pub trait __ToTriple<'input, > {

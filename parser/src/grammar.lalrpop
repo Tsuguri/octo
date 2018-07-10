@@ -18,7 +18,7 @@ extern {
         "else" => lexer::Token::Else,
         "for" => lexer::Token::For,
         
-	"(" => lexer::Token::ParOpen,
+	    "(" => lexer::Token::ParOpen,
         ")" => lexer::Token::ParClose,
         ":" => lexer::Token::Colon,
         ";" => lexer::Token::Semicolon,
@@ -37,4 +37,5 @@ extern {
 pub Term: i32 = {
     "(" <t:Term> ")" => t,
     ";" => 2,
+    "." => 13,
 };

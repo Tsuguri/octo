@@ -1,5 +1,5 @@
-use std::str::CharIndices;
 use std::fmt;
+use std::str::CharIndices;
 
 #[derive(Debug)]
 pub enum Token<'input> {
@@ -7,128 +7,244 @@ pub enum Token<'input> {
     StringLiteral(String),
     IntLiteral(i64),
     FloatLiteral(f64),
-    
 
-    And,
-    Or,
-    If,
-    Else,
-    For,
-    ParOpen,
-    ParClose,
-    Colon,
-    Semicolon,
-    Comma,
-    Dot,
-    BraceOpen,
-    BraceClose,
-    BracketOpen,
-    BracketClose,
-    Question,
-    ExclMark,
+    And,          //
+    Or,           //
+    If,           //
+    Else,         //
+    For,          //
+    ParOpen,      //
+    ParClose,     //
+    Colon,        //
+    Semicolon,    //
+    Slash,        //
+    Comma,        //
+    Dot,          //
+    BraceOpen,    //
+    BraceClose,   //
+    BracketOpen,  //
+    BracketClose, //
+    Question,     //
+    ExclMark,     //
+    Star,
+    NotEqual,
+    VeryEqual,
+    Equal,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
 }
 
 impl<'input> fmt::Display for Token<'input> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::Token::*;
         let val = match *self {
-            Identifier(ref x) => "Identifier(".to_owned()+x+")",
-            StringLiteral(ref x) => "StringLiteral(".to_owned()+&x+")",
-            IntLiteral(ref x) => "IntLiteral(".to_owned()+&x.to_string()+")",
-            FloatLiteral(ref x) => "FloatLiteral(".to_owned()+&x.to_string()+")",
+            Identifier(ref x) => "Identifier(".to_owned() + x + ")",
+            StringLiteral(ref x) => "StringLiteral(".to_owned() + &x + ")",
+            IntLiteral(ref x) => "IntLiteral(".to_owned() + &x.to_string() + ")",
+            FloatLiteral(ref x) => "FloatLiteral(".to_owned() + &x.to_string() + ")",
             And => "And".to_owned(),
-            Or=> "Or".to_owned(),
-            If=> "If".to_owned(),
-            Else=> "Else".to_owned(),
-            For=>  "For".to_owned(),
-            ParOpen=> "ParOpen".to_owned(),
-            ParClose=> "ParClose".to_owned(),
-            Colon=> "Colon".to_owned(),
-            Semicolon=> "Semicolon".to_owned(),
-            Comma=> "Comma".to_owned(),
-            Dot=> "Dot".to_owned(),
-            BraceOpen=> "BraceOpen".to_owned(),
-            BraceClose=> "BraceClose".to_owned(),
-            BracketOpen=> "BracketOpen".to_owned(),
-            BracketClose=> "BracketClose".to_owned(),
-            Question=> "QuestionMark".to_owned(),
-            ExclMark=> "ExclamationMark".to_owned(),
+            Or => "Or".to_owned(),
+            If => "If".to_owned(),
+            Else => "Else".to_owned(),
+            For => "For".to_owned(),
+            ParOpen => "ParOpen".to_owned(),
+            ParClose => "ParClose".to_owned(),
+            Colon => "Colon".to_owned(),
+            Semicolon => "Semicolon".to_owned(),
+            Slash => "Slash".to_owned(),
+            Comma => "Comma".to_owned(),
+            Dot => "Dot".to_owned(),
+            BraceOpen => "BraceOpen".to_owned(),
+            BraceClose => "BraceClose".to_owned(),
+            BracketOpen => "BracketOpen".to_owned(),
+            BracketClose => "BracketClose".to_owned(),
+            Question => "QuestionMark".to_owned(),
+            ExclMark => "ExclamationMark".to_owned(),
+            Star => "Star".to_owned(),
+            NotEqual => "NotEqual".to_owned(),
+            VeryEqual => "VeryEqual".to_owned(),
+            Equal => "Equal".to_owned(),
+            Greater => "Greater".to_owned(),
+            GreaterEqual => "GreaterEqual".to_owned(),
+            Less => "Less".to_owned(),
+            LessEqual => "LessEqual".to_owned(),
         };
         val.fmt(f)
-
-
     }
-
 }
 #[derive(Debug)]
 pub enum LexicalError {
     IzBad,
-    IsVeryBad
+    IsVeryBad,
+    OpenComment(usize),
+    UnexpectedCharacter(usize, char),
 }
 impl fmt::Display for LexicalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let val = match *self {
             LexicalError::IzBad => "isbad",
             LexicalError::IsVeryBad => "izverybad",
+            LexicalError::OpenComment(_) => "Not closed block comment",
+            LexicalError::UnexpectedCharacter(_, _) => "Unexpected character",
         };
         val.fmt(f)
     }
 }
 
-
 pub struct Lexer<'input> {
     _source: &'input str,
     chars: CharIndices<'input>,
     lookahead: Option<(usize, char)>,
-
+    current_line: usize,
 }
 
 impl<'input> Lexer<'input> {
     pub fn new(input: &'input str) -> Self {
         let mut chars = input.char_indices();
         let first = chars.next();
-        Lexer { _source: input, chars: chars, lookahead: first }
-    }
-
-    fn pop(&mut self) -> Option<(usize,char)>{
-        match self.lookahead {
-            Some(a) =>{
-                self.lookahead = self.chars.next();
-                Some(a)
-            }
-            None => None
+        Lexer {
+            _source: input,
+            chars: chars,
+            lookahead: first,
+            current_line: 1, // human friendly line counting (not 0-indexed :)
         }
     }
 
-    fn test<F>(&self, test: F) -> bool where F: Fn(char)->bool {
-        self.lookahead.map_or(false, |(_, ch)| test(ch))
+    fn pop(&mut self) -> Option<(usize, char)> {
+        match self.lookahead {
+            Some((a, b)) => {
+                self.lookahead = self.chars.next();
+                if b == '\n' {
+                    // I'm not very confident in this.
+                    // Nothing should happen after you pop newline and before you pop anything else.
+                    self.current_line += 1;
+                }
+                Some((a, b))
+            }
+            None => None,
+        }
     }
+
+    fn peek(&self) -> Option<char> {
+        match self.lookahead {
+            Some((_, y)) => Some(y),
+            None => None,
+        }
+    }
+
+    fn test(&self, c: char) -> bool {
+        match self.lookahead {
+            None => false,
+            Some((_, x)) => c == x,
+        }
+    }
+
+    fn remove_block_comment(&mut self) -> Result<(), LexicalError> {
+        let mut opened_blocks = 1u32;
+
+        let start = match self.pop() {
+            None => return Result::Err(LexicalError::IsVeryBad),
+            Some((x, _)) => x,
+        };
+        while let Some((_, x)) = self.pop() {
+            match x {
+                '/' => {
+                    if self.test('*') {
+                        self.pop();
+                        opened_blocks += 1;
+                    }
+                }
+                '*' => {
+                    if self.test('/') {
+                        self.pop();
+                        opened_blocks -= 1;
+                        if opened_blocks == 0 {
+                            return Result::Ok(());
+                        }
+                    }
+                }
+                _ => (),
+            }
+        }
+        Result::Err(LexicalError::OpenComment(start - 1))
+    }
+}
+macro_rules! ok_m {
+    ($x:ident, $y:expr, $l:expr) => {
+        Some(Ok(($y, Token::$x, $y + $l)))
+    };
 }
 
 macro_rules! ok {
-    ($x:ident, $y:expr) => (
-        Some(Ok(($y, Token::$x, $y+1)))
-)}
-
+    ($x:ident, $y:expr) => {
+        ok_m!($x, $y, 1)
+    };
+}
+macro_rules! err {
+    ($x:expr) => {
+        Some(Result::Err($x))
+    };
+}
 
 impl<'input> Iterator for Lexer<'input> {
     type Item = Result<(usize, Token<'input>, usize), LexicalError>;
 
-    fn next(&mut self) ->Option<Self::Item> {
+    fn next(&mut self) -> Option<Self::Item> {
         loop {
             match self.pop() {
+                None => return None, // end of tokens
+
+                Some((_, ' ')) => continue,  // skip whitespace characters
+                Some((_, '\t')) => continue, //
+                Some((_, '\n')) => continue, //
+
                 Some((i, '(')) => return ok!(ParOpen, i),
                 Some((i, ')')) => return ok!(ParClose, i),
                 Some((i, ';')) => return ok!(Semicolon, i),
+                Some((i, '.')) => return ok!(Dot, i),
                 Some((i, ':')) => return ok!(Colon, i),
                 Some((i, '[')) => return ok!(BracketOpen, i),
                 Some((i, ']')) => return ok!(BracketClose, i),
                 Some((i, '{')) => return ok!(BraceOpen, i),
                 Some((i, '}')) => return ok!(BraceClose, i),
                 Some((i, '?')) => return ok!(Question, i),
-                Some((i, '!')) => return ok!(ExclMark, i),
-                None => return None,
-                _ => continue,
+                Some((i, '!')) => match self.peek() {
+                    Some('=') => {
+                        self.pop();
+                        return ok_m!(NotEqual, i, 2);
+                    }
+                    _ => return ok!(ExclMark, i),
+                },
+                Some((i, '<')) => match self.peek() {
+                    Some('=') => {
+                        self.pop();
+                        return ok_m!(LessEqual, i, 2);
+                    }
+                    _ => return ok!(Less, i),
+                },
+                Some((i, '>')) => match self.peek() {
+                    Some('=') => {
+                        self.pop();
+                        return ok_m!(GreaterEqual, i, 2);
+                    }
+                    _ => return ok!(Greater, i),
+                },
+
+                Some((i, '/')) => match self.peek() {
+                    Some('/') => {
+                        while !self.test('\n') {}
+                        continue;
+                    }
+                    Some('*') => match self.remove_block_comment() {
+                        Result::Ok(()) => continue,
+                        Result::Err(er) => return err!(er),
+                    },
+                    None => return ok!(Slash, i),
+                    Some(_) => return ok!(Slash, i), // next character is whatever so we emit normal slash
+                },
+                Some((i, c)) => return err!(LexicalError::UnexpectedCharacter(i, c)),
             }
         }
     }
