@@ -7,7 +7,7 @@ use std::io::{self, Write};
 use std::string::ToString;
 use structopt::StructOpt;
 
-use octo_parser::grammar::TermParser;
+use octo_parser::grammar::ExpressionParser;
 
 #[derive(StructOpt, Debug)]
 struct Parameters {
@@ -61,7 +61,7 @@ struct ParsingError {
 
 fn parse(data: &str) -> Result<String, ParsingError> {
     let lexer = octo_parser::lexer::Lexer::new(data);
-    let parser = TermParser::new();
+    let parser = ExpressionParser::new();
 
     let result = parser.parse(lexer);
     println!("{:?}", result);
@@ -70,7 +70,7 @@ fn parse(data: &str) -> Result<String, ParsingError> {
     } else {
         Result::Err(ParsingError {
             line: 0,
-            message: "error".to_string() 
+            message: "error".to_string(),
         })
     }
 }

@@ -1,5 +1,6 @@
 use std::str::FromStr;
 use lexer;
+use ast;
 
 grammar<>;
 extern {
@@ -24,6 +25,7 @@ extern {
         ")" => lexer::Token::ParClose,
         ":" => lexer::Token::Colon,
         ";" => lexer::Token::Semicolon,
+        "/" => lexer::Token::Slash,
         "," => lexer::Token::Comma,
         "." => lexer::Token::Dot,
         "{" => lexer::Token::BraceOpen,
@@ -46,11 +48,55 @@ extern {
     
 }
 
+pub Statement: ast::Statement = {
+   
+}
 
-pub Term: i64 = {
-    "(" <t:Term> ")" => t,
-    "(" <t:Term> "*" <z:Term> ")"=> t*z,
-    ";" => 2,
-    "." => 13,
-    "int" => <>
-};
+pub Expression: ast::Primitive = {
+    Equaled => <>,
+    <e1:Expression> "and" <e2:Equaled> => ast::Primitive::And(Box::new(e1), Box::new(e2)),
+    <e1:Expression> "or" <e2:Equaled> => ast::Primitive::Or(Box::new(e1), Box::new(e2))
+}
+
+Equaled: ast::Primitive = {
+    Related => <>,
+    <a1:Added> "==" <a2:Added> =>  ast::Primitive::Equals(Box::new(a1), Box::new(a2)),
+    <a1:Added> "!=" <a2:Added> =>  ast::Primitive::NotEquals(Box::new(a1), Box::new(a2)),
+}
+
+Related: ast::Primitive = {
+    Added => <>,
+    <r:Related> "<" <a:Added> => ast::Primitive::Less(Box::new(r), Box::new(a)),
+    <r:Related> "<=" <a:Added> => ast::Primitive::LessEqual(Box::new(r), Box::new(a)),
+    <r:Related> ">" <a:Added> => ast::Primitive::More(Box::new(r), Box::new(a)),
+    <r:Related> ">=" <a:Added> => ast::Primitive::MoreEqual(Box::new(r), Box::new(a)),
+}
+
+Added: ast::Primitive = {
+    Multiplied => <>,
+    <a:Added> "+" <m:Multiplied> => ast::Primitive::Add(Box::new(a), Box::new(m)),
+    <a:Added> "-" <m:Multiplied> => ast::Primitive::Sub(Box::new(a), Box::new(m)),
+}
+
+Multiplied: ast::Primitive = {
+    Negated => <>,
+    <m:Multiplied> "*" <n:Negated> => ast::Primitive::Mul(Box::new(m), Box::new(n)),
+    <m:Multiplied> "/" <n:Negated> => ast::Primitive::Div(Box::new(m), Box::new(n)),
+}
+Negated: ast::Primitive = {
+    "!" <p:Primitive> => ast::Primitive::Negation(Box::new(p)),
+    Primitive => <> 
+}
+
+pub Primitive: ast::Primitive = {
+    Literal => ast::Primitive::Literal(Box::new(<>)),
+    "ident" => ast::Primitive::Variable(Box::new(ast::Variable {identifier: <>})),
+    "(" <e:Expression> ")" => ast::Primitive::Expression(Box::new(e))
+}
+
+Literal: ast::Literal = {
+    "int" => ast::Literal::Int(<>),
+    "float" => ast::Literal::Float(<>),
+    "string" => ast::Literal::String(<>),
+
+}

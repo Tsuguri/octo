@@ -13,8 +13,8 @@ pub enum Token {
     If,           //
     Else,         //
     For,          //
-    True,          //
-    False,          //
+    True,         //
+    False,        //
     ParOpen,      //
     ParClose,     //
     Colon,        //
@@ -38,6 +38,7 @@ pub enum Token {
     GreaterEqual, //
     Less,         //
     LessEqual,    //
+    Let,
 }
 
 impl fmt::Display for Token {
@@ -78,6 +79,7 @@ impl fmt::Display for Token {
             GreaterEqual => "GreaterEqual".to_owned(),
             Less => "Less".to_owned(),
             LessEqual => "LessEqual".to_owned(),
+            Let => "Let".to_owned(),
         };
         val.fmt(f)
     }
@@ -90,7 +92,7 @@ pub enum LexicalError {
     UnexpectedCharacter(usize, char),
     OpenStringLiteral(usize),
     LiteralIntOverflow(usize),
-    LiteralFloatOverflow(usize)
+    LiteralFloatOverflow(usize),
 }
 impl fmt::Display for LexicalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -207,7 +209,6 @@ impl<'input> Lexer<'input> {
                     Some((_, x)) => string.push(x),
                 }
             }
-            
         }
         if !is_float {
             match string.parse::<i64>() {
@@ -217,7 +218,7 @@ impl<'input> Lexer<'input> {
         } else {
             match string.parse::<f64>() {
                 Result::Ok(literal) => Result::Ok(Token::FloatLiteral(literal)),
-                Result::Err(_) => Result::Err(LexicalError::IsVeryBad), 
+                Result::Err(_) => Result::Err(LexicalError::IsVeryBad),
             }
         }
     }
@@ -232,7 +233,6 @@ impl<'input> Lexer<'input> {
             }
         }
         return Result::Ok(string);
-
     }
     fn remove_block_comment(&mut self) -> Result<(), LexicalError> {
         let mut opened_blocks = 1u32;
@@ -357,7 +357,7 @@ impl<'input> Iterator for Lexer<'input> {
                     Result::Ok(result) => return Some(Result::Ok((i, result, i + 1))),
                     Result::Err(err) => return err!(err),
                 },
-                Some((i,ch)) if ch.is_alphabetic() => match self.read_identifier(ch, i) {
+                Some((i, ch)) if ch.is_alphabetic() => match self.read_identifier(ch, i) {
                     Result::Ok(result) => {
                         let len = result.len();
                         // TODO: change into keywords dictionary
@@ -369,11 +369,18 @@ impl<'input> Iterator for Lexer<'input> {
                             "or" => return ok_m!(Or, i, i + 2),
                             "true" => return ok_m!(True, i, i + 4),
                             "false" => return ok_m!(False, i, i + 5),
-                            x => return Some(Result::Ok((i, Token::Identifier(x.to_owned()), i + len))),
+                            "let" => return ok_m!(Let, i, i + 3),
+                            x => {
+                                return Some(Result::Ok((
+                                    i,
+                                    Token::Identifier(x.to_owned()),
+                                    i + len,
+                                )))
+                            }
                         }
                     }
                     Result::Err(err) => return err!(err),
-                }
+                },
                 Some((i, c)) => return err!(LexicalError::UnexpectedCharacter(i, c)),
             }
         }
