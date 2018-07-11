@@ -86,6 +86,7 @@ pub enum LexicalError {
     UnexpectedCharacter(usize, char),
     OpenStringLiteral(usize),
     LiteralIntOverflow(usize),
+    LiteralFloatOverflow(usize)
 }
 impl fmt::Display for LexicalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -96,6 +97,7 @@ impl fmt::Display for LexicalError {
             LexicalError::UnexpectedCharacter(_, _) => "Unexpected character",
             LexicalError::OpenStringLiteral(_) => "Not closed string literal",
             LexicalError::LiteralIntOverflow(_) => "Literal int overflowed",
+            LexicalError::LiteralFloatOverflow(_) => "Literal float overflow",
         };
         val.fmt(f)
     }
@@ -156,6 +158,20 @@ impl<'input> Lexer<'input> {
         }
     }
 
+    fn test_alphabetic(&self) -> bool {
+        match self.lookahead {
+            None => false,
+            Some((_, x)) => x.is_alphabetic(),
+        }
+    }
+
+    fn test_alphanumeric(&self) -> bool {
+        match self.lookahead {
+            None => false,
+            Some((_, x)) => x.is_alphanumeric(),
+        }
+    }
+
     fn read_string_literal(&mut self, start: usize) -> Result<String, LexicalError> {
         let mut string = String::new();
         while let Some((_, x)) = self.pop() {
@@ -177,13 +193,43 @@ impl<'input> Lexer<'input> {
                 Some((_, x)) => string.push(x),
             }
         }
-
-        match string.parse::<i64>() {
-            Result::Ok(literal) => Result::Ok(Token::IntLiteral(literal)),
-            Result::Err(_) => Result::Err(LexicalError::LiteralIntOverflow(start)),
+        let is_float = self.test('.');
+        if is_float {
+            string.push('.');
+            self.pop();
+            while self.test_digit() {
+                match self.pop() {
+                    None => unreachable!(),
+                    Some((_, x)) => string.push(x),
+                }
+            }
+            
+        }
+        if !is_float {
+            match string.parse::<i64>() {
+                Result::Ok(literal) => Result::Ok(Token::IntLiteral(literal)),
+                Result::Err(_) => Result::Err(LexicalError::LiteralIntOverflow(start)),
+            }
+        } else {
+            match string.parse::<f64>() {
+                Result::Ok(literal) => Result::Ok(Token::FloatLiteral(literal)),
+                Result::Err(_) => Result::Err(LexicalError::IsVeryBad), 
+            }
         }
     }
 
+    fn read_identifier(&mut self, first: char, start: usize) -> Result<String, LexicalError> {
+        let mut string = String::new();
+        string.push(first);
+        while self.test_alphanumeric() {
+            match self.pop() {
+                None => unreachable!(),
+                Some((_, x)) => string.push(x),
+            }
+        }
+        return Result::Ok(string);
+
+    }
     fn remove_block_comment(&mut self) -> Result<(), LexicalError> {
         let mut opened_blocks = 1u32;
 
@@ -307,6 +353,13 @@ impl<'input> Iterator for Lexer<'input> {
                     Result::Ok(result) => return Some(Result::Ok((i, result, i + 1))),
                     Result::Err(err) => return err!(err),
                 },
+                Some((i,ch)) if ch.is_alphabetic() => match self.read_identifier(ch, i) {
+                    Result::Ok(result) => {
+                        let len = result.len();
+                        return Some(Result::Ok((i, Token::Identifier(result), i + len)));
+                    }
+                    Result::Err(err) => return err!(err),
+                }
                 Some((i, c)) => return err!(LexicalError::UnexpectedCharacter(i, c)),
             }
         }
