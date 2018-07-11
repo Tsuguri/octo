@@ -12,11 +12,13 @@ extern {
         "int" => lexer::Token::IntLiteral(<i64>),
         "float" => lexer::Token::FloatLiteral(<f64>),
     
-        "&&" => lexer::Token::And,
-        "||" => lexer::Token::Or,
+        "and" => lexer::Token::And,
+        "or" => lexer::Token::Or,
         "if" => lexer::Token::If,
         "else" => lexer::Token::Else,
         "for" => lexer::Token::For,
+        "true" => lexer::Token::True,
+        "false" => lexer::Token::False,
         
 	    "(" => lexer::Token::ParOpen,
         ")" => lexer::Token::ParClose,

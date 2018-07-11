@@ -13,6 +13,8 @@ pub enum Token {
     If,           //
     Else,         //
     For,          //
+    True,          //
+    False,          //
     ParOpen,      //
     ParClose,     //
     Colon,        //
@@ -51,6 +53,8 @@ impl fmt::Display for Token {
             If => "If".to_owned(),
             Else => "Else".to_owned(),
             For => "For".to_owned(),
+            True => "True".to_owned(),
+            False => "False".to_owned(),
             ParOpen => "ParOpen".to_owned(),
             ParClose => "ParClose".to_owned(),
             Colon => "Colon".to_owned(),
@@ -356,7 +360,17 @@ impl<'input> Iterator for Lexer<'input> {
                 Some((i,ch)) if ch.is_alphabetic() => match self.read_identifier(ch, i) {
                     Result::Ok(result) => {
                         let len = result.len();
-                        return Some(Result::Ok((i, Token::Identifier(result), i + len)));
+                        // TODO: change into keywords dictionary
+                        match result.as_ref() {
+                            "for" => return ok_m!(For, i, i + 3),
+                            "if" => return ok_m!(If, i, i + 2),
+                            "else" => return ok_m!(Else, i, i + 4),
+                            "and" => return ok_m!(And, i, i + 3),
+                            "or" => return ok_m!(Or, i, i + 2),
+                            "true" => return ok_m!(True, i, i + 4),
+                            "false" => return ok_m!(False, i, i + 5),
+                            x => return Some(Result::Ok((i, Token::Identifier(x.to_owned()), i + len))),
+                        }
                     }
                     Result::Err(err) => return err!(err),
                 }
