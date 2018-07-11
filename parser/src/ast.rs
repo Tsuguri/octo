@@ -2,12 +2,15 @@
 pub struct Statement {
     pub value: i64,
 }
+#[derive(Debug)]
+pub struct Program {
+    pub lines: Vec<Primitive>,
+}
 
 #[derive(Debug)]
 pub enum Primitive {
     Variable(Box<Variable>),
     Literal(Box<Literal>),
-    Expression(Box<Primitive>),
     Negation(Box<Primitive>),
     Mul(Box<Primitive>, Box<Primitive>),
     Div(Box<Primitive>, Box<Primitive>),

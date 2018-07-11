@@ -48,8 +48,8 @@ extern {
     
 }
 
-pub Statement: ast::Statement = {
-   
+pub Program: ast::Program = {
+    <lines: (<Expression> ";")+> => ast::Program{lines: lines}
 }
 
 pub Expression: ast::Primitive = {
@@ -91,7 +91,7 @@ Negated: ast::Primitive = {
 pub Primitive: ast::Primitive = {
     Literal => ast::Primitive::Literal(Box::new(<>)),
     "ident" => ast::Primitive::Variable(Box::new(ast::Variable {identifier: <>})),
-    "(" <e:Expression> ")" => ast::Primitive::Expression(Box::new(e))
+    "(" <e:Expression> ")" => e
 }
 
 Literal: ast::Literal = {
