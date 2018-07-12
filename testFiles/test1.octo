@@ -1,3 +1,9 @@
-heh;
-lolo
-128 + 132.0 / 2;
+fun superFun(first: char, second: float) {
+    let print = (first);
+    let p = 12 + second;
+    let f = p > 0;
+}
+
+fun gpuFun(noidea: float) {
+    "unfortunately has to write retarded string"
+}

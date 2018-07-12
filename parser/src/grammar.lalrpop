@@ -20,6 +20,8 @@ extern {
         "for" => lexer::Token::For,
         "true" => lexer::Token::True,
         "false" => lexer::Token::False,
+        "let" => lexer::Token::Let,
+        "fun" => lexer::Token::Fun,
         
 	    "(" => lexer::Token::ParOpen,
         ")" => lexer::Token::ParClose,
@@ -48,49 +50,89 @@ extern {
     
 }
 
+// Comma separated 
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
 pub Program: ast::Program = {
-    <lines: (<Expression> ";")+> => ast::Program{lines: lines}
+    <items: (ProgramItem)*> => ast::Program{items}
 }
 
-pub Expression: ast::Primitive = {
+
+ProgramItem: ast::ProgramItem = {
+    Function => ast::ProgramItem::Function(Box::new(<>)),
+    GpuFunction => ast::ProgramItem::GpuFunction(Box::new(<>)),
+
+}
+
+pub Function: ast::Function = {
+    "fun" <i:"ident"> "(" <args:Comma<Definition>> ")" <b:Block> => ast::Function{arguments: args, name: i, block: b}
+}
+
+pub GpuFunction: ast::GpuFunction = {
+    "fun" <i:"ident"> "(" <args:Comma<Definition>> ")" "{" <s:"string"> "}" => ast::GpuFunction{ name:i, code: s, arguments: args}
+}
+
+Definition: (ast::Variable, String) = {
+    <i1:"ident"> ":" <i2:"ident"> => (ast::Variable{identifier: i1}, i2)
+}
+
+pub Block: ast::Block = {
+    "{" <statements: (<Statement> ";")*> "}" => ast::Block{statements: statements },
+}
+
+pub Statement: ast::Statement = {
+    Expression => ast::Statement::Expression(<>),
+    "let" <i:"ident"> "=" <e:Expression> => ast::Statement::Assignment(Box::new(ast::Variable{identifier: i}), e),
+}
+
+pub Expression: ast::Expression = {
     Equaled => <>,
-    <e1:Expression> "and" <e2:Equaled> => ast::Primitive::And(Box::new(e1), Box::new(e2)),
-    <e1:Expression> "or" <e2:Equaled> => ast::Primitive::Or(Box::new(e1), Box::new(e2))
+    <e1:Expression> "and" <e2:Equaled> => ast::Expression::And(Box::new(e1), Box::new(e2)),
+    <e1:Expression> "or" <e2:Equaled> => ast::Expression::Or(Box::new(e1), Box::new(e2))
 }
 
-Equaled: ast::Primitive = {
+Equaled: ast::Expression = {
     Related => <>,
-    <a1:Added> "==" <a2:Added> =>  ast::Primitive::Equals(Box::new(a1), Box::new(a2)),
-    <a1:Added> "!=" <a2:Added> =>  ast::Primitive::NotEquals(Box::new(a1), Box::new(a2)),
+    <a1:Added> "==" <a2:Added> =>  ast::Expression::Equals(Box::new(a1), Box::new(a2)),
+    <a1:Added> "!=" <a2:Added> =>  ast::Expression::NotEquals(Box::new(a1), Box::new(a2)),
 }
 
-Related: ast::Primitive = {
+Related: ast::Expression = {
     Added => <>,
-    <r:Related> "<" <a:Added> => ast::Primitive::Less(Box::new(r), Box::new(a)),
-    <r:Related> "<=" <a:Added> => ast::Primitive::LessEqual(Box::new(r), Box::new(a)),
-    <r:Related> ">" <a:Added> => ast::Primitive::More(Box::new(r), Box::new(a)),
-    <r:Related> ">=" <a:Added> => ast::Primitive::MoreEqual(Box::new(r), Box::new(a)),
+    <r:Related> "<" <a:Added> => ast::Expression::Less(Box::new(r), Box::new(a)),
+    <r:Related> "<=" <a:Added> => ast::Expression::LessEqual(Box::new(r), Box::new(a)),
+    <r:Related> ">" <a:Added> => ast::Expression::More(Box::new(r), Box::new(a)),
+    <r:Related> ">=" <a:Added> => ast::Expression::MoreEqual(Box::new(r), Box::new(a)),
 }
 
-Added: ast::Primitive = {
+Added: ast::Expression = {
     Multiplied => <>,
-    <a:Added> "+" <m:Multiplied> => ast::Primitive::Add(Box::new(a), Box::new(m)),
-    <a:Added> "-" <m:Multiplied> => ast::Primitive::Sub(Box::new(a), Box::new(m)),
+    <a:Added> "+" <m:Multiplied> => ast::Expression::Add(Box::new(a), Box::new(m)),
+    <a:Added> "-" <m:Multiplied> => ast::Expression::Sub(Box::new(a), Box::new(m)),
 }
 
-Multiplied: ast::Primitive = {
+Multiplied: ast::Expression = {
     Negated => <>,
-    <m:Multiplied> "*" <n:Negated> => ast::Primitive::Mul(Box::new(m), Box::new(n)),
-    <m:Multiplied> "/" <n:Negated> => ast::Primitive::Div(Box::new(m), Box::new(n)),
+    <m:Multiplied> "*" <n:Negated> => ast::Expression::Mul(Box::new(m), Box::new(n)),
+    <m:Multiplied> "/" <n:Negated> => ast::Expression::Div(Box::new(m), Box::new(n)),
 }
-Negated: ast::Primitive = {
-    "!" <p:Primitive> => ast::Primitive::Negation(Box::new(p)),
+Negated: ast::Expression = {
+    "!" <p:Primitive> => ast::Expression::Negation(Box::new(p)),
     Primitive => <> 
 }
 
-pub Primitive: ast::Primitive = {
-    Literal => ast::Primitive::Literal(Box::new(<>)),
-    "ident" => ast::Primitive::Variable(Box::new(ast::Variable {identifier: <>})),
+pub Primitive: ast::Expression = {
+    Literal => ast::Expression::Literal(Box::new(<>)),
+    "ident" => ast::Expression::Variable(Box::new(ast::Variable {identifier: <>})),
     "(" <e:Expression> ")" => e
 }
 

@@ -39,6 +39,8 @@ pub enum Token {
     Less,         //
     LessEqual,    //
     Let,
+    Fun,
+    Import,
 }
 
 impl fmt::Display for Token {
@@ -80,6 +82,8 @@ impl fmt::Display for Token {
             Less => "Less".to_owned(),
             LessEqual => "LessEqual".to_owned(),
             Let => "Let".to_owned(),
+            Fun => "Fun".to_owned(),
+            Import => "Import".to_owned(),
         };
         val.fmt(f)
     }
@@ -297,6 +301,7 @@ impl<'input> Iterator for Lexer<'input> {
                 Some((i, ')')) => return ok!(ParClose, i),
                 Some((i, ';')) => return ok!(Semicolon, i),
                 Some((i, '.')) => return ok!(Dot, i),
+                Some((i, ',')) => return ok!(Comma, i),
                 Some((i, ':')) => return ok!(Colon, i),
                 Some((i, '[')) => return ok!(BracketOpen, i),
                 Some((i, ']')) => return ok!(BracketClose, i),
@@ -337,7 +342,9 @@ impl<'input> Iterator for Lexer<'input> {
 
                 Some((i, '/')) => match self.peek() {
                     Some('/') => {
-                        while !self.test('\n') {}
+                        while !self.test('\n') {
+                            self.pop();
+                        }
                         continue;
                     }
                     Some('*') => match self.remove_block_comment() {
@@ -370,6 +377,8 @@ impl<'input> Iterator for Lexer<'input> {
                             "true" => return ok_m!(True, i, i + 4),
                             "false" => return ok_m!(False, i, i + 5),
                             "let" => return ok_m!(Let, i, i + 3),
+                            "fun" => return ok_m!(Fun, i, i + 3),
+                            "import" => return ok_m!(Import, i, i + 6),
                             x => {
                                 return Some(Result::Ok((
                                     i,
