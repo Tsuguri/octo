@@ -30,14 +30,14 @@ pub struct Block {
 
 #[derive(Debug)]
 pub enum Statement {
-    Expression(Expression),
-    Assignment(Box<Variable>, Expression),
+    Expression(Box<Expression>),
+    Assignment(Box<Variable>, Box<Expression>),
 }
 
 #[derive(Debug)]
 pub enum Expression {
-    Variable(Box<Variable>),
-    Literal(Box<Literal>),
+    Variable(Variable),
+    Literal(Literal),
     Negation(Box<Expression>),
     Mul(Box<Expression>, Box<Expression>),
     Div(Box<Expression>, Box<Expression>),
@@ -51,6 +51,7 @@ pub enum Expression {
     NotEquals(Box<Expression>, Box<Expression>),
     And(Box<Expression>, Box<Expression>),
     Or(Box<Expression>, Box<Expression>),
+    Invocation(String, Vec<Box<Expression>>),
 }
 
 #[derive(Debug)]

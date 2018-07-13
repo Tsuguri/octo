@@ -94,46 +94,49 @@ pub Statement: ast::Statement = {
     "let" <i:"ident"> "=" <e:Expression> => ast::Statement::Assignment(Box::new(ast::Variable{identifier: i}), e),
 }
 
-pub Expression: ast::Expression = {
+
+
+pub Expression: Box<ast::Expression> = {
     Equaled => <>,
-    <e1:Expression> "and" <e2:Equaled> => ast::Expression::And(Box::new(e1), Box::new(e2)),
-    <e1:Expression> "or" <e2:Equaled> => ast::Expression::Or(Box::new(e1), Box::new(e2))
+    <e1:Expression> "and" <e2:Equaled> => Box::new(ast::Expression::And(e1, e2)),
+    <e1:Expression> "or" <e2:Equaled> => Box::new(ast::Expression::Or(e1, e2))
 }
 
-Equaled: ast::Expression = {
+Equaled: Box<ast::Expression> = {
     Related => <>,
-    <a1:Added> "==" <a2:Added> =>  ast::Expression::Equals(Box::new(a1), Box::new(a2)),
-    <a1:Added> "!=" <a2:Added> =>  ast::Expression::NotEquals(Box::new(a1), Box::new(a2)),
+    <a1:Added> "==" <a2:Added> =>  Box::new(ast::Expression::Equals(a1, a2)),
+    <a1:Added> "!=" <a2:Added> =>  Box::new(ast::Expression::NotEquals(a1, a2)),
 }
 
-Related: ast::Expression = {
+Related: Box<ast::Expression> = {
     Added => <>,
-    <r:Related> "<" <a:Added> => ast::Expression::Less(Box::new(r), Box::new(a)),
-    <r:Related> "<=" <a:Added> => ast::Expression::LessEqual(Box::new(r), Box::new(a)),
-    <r:Related> ">" <a:Added> => ast::Expression::More(Box::new(r), Box::new(a)),
-    <r:Related> ">=" <a:Added> => ast::Expression::MoreEqual(Box::new(r), Box::new(a)),
+    <r:Related> "<" <a:Added> => Box::new(ast::Expression::Less(r, a)),
+    <r:Related> "<=" <a:Added> => Box::new(ast::Expression::LessEqual(r, a)),
+    <r:Related> ">" <a:Added> => Box::new(ast::Expression::More(r, a)),
+    <r:Related> ">=" <a:Added> => Box::new(ast::Expression::MoreEqual(r, a)),
 }
 
-Added: ast::Expression = {
+Added: Box<ast::Expression> = {
     Multiplied => <>,
-    <a:Added> "+" <m:Multiplied> => ast::Expression::Add(Box::new(a), Box::new(m)),
-    <a:Added> "-" <m:Multiplied> => ast::Expression::Sub(Box::new(a), Box::new(m)),
+    <a:Added> "+" <m:Multiplied> => Box::new(ast::Expression::Add(a, m)),
+    <a:Added> "-" <m:Multiplied> => Box::new(ast::Expression::Sub(a, m)),
 }
 
-Multiplied: ast::Expression = {
+Multiplied: Box<ast::Expression> = {
     Negated => <>,
-    <m:Multiplied> "*" <n:Negated> => ast::Expression::Mul(Box::new(m), Box::new(n)),
-    <m:Multiplied> "/" <n:Negated> => ast::Expression::Div(Box::new(m), Box::new(n)),
+    <m:Multiplied> "*" <n:Negated> => Box::new(ast::Expression::Mul(m, n)),
+    <m:Multiplied> "/" <n:Negated> => Box::new(ast::Expression::Div(m, n)),
 }
-Negated: ast::Expression = {
-    "!" <p:Primitive> => ast::Expression::Negation(Box::new(p)),
+Negated: Box<ast::Expression> = {
+    "!" <p:Primitive> => Box::new(ast::Expression::Negation(p)),
     Primitive => <> 
 }
 
-pub Primitive: ast::Expression = {
-    Literal => ast::Expression::Literal(Box::new(<>)),
-    "ident" => ast::Expression::Variable(Box::new(ast::Variable {identifier: <>})),
-    "(" <e:Expression> ")" => e
+pub Primitive: Box<ast::Expression> = {
+    Literal => Box::new(ast::Expression::Literal(<>)),
+    "ident" => Box::new(ast::Expression::Variable(ast::Variable {identifier: <>})),
+    "(" <e:Expression> ")" => e,
+    <i:"ident"> "("<args: Comma<Expression>> ")" => Box::new(ast::Expression::Invocation(i, args)),
 }
 
 Literal: ast::Literal = {
