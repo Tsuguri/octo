@@ -51,39 +51,39 @@ impl fmt::Display for Token {
             StringLiteral(ref x) => "StringLiteral(".to_owned() + &x + ")",
             IntLiteral(ref x) => "IntLiteral(".to_owned() + &x.to_string() + ")",
             FloatLiteral(ref x) => "FloatLiteral(".to_owned() + &x.to_string() + ")",
-            And => "And".to_owned(),
-            Or => "Or".to_owned(),
-            If => "If".to_owned(),
-            Else => "Else".to_owned(),
-            For => "For".to_owned(),
-            True => "True".to_owned(),
-            False => "False".to_owned(),
-            ParOpen => "ParOpen".to_owned(),
-            ParClose => "ParClose".to_owned(),
-            Colon => "Colon".to_owned(),
-            Semicolon => "Semicolon".to_owned(),
-            Slash => "Slash".to_owned(),
-            Comma => "Comma".to_owned(),
-            Dot => "Dot".to_owned(),
-            BraceOpen => "BraceOpen".to_owned(),
-            BraceClose => "BraceClose".to_owned(),
-            BracketOpen => "BracketOpen".to_owned(),
-            BracketClose => "BracketClose".to_owned(),
-            Question => "QuestionMark".to_owned(),
-            ExclMark => "ExclamationMark".to_owned(),
-            Star => "Star".to_owned(),
-            Plus => "Plus".to_owned(),
-            Minus => "Minus".to_owned(),
-            NotEqual => "NotEqual".to_owned(),
-            VeryEqual => "VeryEqual".to_owned(),
-            Equal => "Equal".to_owned(),
-            Greater => "Greater".to_owned(),
-            GreaterEqual => "GreaterEqual".to_owned(),
-            Less => "Less".to_owned(),
-            LessEqual => "LessEqual".to_owned(),
-            Let => "Let".to_owned(),
-            Fun => "Fun".to_owned(),
-            Import => "Import".to_owned(),
+            And => "and".to_owned(),
+            Or => "or".to_owned(),
+            If => "if".to_owned(),
+            Else => "else".to_owned(),
+            For => "for".to_owned(),
+            True => "true".to_owned(),
+            False => "false".to_owned(),
+            ParOpen => "(".to_owned(),
+            ParClose => ")".to_owned(),
+            Colon => ":".to_owned(),
+            Semicolon => ";".to_owned(),
+            Slash => "/".to_owned(),
+            Comma => ",".to_owned(),
+            Dot => ".".to_owned(),
+            BraceOpen => "{".to_owned(),
+            BraceClose => "}".to_owned(),
+            BracketOpen => "[".to_owned(),
+            BracketClose => "]".to_owned(),
+            Question => "?".to_owned(),
+            ExclMark => "!".to_owned(),
+            Star => "*".to_owned(),
+            Plus => "+".to_owned(),
+            Minus => "-".to_owned(),
+            NotEqual => "!=".to_owned(),
+            VeryEqual => "==".to_owned(),
+            Equal => "=".to_owned(),
+            Greater => ">".to_owned(),
+            GreaterEqual => ">=".to_owned(),
+            Less => "<".to_owned(),
+            LessEqual => "<=".to_owned(),
+            Let => "let".to_owned(),
+            Fun => "fun".to_owned(),
+            Import => "import".to_owned(),
         };
         val.fmt(f)
     }
@@ -194,7 +194,7 @@ impl<'input> Lexer<'input> {
         Result::Err(LexicalError::OpenStringLiteral(start))
     }
 
-    fn read_number(&mut self, first: char, start: usize) -> Result<Token, LexicalError> {
+    fn read_number(&mut self, first: char, start: usize) -> Result<(Token, usize), LexicalError> {
         let mut string = String::new();
         string.push(first);
         while self.test_digit() {
@@ -216,12 +216,12 @@ impl<'input> Lexer<'input> {
         }
         if !is_float {
             match string.parse::<i64>() {
-                Result::Ok(literal) => Result::Ok(Token::IntLiteral(literal)),
+                Result::Ok(literal) => Result::Ok((Token::IntLiteral(literal), string.len())),
                 Result::Err(_) => Result::Err(LexicalError::LiteralIntOverflow(start)),
             }
         } else {
             match string.parse::<f64>() {
-                Result::Ok(literal) => Result::Ok(Token::FloatLiteral(literal)),
+                Result::Ok(literal) => Result::Ok((Token::FloatLiteral(literal), string.len())),
                 Result::Err(_) => Result::Err(LexicalError::IsVeryBad),
             }
         }
@@ -270,7 +270,7 @@ impl<'input> Lexer<'input> {
 }
 macro_rules! ok_m {
     ($x:ident, $y:expr, $l:expr) => {
-        Some(Ok(($y, Token::$x, $y + $l)))
+        Some(Ok(($y, Token::$x, $y + $l - 1)))
     };
 }
 
@@ -361,7 +361,7 @@ impl<'input> Iterator for Lexer<'input> {
                     Result::Err(err) => return err!(err),
                 },
                 Some((i, ch)) if ch.is_digit(10) => match self.read_number(ch, i) {
-                    Result::Ok(result) => return Some(Result::Ok((i, result, i + 1))),
+                    Result::Ok((result, len)) => return Some(Result::Ok((i, result, i + len - 1))),
                     Result::Err(err) => return err!(err),
                 },
                 Some((i, ch)) if ch.is_alphabetic() => match self.read_identifier(ch, i) {
@@ -383,7 +383,7 @@ impl<'input> Iterator for Lexer<'input> {
                                 return Some(Result::Ok((
                                     i,
                                     Token::Identifier(x.to_owned()),
-                                    i + len,
+                                    i + len - 1,
                                 )))
                             }
                         }

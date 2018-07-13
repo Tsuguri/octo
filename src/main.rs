@@ -18,23 +18,12 @@ use octo_parser::grammar::ProgramParser;
 #[derive(StructOpt, Debug)]
 struct Parameters {
     path: Option<String>,
+    lex: bool,
 }
 
-fn run_interpreter() {
-    println!("Running interpreter",);
-    loop {
-        print!("> ");
-        io::stdout().flush().unwrap();
-        let mut command_buffer = String::new();
-        io::stdin().read_line(&mut command_buffer).unwrap();
-        println!("Got command: {}", command_buffer.trim_right());
-        interpret(command_buffer.trim_right());
-    }
-}
-
-fn run_from_file(filepath: String) -> bool {
+fn run_from_file(filepath: String, lex: bool) -> bool {
     println!("Running from file: {}", filepath);
-    match File::open(filepath) {
+    match File::open(&filepath) {
         Result::Err(_) => {
             println!("File nout found!");
             return false;
@@ -47,7 +36,7 @@ fn run_from_file(filepath: String) -> bool {
                     return false;
                 }
                 Result::Ok(_) => {
-                    return interpret(&contents);
+                    return interpret(&filepath, &contents, lex);
                 }
             }
         }
@@ -55,35 +44,22 @@ fn run_from_file(filepath: String) -> bool {
 }
 
 fn main() {
-    let p = semantics::Scope{};
-    p.heh();
     let opt = Parameters::from_args();
     match opt.path {
-        Some(path) => ::std::process::exit(if run_from_file(path) { 0 } else { 1 }),
+        Some(path) => ::std::process::exit(if run_from_file(path, opt.lex) { 0 } else { 1 }),
         None => {
-            run_interpreter();
-            ::std::process::exit(0);
+            //run_interpreter(opt.lex);
+            ::std::process::exit(1);
         }
     }
 }
 
-fn interpret(data: &str) -> bool {
-    match parse(data) {
+fn interpret(location: &str, data: &str, lex: bool) -> bool {
+    match octo_parser::parse(location, data, lex) {
         Ok(something) => true,
         Err(warning) => {
-            println!("Command failed: {}", warning);
+            println!("Command failed: {:?}", warning);
             false
         }
     }
-}
-
-fn parse(
-    data: &str,
-) -> Result<
-    octo_parser::ast::Program,
-    lalrpop_util::ParseError<usize, octo_parser::lexer::Token, octo_parser::lexer::LexicalError>,
-> {
-    let result = ProgramParser::new().parse(octo_parser::lexer::Lexer::new(data));
-    println!("{:#?}", result);
-    result
 }
