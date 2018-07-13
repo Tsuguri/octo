@@ -4,6 +4,8 @@ extern crate structopt;
 extern crate lalrpop_util;
 extern crate octo_parser;
 
+mod semantics;
+
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{self, Write};
@@ -53,6 +55,8 @@ fn run_from_file(filepath: String) -> bool {
 }
 
 fn main() {
+    let p = semantics::Scope{};
+    p.heh();
     let opt = Parameters::from_args();
     match opt.path {
         Some(path) => ::std::process::exit(if run_from_file(path) { 0 } else { 1 }),
