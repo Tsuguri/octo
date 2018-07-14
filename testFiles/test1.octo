@@ -1,10 +1,10 @@
 fun superFun(first: char, second: float) {
     print(first);
-    let p = (((((12234))))) + second;
+    let p = (((((1222346543234))))) + second;
     let f = p > 0 or superFun(2,3);
 }
 //noone expects spanish inquisition
 
 fun gpuFun(noidea: float) {
-    "unfortunately has to write retarded string"
-}
+    "unfortunately has to write retarded string ops" #
+} 

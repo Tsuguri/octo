@@ -44,7 +44,7 @@ impl Lines {
     }
 
     pub fn lines(&self) -> usize {
-        self.offsets.len()
+        self.offsets.len() - 1
     }
 
     pub fn get_line(&self, position: usize) -> Option<(usize, usize, usize)> {
@@ -56,15 +56,15 @@ impl Lines {
     }
     pub fn get_line_span(&self, line: usize) -> Option<(usize, usize)> {
         match line {
-            x if x >= self.offsets.len() => None, // invalid line (after EOF)
-            x => Some((self.offsets[line], self.offsets[line + 1])),
+            x if x >= self.lines() => None, // invalid line (after EOF)
+            x => Some((self.offsets[x], self.offsets[x + 1])),
         }
     }
 }
 
-pub fn parse(location: &str, src: &str, lex: bool) -> Result<ast::Program, Errors> {
+pub fn parse(location: &str, src: &str, lex: bool) -> Result<ast::Program, ()> {
     let lines = Lines::new(src);
-    if (lex) {
+    if lex {
         for lexem in lexer::Lexer::new(src) {
             print!("{:?}, ", lexem);
         }
@@ -76,32 +76,31 @@ pub fn parse(location: &str, src: &str, lex: bool) -> Result<ast::Program, Error
         Result::Ok(ast) => Result::Ok(ast),
         Result::Err(error) => {
             show_error(location, src, &lines, error);
-            Result::Err(Errors(vec![]))
+            Result::Err(())
         }
     }
 }
 
 fn show_error(
-    location: &str,
+    filepath: &str,
     src: &str,
     lines: &Lines,
     error: ParseError<usize, lexer::Token, lexer::LexicalError>,
 ) {
     match error {
         ParseError::UnrecognizedToken { token, expected } => {
-            show_unrecognized_token_error(location, &lines, src, &token, expected)
+            show_unrecognized_token_error(filepath, lines, src, &token, expected)
         }
-        ParseError::InvalidToken { location: _ } => println!("heh, invalid"),
-        ParseError::ExtraToken { token: _ } => {
-            println!("heh, extra");
-            // additional, unexpected tokens
+
+        ParseError::InvalidToken { location } => {
+            show_invalid_token_error(src, filepath, lines, location)
         }
-        ParseError::User { error: err } => {
-            show_lexer_error(err);
-        }
+        ParseError::ExtraToken { token } => show_extra_token_error(filepath, src, lines, token),
+        ParseError::User { error: err } => show_lexer_error(filepath, src, lines, err),
     }
 }
 
+// function borrowed from gluon (https://github.com/gluon-lang/gluon)
 fn remove_extra_quotes(tokens: &mut [String]) {
     for token in tokens {
         if token.starts_with('"') && token.ends_with('"') {
@@ -119,31 +118,125 @@ fn show_code_snippet(
     help: Option<&str>,
 ) {
     //
+    //println!("Entire code lenght: {}", src.len());
     let snippet = match line {
-        0 => [0, 1, 2],
-        n => [n - 1, n, n + 1],
+        0 => [0, 1, 2],                                   // first line
+        n if n + 1 == lines.lines() => [n - 2, n - 1, n], // last line
+        n => [n - 1, n, n + 1],                           // all others
     };
     for snip in snippet.iter() {
         let (from, to) = lines.get_line_span(*snip).unwrap();
         let content = &src[from..to];
         print!("{:4}|", snip);
         print!("{}", content);
-        if (from <= underscore.0 && to >= underscore.1) {
+        if from <= underscore.0 && to >= underscore.1 {
             // println!("start: {}, end: {}, from: {}, to: {}", start, end, from, to);
             let spaces = " ".repeat(5 + underscore.0 - from);
             print!("{}", spaces);
             let underscore = "^".repeat(underscore.1 - underscore.0 + 1);
-            println!("{}", underscore);
+            print!("{}", underscore);
+            if let Some(message) = help {
+                print!(" {}", message);
+            }
+            println!("");
         }
     }
 }
 
-fn show_lexer_error(err: lexer::LexicalError) {
-    println!("{:#?}", err);
+fn show_location(
+    filepath: &str,
+    src: &str,
+    lines: &Lines,
+    message: &str,
+    location: (usize, usize),
+    help: Option<&str>,
+) {
+    println!("error: {}", message);
+    match lines.get_line(location.0) {
+        None => println!("in file: {} at unknown position", filepath),
+        Some((line, _, _)) => {
+            println!("--> at: {},{}", filepath, line);
+            show_code_snippet(src, line, lines, (location.0, location.1), help);
+        }
+    }
+}
+
+fn show_lexer_error(filepath: &str, src: &str, lines: &Lines, err: lexer::LexicalError) {
+    match err {
+        lexer::LexicalError::LiteralFloatOverflow(from, len) => show_location(
+            filepath,
+            src,
+            lines,
+            "Literal float overlow",
+            (from, from + len - 1),
+            Some("Consider changing this value"),
+        ),
+        lexer::LexicalError::LiteralIntOverflow(from, len) => show_location(
+            filepath,
+            src,
+            lines,
+            "Literal int overflow",
+            (from, from + len - 1),
+            Some("Consider changing this value"),
+        ),
+
+        lexer::LexicalError::OpenComment(location) => show_location(
+            filepath,
+            src,
+            lines,
+            "Parser found not closed comment",
+            (location, location + 1),
+            Some("Not closed comment starting here"),
+        ),
+        lexer::LexicalError::OpenStringLiteral(location) => show_location(
+            filepath,
+            src,
+            lines,
+            "Parser found not closed string literal",
+            (location, location),
+            Some("Not closed literal starting here"),
+        ),
+        lexer::LexicalError::UnexpectedCharacter(location, character) => show_location(
+            filepath,
+            src,
+            lines,
+            &format!("Parser found unexpected character: {}", character),
+            (location, location),
+            None,
+        ),
+        lexer::LexicalError::IsVeryBad => panic!("Very bad error, please fill bug report"),
+    }
+}
+
+fn show_invalid_token_error(filepath: &str, src: &str, lines: &Lines, location: usize) {
+    show_location(
+        filepath,
+        src,
+        lines,
+        &format!("Parser found invalid token."),
+        (location, location),
+        Some("Let me know if you see this as I've never encountered this error."),
+    );
+}
+
+fn show_extra_token_error(
+    filepath: &str,
+    src: &str,
+    lines: &Lines,
+    token: (usize, lexer::Token, usize),
+) {
+    show_location(
+        filepath,
+        src,
+        lines,
+        &format!("Parser found unexpected token: {}", token.1),
+        (token.0, token.2),
+        None,
+    );
 }
 
 fn show_unrecognized_token_error(
-    location: &str,
+    filepath: &str,
     lines: &Lines,
     src: &str,
     token: &Option<(usize, lexer::Token, usize)>,
@@ -154,23 +247,12 @@ fn show_unrecognized_token_error(
         None => println!("Unexpected end of file. Expected tokens: {:?}", expected),
         Some((start, token, end)) => {
             use lexer::Token::*;
-
             let message = match token {
                 BraceOpen => "unexpected block delimiter: '{'".to_owned(),
                 BraceClose => "unexpected block delimiter: '}'".to_owned(),
-                x => format!("Expected one of: {:?}, found \"{}\"", expected, token),
+                x => format!("Expected one of: {:?}, found \"{}\"", expected, x),
             };
-            println!("error: {}", message);
-
-            match lines.get_line(*start) {
-                None => {
-                    println!("in file: {} at unknown location", location);
-                }
-                Some((line, _, _)) => {
-                    println!("--> at: {}:{}", location, line);
-                    show_code_snippet(src, line, lines, (*start, *end), None);
-                }
-            };
+            show_location(filepath, src, lines, &message, (*start, *end), None);
         }
     }
 }

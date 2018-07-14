@@ -1,6 +1,5 @@
 // auto-generated: "lalrpop 0.15.2"
-// sha256: 369ac33c472e382242fc2a6a613d6568ac4baf7d9c67bc7e7debc5fc08f1eca
-use std::str::FromStr;
+// sha256: baf1c9e343d584dec1e614546bd5a6fad19df9a0e3a2c19113f9ee3265f08
 use lexer;
 use ast;
 #[allow(unused_extern_crates)]
@@ -10,7 +9,6 @@ extern crate lalrpop_util as __lalrpop_util;
 mod __parse__Block {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use std::str::FromStr;
     use lexer;
     use ast;
     #[allow(unused_extern_crates)]
@@ -2546,7 +2544,6 @@ pub use self::__parse__Block::BlockParser;
 mod __parse__Expression {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use std::str::FromStr;
     use lexer;
     use ast;
     #[allow(unused_extern_crates)]
@@ -5004,7 +5001,6 @@ pub use self::__parse__Expression::ExpressionParser;
 mod __parse__Function {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use std::str::FromStr;
     use lexer;
     use ast;
     #[allow(unused_extern_crates)]
@@ -7624,7 +7620,6 @@ pub use self::__parse__Function::FunctionParser;
 mod __parse__GpuFunction {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use std::str::FromStr;
     use lexer;
     use ast;
     #[allow(unused_extern_crates)]
@@ -9890,7 +9885,6 @@ pub use self::__parse__GpuFunction::GpuFunctionParser;
 mod __parse__Primitive {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use std::str::FromStr;
     use lexer;
     use ast;
     #[allow(unused_extern_crates)]
@@ -12348,7 +12342,6 @@ pub use self::__parse__Primitive::PrimitiveParser;
 mod __parse__Program {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use std::str::FromStr;
     use lexer;
     use ast;
     #[allow(unused_extern_crates)]
@@ -15010,7 +15003,6 @@ pub use self::__parse__Program::ProgramParser;
 mod __parse__Statement {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use std::str::FromStr;
     use lexer;
     use ast;
     #[allow(unused_extern_crates)]

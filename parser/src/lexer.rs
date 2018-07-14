@@ -90,24 +90,22 @@ impl fmt::Display for Token {
 }
 #[derive(Debug)]
 pub enum LexicalError {
-    IzBad,
     IsVeryBad,
     OpenComment(usize),
     UnexpectedCharacter(usize, char),
     OpenStringLiteral(usize),
-    LiteralIntOverflow(usize),
-    LiteralFloatOverflow(usize),
+    LiteralIntOverflow(usize, usize),
+    LiteralFloatOverflow(usize, usize),
 }
 impl fmt::Display for LexicalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let val = match *self {
-            LexicalError::IzBad => "isbad",
             LexicalError::IsVeryBad => "izverybad",
             LexicalError::OpenComment(_) => "Not closed block comment",
             LexicalError::UnexpectedCharacter(_, _) => "Unexpected character",
             LexicalError::OpenStringLiteral(_) => "Not closed string literal",
-            LexicalError::LiteralIntOverflow(_) => "Literal int overflowed",
-            LexicalError::LiteralFloatOverflow(_) => "Literal float overflow",
+            LexicalError::LiteralIntOverflow(_, _) => "Literal int overflowed",
+            LexicalError::LiteralFloatOverflow(_, _) => "Literal float overflow",
         };
         val.fmt(f)
     }
@@ -168,13 +166,6 @@ impl<'input> Lexer<'input> {
         }
     }
 
-    fn test_alphabetic(&self) -> bool {
-        match self.lookahead {
-            None => false,
-            Some((_, x)) => x.is_alphabetic(),
-        }
-    }
-
     fn test_alphanumeric(&self) -> bool {
         match self.lookahead {
             None => false,
@@ -217,7 +208,9 @@ impl<'input> Lexer<'input> {
         if !is_float {
             match string.parse::<i64>() {
                 Result::Ok(literal) => Result::Ok((Token::IntLiteral(literal), string.len())),
-                Result::Err(_) => Result::Err(LexicalError::LiteralIntOverflow(start)),
+                Result::Err(_) => {
+                    Result::Err(LexicalError::LiteralIntOverflow(start, string.len()))
+                }
             }
         } else {
             match string.parse::<f64>() {
@@ -227,7 +220,7 @@ impl<'input> Lexer<'input> {
         }
     }
 
-    fn read_identifier(&mut self, first: char, start: usize) -> Result<String, LexicalError> {
+    fn read_identifier(&mut self, first: char) -> Result<String, LexicalError> {
         let mut string = String::new();
         string.push(first);
         while self.test_alphanumeric() {
@@ -364,7 +357,7 @@ impl<'input> Iterator for Lexer<'input> {
                     Result::Ok((result, len)) => return Some(Result::Ok((i, result, i + len - 1))),
                     Result::Err(err) => return err!(err),
                 },
-                Some((i, ch)) if ch.is_alphabetic() => match self.read_identifier(ch, i) {
+                Some((i, ch)) if ch.is_alphabetic() => match self.read_identifier(ch) {
                     Result::Ok(result) => {
                         let len = result.len();
                         // TODO: change into keywords dictionary
