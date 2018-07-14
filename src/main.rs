@@ -8,12 +8,8 @@ mod semantics;
 
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::{self, Write};
 use std::string::ToString;
 use structopt::StructOpt;
-
-use octo_parser::ast;
-use octo_parser::grammar::ProgramParser;
 
 #[derive(StructOpt, Debug)]
 struct Parameters {
@@ -56,7 +52,10 @@ fn main() {
 
 fn interpret(location: &str, data: &str, lex: bool) -> bool {
     match octo_parser::parse(location, data, lex) {
-        Ok(something) => true,
+        Ok(something) => {
+            semantics::analyze(something);
+            true
+        }
         Err(warning) => {
             println!("Command failed: {:?}", warning);
             false

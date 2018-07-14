@@ -3,6 +3,41 @@ pub struct Program {
     pub items: Vec<ProgramItem>,
 }
 
+#[derive(Debug, Clone)]
+pub enum Type {
+    Float,
+    Int,
+    Bool,
+    String,
+    UserDefined(String),
+}
+
+impl PartialEq for Type {
+    fn eq(&self, other: &Type) -> bool {
+        match (self, other) {
+            (Type::Float, Type::Float) => true,
+            (Type::Int, Type::Int) => true,
+            (Type::Bool, Type::Bool) => true,
+            (Type::String, Type::String) => true,
+            (Type::UserDefined(x), Type::UserDefined(y)) if x == y => true,
+            (_, _) => false,
+        }
+    }
+}
+
+impl Type {
+    pub fn new(src: String) -> Type {
+        match src.as_ref() {
+            "float" => return Type::Float,
+            "int" => return Type::Int,
+            "string" => return Type::String,
+            "bool" => return Type::Bool,
+            _ => (),
+        };
+        Type::UserDefined(src)
+    }
+}
+
 #[derive(Debug)]
 pub enum ProgramItem {
     Function(Box<Function>),
@@ -11,16 +46,28 @@ pub enum ProgramItem {
 
 #[derive(Debug)]
 pub struct Function {
-    pub arguments: Vec<(Variable, String)>,
+    pub arguments: Vec<(Variable, Type)>,
     pub name: String,
     pub block: Block,
+    pub ret: Option<Type>,
+}
+
+impl Function {
+    pub fn new(name: String, arguments: Vec<(Variable, Type)>, block: Block) -> Function {
+        Function {
+            name,
+            arguments,
+            block,
+            ret: None,
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct GpuFunction {
     pub name: String,
     pub code: String,
-    pub arguments: Vec<(Variable, String)>,
+    pub arguments: Vec<(Variable, Type)>,
 }
 
 #[derive(Debug)]

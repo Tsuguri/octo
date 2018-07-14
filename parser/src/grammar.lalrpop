@@ -73,15 +73,15 @@ ProgramItem: ast::ProgramItem = {
 }
 
 pub Function: ast::Function = {
-    "fun" <i:"ident"> "(" <args:Comma<Definition>> ")" <b:Block> => ast::Function{arguments: args, name: i, block: b}
+    "fun" <i:"ident"> "(" <args:Comma<Definition>> ")"  <ri:"ident"?> <b:Block> => ast::Function{arguments: args, name: i, block: b, ret: ri.map_or(None, |x| Some(ast::Type::new(x)))}
 }
 
 pub GpuFunction: ast::GpuFunction = {
     "fun" <i:"ident"> "(" <args:Comma<Definition>> ")" "{" <s:"string"> "}" => ast::GpuFunction{ name:i, code: s, arguments: args}
 }
 
-Definition: (ast::Variable, String) = {
-    <i1:"ident"> ":" <i2:"ident"> => (ast::Variable{identifier: i1}, i2)
+Definition: (ast::Variable, ast::Type) = {
+    <i1:"ident"> ":" <i2:"ident"> => (ast::Variable{identifier: i1}, ast::Type::new(i2))
 }
 
 pub Block: ast::Block = {
