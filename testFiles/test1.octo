@@ -6,5 +6,6 @@ fun superFun(first: char, second: float) {
 //noone expects spanish inquisition
 
 fun gpuFun(noidea: float) {
-    "unfortunately has to write retarded string ops" #
+    "unfortunately has to write retarded string ops"
 } 
+#

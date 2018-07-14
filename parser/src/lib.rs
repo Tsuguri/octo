@@ -32,11 +32,12 @@ impl Lines {
             last = len + last + 1;
         }
         let lines_count = offsets.len();
-        if lines_count > 1 {
-            if offsets[lines_count - 1] == offsets[lines_count - 2] + 1 {
-                offsets.pop();
-            }
-        }
+        // if lines_count > 1 {
+        //     if offsets[lines_count - 1] == offsets[lines_count - 2] + 1 {
+        //         offsets.pop();
+        //     }
+        // }
+        println!("{:?}", offsets);
         Lines {
             offsets,
             end: src_len,
@@ -57,7 +58,7 @@ impl Lines {
     pub fn get_line_span(&self, line: usize) -> Option<(usize, usize)> {
         match line {
             x if x >= self.lines() => None, // invalid line (after EOF)
-            x => Some((self.offsets[x], self.offsets[x + 1])),
+            x => Some((self.offsets[x], self.offsets[x + 1] - 1)),
         }
     }
 }
@@ -126,11 +127,14 @@ fn show_code_snippet(
     };
     for snip in snippet.iter() {
         let (from, to) = lines.get_line_span(*snip).unwrap();
+        // println!(
+        //     "start: {}, end: {}, from: {}, to: {}",
+        //     underscore.0, underscore.1, from, to
+        // );
         let content = &src[from..to];
-        print!("{:4}|", snip);
-        print!("{}", content);
+        print!("{:4}|", snip + 1);
+        println!("{}", content);
         if from <= underscore.0 && to >= underscore.1 {
-            // println!("start: {}, end: {}, from: {}, to: {}", start, end, from, to);
             let spaces = " ".repeat(5 + underscore.0 - from);
             print!("{}", spaces);
             let underscore = "^".repeat(underscore.1 - underscore.0 + 1);
