@@ -1,74 +1,64 @@
 use octo_parser::ast::*;
-use std::marker::PhantomData;
 
 #[derive(Debug)]
-pub struct Scope {
+pub struct Scope<'a> {
     pub types: Vec<Type>,
     pub functions: Vec<(String, Option<Type>, Vec<Type>)>,
+    pub variables: Vec<(String, Type)>,
+    parent: Option<&'a Scope<'a>>,
 }
 
-#[derive(Debug)]
-pub struct Env {
-    pub static_scope: Scope,
-    pub local_scopes: Vec<Scope>,
-}
-
-pub struct ScopeToken {
-    _phantom: PhantomData<i32>,
-}
-
-impl ScopeToken {
-    fn new() -> ScopeToken {
-        ScopeToken {
-            _phantom: PhantomData,
+impl<'a> Scope<'a> {
+    pub fn global<'b>() -> Scope<'b> {
+        Scope {
+            types: vec![Type::Float, Type::Int, Type::Bool, Type::String],
+            functions: vec![
+                ("print".to_owned(), None, vec![Type::String]),
+                ("sin".to_owned(), Some(Type::Float), vec![Type::Float]),
+                ("cos".to_owned(), Some(Type::Float), vec![Type::Float]),
+            ],
+            variables: vec![],
+            parent: None,
         }
     }
-}
-
-impl Env {
-    pub fn new() -> Env {
-        Env {
-            static_scope: Scope {
-                types: vec![Type::Float, Type::Int, Type::Bool, Type::String],
-                functions: vec![
-                    ("print".to_owned(), None, vec![Type::String]),
-                    ("sin".to_owned(), Some(Type::Float), vec![Type::Float]),
-                    ("cos".to_owned(), Some(Type::Float), vec![Type::Float]),
-                ],
-            },
-            local_scopes: vec![],
+    pub fn child_scope<'b>(parent: &'b Scope) -> Scope<'b> {
+        Scope {
+            types: vec![],
+            functions: vec![],
+            variables: vec![],
+            parent: Some(parent),
         }
     }
 
     pub fn check_type(&self, typ: &Type) -> bool {
-        self.static_scope.types.contains(typ)
+        match self.types.contains(typ) {
+            true => true,
+            false => match self.parent {
+                None => false,
+                Some(parent) => parent.check_type(typ),
+            },
+        }
     }
 
-    pub fn push_scope(&mut self) -> ScopeToken {
-        self.local_scopes.push(Scope {
-            types: vec![],
-            functions: vec![],
-        });
-        ScopeToken::new()
+    pub fn add_function(&mut self, func: &Function) {
+        self.functions.push((
+            func.name.to_owned(),
+            func.ret.clone(),
+            func.arguments.iter().map(|x| x.1.clone()).collect(),
+        ));
     }
 
-    pub fn pop_scope(&mut self, _token: ScopeToken) {
-        self.local_scopes.pop();
+    pub fn add_variable(&mut self, name: &str, typ: Type) {
+        self.variables.push((name.to_owned(), typ));
     }
 
-    pub fn add_function(&mut self, func: &Function, token: &ScopeToken) {
-        let scope = self.local_scopes.pop();
-        match scope {
-            None => unreachable!(),
-            Some(mut scp) => {
-                //
-                scp.functions.push((
-                    func.name.to_owned(),
-                    func.ret.clone(),
-                    func.arguments.iter().map(|x| x.1.clone()).collect(),
-                ));
-                self.local_scopes.push(scp);
-            }
+    pub fn check_variable(&self, name: &str) -> Option<Type> {
+        match self.variables.iter().find(|x| x.0 == name) {
+            None => match self.parent {
+                None => None,
+                Some(parent) => parent.check_variable(name),
+            },
+            Some(x) => Some(x.1.clone()),
         }
     }
 }

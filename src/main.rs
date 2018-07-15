@@ -52,10 +52,15 @@ fn main() {
 
 fn interpret(location: &str, data: &str, lex: bool) -> bool {
     match octo_parser::parse(location, data, lex) {
-        Ok(something) => {
-            semantics::analyze(something);
-            true
-        }
+        Ok(something) => match semantics::analyze(something) {
+            Result::Ok(_) => true,
+            Result::Err(errors) => {
+                for error in errors {
+                    println!("--> {:?}", error);
+                }
+                false
+            }
+        },
         Err(warning) => {
             println!("Command failed: {:?}", warning);
             false

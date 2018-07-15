@@ -9,6 +9,8 @@ pub enum Type {
     Int,
     Bool,
     String,
+    Void,
+    Unknown,
     UserDefined(String),
 }
 
@@ -78,7 +80,7 @@ pub struct Block {
 #[derive(Debug)]
 pub enum Statement {
     Expression(Box<Expression>),
-    Assignment(Box<Variable>, Box<Expression>),
+    Assignment(Box<Variable>, Box<Expression>, bool),
 }
 
 #[derive(Debug)]
@@ -114,4 +116,18 @@ pub struct Negated(Expression);
 #[derive(Debug)]
 pub struct Variable {
     pub identifier: String,
+    pub typ: Type,
+}
+
+impl Variable {
+    pub fn new(identifier: String) -> Variable {
+        Variable {
+            identifier,
+            typ: Type::Unknown,
+        }
+    }
+
+    pub fn typed(identifier: String, typ: Type) -> Variable {
+        Variable { identifier, typ }
+    }
 }

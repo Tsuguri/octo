@@ -81,7 +81,7 @@ pub GpuFunction: ast::GpuFunction = {
 }
 
 Definition: (ast::Variable, ast::Type) = {
-    <i1:"ident"> ":" <i2:"ident"> => (ast::Variable{identifier: i1}, ast::Type::new(i2))
+    <i1:"ident"> ":" <i2:"ident"> => (ast::Variable::new(i1), ast::Type::new(i2))
 }
 
 pub Block: ast::Block = {
@@ -90,7 +90,7 @@ pub Block: ast::Block = {
 
 pub Statement: ast::Statement = {
     Expression => ast::Statement::Expression(<>),
-    "let" <i:"ident"> "=" <e:Expression> => ast::Statement::Assignment(Box::new(ast::Variable{identifier: i}), e),
+    <l:"let"?> <i:"ident"> "=" <e:Expression> => ast::Statement::Assignment(Box::new(ast::Variable::new(i)), e, match l {Some(_)=> true, None =>false,}),
 }
 
 
@@ -133,7 +133,7 @@ Negated: Box<ast::Expression> = {
 
 pub Primitive: Box<ast::Expression> = {
     Literal => Box::new(ast::Expression::Literal(<>)),
-    "ident" => Box::new(ast::Expression::Variable(ast::Variable {identifier: <>})),
+    "ident" => Box::new(ast::Expression::Variable(ast::Variable::new(<>))),
     "(" <e:Expression> ")" => e,
     <i:"ident"> "("<args: Comma<Expression>> ")" => Box::new(ast::Expression::Invocation(i, args)),
 }
