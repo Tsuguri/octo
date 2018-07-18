@@ -1,4 +1,4 @@
 # octo
-Following 'Crafting Interpreters' in Rust
+Language in Rust.
+I'm not sure what this language is supposed to do. Yet. Probably graphics.
 
-Crafting Interpreters: http://craftinginterpreters.com (great read)
