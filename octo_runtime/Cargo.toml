@@ -1,0 +1,41 @@
+[package]
+name = "octo_runtime"
+version = "0.0.1"
+authors = ["Adam Winiarczuk <adam.winiarczuk@gmail.com>"]
+
+license = "MIT"
+
+description = "Runtime for octo"
+
+repository = "https://github.com/Tsuguri/octo"
+documentation = "None"
+
+[features]
+default = []
+gl = ["gfx-backend-gl"]
+dx12 = ["gfx-backend-dx12"]
+vulkan = ["gfx-backend-vulkan"]
+
+[dependencies]
+gfx-hal = {path = "./gfx/src/hal", version = "0.1"}
+env_logger = "0.5"
+image = "0.18"
+log = "0.4"
+winit = "0.16"
+glsl-to-spirv = "0.1.4"
+
+[dependencies.gfx-backend-gl]
+path = "./gfx/src/backend/gl"
+version = "0.1"
+features = ["glutin"]
+optional = true
+
+[dependencies.gfx-backend-vulkan]
+path = "./gfx/src/backend/vulkan"
+version = "0.1"
+optional = true
+
+[target.'cfg(windows)'.dependencies.gfx-backend-dx12]
+path = "./gfx/src/backend/dx12"
+version = "0.1"
+optional = true

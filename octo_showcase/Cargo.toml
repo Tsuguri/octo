@@ -1,0 +1,19 @@
+[package]
+name = "octo_showcase"
+version = "0.0.1"
+authors = ["Adam Winiarczuk <adam.winiarczuk@gmail.com>"]
+
+license = "MIT"
+
+description = "Showcase of octo runtime"
+
+repository = "https://github.com/Tsuguri/octo"
+documentation = "None"
+
+[features]
+vulkan = ["octo_runtime/vulkan"]
+dx12 = ["octo_runtime/dx12"]
+gl = ["octo_runtime/gl"]
+
+[dependencies]
+octo_runtime = {path = "../octo_runtime", version = "0.0.1"}
