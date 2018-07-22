@@ -1,4 +1,3 @@
 # octo
-Language in Rust.
-I'm not sure what this language is supposed to do. Yet. Probably graphics.
-
+Postprocessing pipeline lanugage written in Rust.
+Part of master thesis.
