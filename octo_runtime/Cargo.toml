@@ -17,7 +17,7 @@ dx12 = ["gfx-backend-dx12"]
 vulkan = ["gfx-backend-vulkan"]
 
 [dependencies]
-gfx-hal = {path = "./gfx/src/hal", version = "0.1"}
+gfx-hal = {git = "https://github.com/gfx-rs/gfx.git", rev= "308dd39e390ee79e7189c3d9170847bb2ca2a62f"}
 env_logger = "0.5"
 image = "0.18"
 log = "0.4"
@@ -25,17 +25,17 @@ winit = "0.16"
 glsl-to-spirv = "0.1.4"
 
 [dependencies.gfx-backend-gl]
-path = "./gfx/src/backend/gl"
-version = "0.1"
+git = "https://github.com/gfx-rs/gfx.git"
+rev= "308dd39e390ee79e7189c3d9170847bb2ca2a62f"
 features = ["glutin"]
 optional = true
 
 [dependencies.gfx-backend-vulkan]
-path = "./gfx/src/backend/vulkan"
-version = "0.1"
+git = "https://github.com/gfx-rs/gfx.git"
+rev= "308dd39e390ee79e7189c3d9170847bb2ca2a62f"
 optional = true
 
 [target.'cfg(windows)'.dependencies.gfx-backend-dx12]
-path = "./gfx/src/backend/dx12"
-version = "0.1"
+git = "https://github.com/gfx-rs/gfx.git"
+rev= "308dd39e390ee79e7189c3d9170847bb2ca2a62f"
 optional = true

@@ -1,3 +1,0 @@
-[submodule "octo_runtime/gfx"]
-	path = octo_runtime/gfx
-	url = git@github.com:gfx-rs/gfx.git
