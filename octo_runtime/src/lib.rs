@@ -20,4 +20,5 @@ extern crate image;
 extern crate winit;
 
 mod functionality;
+mod types;
 pub use functionality::*;

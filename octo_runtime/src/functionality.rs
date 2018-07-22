@@ -13,6 +13,8 @@ use hal::{buffer, command, format as f, image as i, memory as m, pass, pool, pso
 use hal::{Backbuffer, DescriptorPool, FrameSync, Primitive, SwapchainConfig};
 use hal::{Device, Instance, PhysicalDevice, Surface, Swapchain};
 
+use types::Vertex;
+
 use std;
 use std::fs;
 use std::io::{Cursor, Read};
@@ -24,36 +26,30 @@ const DIMS: Extent2D = Extent2D {
 
 const ENTRY_NAME: &str = "main";
 
-#[derive(Debug, Clone, Copy)]
-struct Vertex {
-    a_Pos: [f32; 2],
-    a_Uv: [f32; 2],
-}
-
 const QUAD: [Vertex; 6] = [
     Vertex {
-        a_Pos: [-0.5, 0.33],
-        a_Uv: [0.0, 1.0],
+        pos: [-0.5, 0.33],
+        uv: [0.0, 1.0],
     },
     Vertex {
-        a_Pos: [0.5, 0.33],
-        a_Uv: [1.0, 1.0],
+        pos: [0.5, 0.33],
+        uv: [1.0, 1.0],
     },
     Vertex {
-        a_Pos: [0.5, -0.33],
-        a_Uv: [1.0, 0.0],
+        pos: [0.5, -0.33],
+        uv: [1.0, 0.0],
     },
     Vertex {
-        a_Pos: [-0.5, 0.33],
-        a_Uv: [0.0, 1.0],
+        pos: [-0.5, 0.33],
+        uv: [0.0, 1.0],
     },
     Vertex {
-        a_Pos: [0.5, -0.33],
-        a_Uv: [1.0, 0.0],
+        pos: [0.5, -0.33],
+        uv: [1.0, 0.0],
     },
     Vertex {
-        a_Pos: [-0.5, -0.33],
-        a_Uv: [0.0, 0.0],
+        pos: [-0.5, -0.33],
+        uv: [0.0, 0.0],
     },
 ];
 
