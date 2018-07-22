@@ -1,6 +1,6 @@
 [package]
 name = "octo_runtime"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Adam Winiarczuk <adam.winiarczuk@gmail.com>"]
 
 license = "MIT"

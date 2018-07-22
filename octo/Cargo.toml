@@ -8,7 +8,3 @@ structopt = "0.2"
 clap = { version = "2.20", default-features = false }
 lalrpop-util = "0.15.2"
 octo_parser = { path = "../octo_parser", version = "0.0.1"}
-
-# Add a build-time dependency on the lalrpop library:
-[build-dependencies]
-lalrpop = "0.15.2"

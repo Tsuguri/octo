@@ -828,7 +828,6 @@ name = "octo"
 version = "0.1.0"
 dependencies = [
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "lalrpop 0.15.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lalrpop-util 0.15.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "octo_parser 0.0.1",
  "structopt 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -845,7 +844,7 @@ dependencies = [
 
 [[package]]
 name = "octo_runtime"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx-backend-dx12 0.1.0 (git+https://github.com/gfx-rs/gfx.git?rev=308dd39e390ee79e7189c3d9170847bb2ca2a62f)",
@@ -862,7 +861,8 @@ dependencies = [
 name = "octo_showcase"
 version = "0.0.1"
 dependencies = [
- "octo_runtime 0.0.1",
+ "octo 0.1.0",
+ "octo_runtime 0.1.0",
 ]
 
 [[package]]

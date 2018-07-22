@@ -5,6 +5,3 @@ members = [
         "octo_runtime",
         "octo_showcase",
 ]
-exclude = [
-    "octo_runtime/gfx"
-]

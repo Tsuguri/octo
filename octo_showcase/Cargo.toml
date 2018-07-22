@@ -10,10 +10,15 @@ description = "Showcase of octo runtime"
 repository = "https://github.com/Tsuguri/octo"
 documentation = "None"
 
+build = "build.rs"
 [features]
 vulkan = ["octo_runtime/vulkan"]
 dx12 = ["octo_runtime/dx12"]
 gl = ["octo_runtime/gl"]
 
 [dependencies]
-octo_runtime = {path = "../octo_runtime", version = "0.0.1"}
+octo_runtime = {path = "../octo_runtime", version = "0.1.0"}
+
+
+[build-dependencies]
+octo = {path="../octo", version="0.1.0"}
