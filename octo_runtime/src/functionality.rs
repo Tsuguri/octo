@@ -1,5 +1,4 @@
-use back;
-use env_logger;
+use backend as back;
 use glsl_to_spirv;
 use hal;
 use image;
@@ -11,13 +10,14 @@ use hal::pso::{PipelineStage, ShaderStageFlags, Specialization};
 use hal::queue::Submission;
 use hal::{buffer, command, format as f, image as i, memory as m, pass, pool, pso, window::Extent2D};
 use hal::{Backbuffer, DescriptorPool, FrameSync, Primitive, SwapchainConfig};
-use hal::{Device, Instance, PhysicalDevice, Surface, Swapchain};
+use hal::{Device, PhysicalDevice, Surface, Swapchain};
 
+use data_loading::load_image;
 use types::Vertex;
+use window::*;
 
 use std;
-use std::fs;
-use std::io::{Cursor, Read};
+use std::io::Read;
 
 const DIMS: Extent2D = Extent2D {
     width: 1024,
@@ -59,81 +59,24 @@ const COLOR_RANGE: i::SubresourceRange = i::SubresourceRange {
     layers: 0..1,
 };
 
-#[cfg(any(feature = "vulkan", feature = "dx12"))]
-type WindowType = winit::Window;
-#[cfg(feature = "gl")]
-type WindowType = i32;
-
-#[cfg(not(feature = "gl"))]
-fn build_window(
-    name: &str,
-    wb: winit::WindowBuilder,
-    events_loop: &mut winit::EventsLoop,
-) -> (
-    WindowType,
-    back::Instance,
-    std::vec::Vec<hal::Adapter<back::Backend>>,
-    <back::Backend as hal::Backend>::Surface,
-) {
-    let window = wb.build(&events_loop).unwrap();
-    let instance = back::Instance::create(name, 1);
-    let surface = instance.create_surface(&window);
-    let adapters = instance.enumerate_adapters();
-    (window, instance, adapters, surface)
-}
-
-#[cfg(feature = "gl")]
-fn build_window(
-    _name: &str,
-    wb: winit::WindowBuilder,
-    events_loop: &mut winit::EventsLoop,
-) -> (
-    WindowType,
-    i32, // totally never used
-    std::vec::Vec<hal::Adapter<back::Backend>>,
-    <back::Backend as hal::Backend>::Surface,
-) {
-    let window = {
-        let builder =
-            back::config_context(back::glutin::ContextBuilder::new(), ColorFormat::SELF, None)
-                .with_vsync(true);
-        back::glutin::GlWindow::new(wb, builder, &events_loop).unwrap()
-    };
-
-    let surface = back::Surface::from_window(window);
-    let adapters = surface.enumerate_adapters();
-    (0i32, 0i32, adapters, surface)
-}
-
 #[cfg(any(feature = "vulkan", feature = "dx12", feature = "gl"))]
-pub fn main_function() {
-    env_logger::init();
-
-    let mut events_loop = winit::EventsLoop::new();
-
-    let wb = winit::WindowBuilder::new()
-        .with_dimensions(winit::dpi::LogicalSize::from_physical(
-            winit::dpi::PhysicalSize {
-                width: DIMS.width as _,
-                height: DIMS.height as _,
-            },
-            1.0,
-        ))
-        .with_title("quad".to_string());
+pub fn main_function(events_loop: &mut winit::EventsLoop) {
+    let wb = window_builder("quad".to_owned(), DIMS.width.into(), DIMS.height.into());
     // instantiate backend
-    let (window, _instance, mut adapters, mut surface) = build_window("gfx", wb, &mut events_loop);
+    let (window, _instance, mut adapters, mut surface) = build_window("gfx", wb, events_loop);
 
     for adapter in &adapters {
         println!("{:#?}", adapter.info);
     }
 
     let mut adapter = adapters.remove(0);
+    drop(adapters);
     let memory_types = adapter.physical_device.memory_properties().memory_types;
     let limits = adapter.physical_device.limits();
 
     // Build a new device and associated command queues
     let (mut device, mut queue_group) = adapter
-        .open_with::<_, hal::Graphics>(1, |family| surface.supports_queue_family(family))
+        .open_with::<_, hal::Graphics>(1, |family| surface.supports_queue_family(family)) // checking if device provides swapchains
         .unwrap();
 
     let mut command_pool =
@@ -177,7 +120,6 @@ pub fn main_function() {
     let desc_set = desc_pool.allocate_set(&set_layout).unwrap();
 
     // Buffer allocations
-    println!("Memory types: {:#?}", memory_types);
 
     let buffer_stride = std::mem::size_of::<Vertex>() as u64;
     let buffer_len = QUAD.len() as u64 * buffer_stride;
@@ -186,6 +128,7 @@ pub fn main_function() {
         .create_buffer(buffer_len, buffer::Usage::VERTEX)
         .unwrap();
     let buffer_req = device.get_buffer_requirements(&buffer_unbound);
+    println!("Memory types: {:#?}", memory_types);
 
     let upload_type = memory_types
         .iter()
@@ -216,44 +159,11 @@ pub fn main_function() {
     // Image
     let img_data = include_bytes!("data/logo.png");
 
-    let img = image::load(Cursor::new(&img_data[..]), image::PNG)
-        .unwrap()
-        .to_rgba();
-    let (width, height) = img.dimensions();
-    let kind = i::Kind::D2(width as i::Size, height as i::Size, 1, 1);
-    let row_alignment_mask = limits.min_buffer_copy_pitch_alignment as u32 - 1;
-    let image_stride = 4usize;
-    let row_pitch = (width * image_stride as u32 + row_alignment_mask) & !row_alignment_mask;
-    let upload_size = (height * row_pitch) as u64;
-
-    let image_buffer_unbound = device
-        .create_buffer(upload_size, buffer::Usage::TRANSFER_SRC)
-        .unwrap();
-    let image_mem_reqs = device.get_buffer_requirements(&image_buffer_unbound);
-    let image_upload_memory = device
-        .allocate_memory(upload_type, image_mem_reqs.size)
-        .unwrap();
-    let image_upload_buffer = device
-        .bind_buffer_memory(&image_upload_memory, 0, image_buffer_unbound)
-        .unwrap();
-
-    // copy image data into staging buffer
-    {
-        let mut data = device
-            .acquire_mapping_writer::<u8>(&image_upload_memory, 0..upload_size)
-            .unwrap();
-        for y in 0..height as usize {
-            let row = &(*img)
-                [y * (width as usize) * image_stride..(y + 1) * (width as usize) * image_stride];
-            let dest_base = y * row_pitch as usize;
-            data[dest_base..dest_base + row.len()].copy_from_slice(row);
-        }
-        device.release_mapping_writer(data);
-    }
+    let image_data = load_image(img_data, &device, &limits, upload_type, image::PNG);
 
     let image_unbound = device
         .create_image(
-            kind,
+            image_data.kind,
             1,
             ColorFormat::SELF,
             i::Tiling::Optimal,
@@ -277,6 +187,7 @@ pub fn main_function() {
     let image_logo = device
         .bind_image_memory(&image_memory, 0, image_unbound)
         .unwrap();
+
     let image_srv = device
         .create_image_view(
             &image_logo,
@@ -325,27 +236,7 @@ pub fn main_function() {
                 &[image_barrier],
             );
 
-            cmd_buffer.copy_buffer_to_image(
-                &image_upload_buffer,
-                &image_logo,
-                i::Layout::TransferDstOptimal,
-                &[command::BufferImageCopy {
-                    buffer_offset: 0,
-                    buffer_width: row_pitch / (image_stride as u32),
-                    buffer_height: height as u32,
-                    image_layers: i::SubresourceLayers {
-                        aspects: f::Aspects::COLOR,
-                        level: 0,
-                        layers: 0..1,
-                    },
-                    image_offset: i::Offset { x: 0, y: 0, z: 0 },
-                    image_extent: i::Extent {
-                        width,
-                        height,
-                        depth: 1,
-                    },
-                }],
-            );
+            image_data.copy_to_image(&mut cmd_buffer, &image_logo);
 
             let image_barrier = m::Barrier::Image {
                 states: (i::Access::TRANSFER_WRITE, i::Layout::TransferDstOptimal)
@@ -367,42 +258,161 @@ pub fn main_function() {
 
         device.wait_for_fence(&frame_fence, !0);
     }
+    //////////////////////////////
+    image_data.destroy(&device);
+
+    // shaders
+
+    let vs_module = {
+        let glsl = include_str!("data/quad.vert");
+        let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Vertex)
+            .unwrap()
+            .bytes()
+            .map(|b| b.unwrap())
+            .collect();
+        device.create_shader_module(&spirv).unwrap()
+    };
+    let fs_module = {
+        let glsl = include_str!("data/quad.frag");
+        let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Fragment)
+            .unwrap()
+            .bytes()
+            .map(|b| b.unwrap())
+            .collect();
+        device.create_shader_module(&spirv).unwrap()
+    };
+    let (caps, formats, _present_modes) = surface.compatibility(&adapter.physical_device);
+    println!("formats: {:?}", formats);
+    let format = formats.map_or(f::Format::Rgba8Srgb, |formats| {
+        formats
+            .iter()
+            .find(|format| format.base_format().1 == ChannelType::Srgb)
+            .map(|format| *format)
+            .unwrap_or(formats[0])
+    });
+    let render_pass = {
+        let attachment = pass::Attachment {
+            format: Some(format),
+            samples: 1,
+            ops: pass::AttachmentOps::new(
+                pass::AttachmentLoadOp::Clear,
+                pass::AttachmentStoreOp::Store,
+            ),
+            stencil_ops: pass::AttachmentOps::DONT_CARE,
+            layouts: i::Layout::Undefined..i::Layout::Present,
+        };
+
+        let subpass = pass::SubpassDesc {
+            colors: &[(0, i::Layout::ColorAttachmentOptimal)],
+            depth_stencil: None,
+            inputs: &[],
+            resolves: &[],
+            preserves: &[],
+        };
+
+        let dependency = pass::SubpassDependency {
+            passes: pass::SubpassRef::External..pass::SubpassRef::Pass(0),
+            stages: PipelineStage::COLOR_ATTACHMENT_OUTPUT..PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+            accesses: i::Access::empty()
+                ..(i::Access::COLOR_ATTACHMENT_READ | i::Access::COLOR_ATTACHMENT_WRITE),
+        };
+
+        device.create_render_pass(&[attachment], &[subpass], &[dependency])
+    };
+    let pipeline_layout =
+        device.create_pipeline_layout(Some(set_layout), &[(pso::ShaderStageFlags::VERTEX, 0..8)]);
+    let pipeline = {
+        let pipeline = {
+            let subpass = Subpass {
+                index: 0,
+                main_pass: &render_pass,
+            };
+            let (vs_entry, fs_entry) = (
+                pso::EntryPoint::<back::Backend> {
+                    entry: ENTRY_NAME,
+                    module: &vs_module,
+                    specialization: &[Specialization {
+                        id: 0,
+                        value: pso::Constant::F32(0.8),
+                    }],
+                },
+                pso::EntryPoint::<back::Backend> {
+                    entry: ENTRY_NAME,
+                    module: &fs_module,
+                    specialization: &[],
+                },
+            );
+
+            let shader_entries = pso::GraphicsShaderSet {
+                vertex: vs_entry,
+                hull: None,
+                domain: None,
+                geometry: None,
+                fragment: Some(fs_entry),
+            };
+            let mut pipeline_desc = pso::GraphicsPipelineDesc::new(
+                shader_entries,
+                Primitive::TriangleList,
+                pso::Rasterizer::FILL,
+                &pipeline_layout,
+                subpass,
+            );
+            pipeline_desc.blender.targets.push(pso::ColorBlendDesc(
+                pso::ColorMask::ALL,
+                pso::BlendState::ALPHA,
+            ));
+            pipeline_desc.vertex_buffers.push(pso::VertexBufferDesc {
+                binding: 0,
+                stride: std::mem::size_of::<Vertex>() as u32,
+                rate: 0,
+            });
+
+            pipeline_desc.attributes.push(pso::AttributeDesc {
+                location: 0,
+                binding: 0,
+                element: pso::Element {
+                    format: f::Format::Rg32Float,
+                    offset: 0,
+                },
+            });
+            pipeline_desc.attributes.push(pso::AttributeDesc {
+                location: 1,
+                binding: 0,
+                element: pso::Element {
+                    format: f::Format::Rg32Float,
+                    offset: 8,
+                },
+            });
+
+            let p = device.create_graphics_pipeline(&pipeline_desc);
+            drop(pipeline_desc);
+            p
+        };
+
+        pipeline.unwrap()
+    };
+    device.destroy_shader_module(vs_module);
+    device.destroy_shader_module(fs_module);
 
     let mut swap_chain;
-    let mut render_pass;
     let mut framebuffers;
     let mut frame_images;
-    let mut pipeline;
-    let mut pipeline_layout;
     let mut extent;
 
     {
-        #[cfg(not(feature = "gl"))]
         let window = &window;
-        #[cfg(feature = "gl")]
-        let window = &0;
-        let (
-            new_swap_chain,
-            new_render_pass,
-            new_framebuffers,
-            new_frame_images,
-            new_pipeline,
-            new_pipeline_layout,
-            new_extent,
-        ) = swapchain_stuff(
+        let (new_swap_chain, new_framebuffers, new_frame_images, new_extent) = swapchain_stuff(
             &mut surface,
             &mut device,
-            &adapter.physical_device,
-            &set_layout,
             window,
+            &render_pass,
+            &caps,
+            format,
         );
 
         swap_chain = new_swap_chain;
-        render_pass = new_render_pass;
         framebuffers = new_framebuffers;
         frame_images = new_frame_images;
-        pipeline = new_pipeline;
-        pipeline_layout = new_pipeline_layout;
         extent = new_extent;
     }
 
@@ -451,8 +461,6 @@ pub fn main_function() {
             device.wait_idle().unwrap();
 
             command_pool.reset();
-            device.destroy_graphics_pipeline(pipeline);
-            device.destroy_pipeline_layout(pipeline_layout);
 
             for framebuffer in framebuffers {
                 device.destroy_framebuffer(framebuffer);
@@ -461,34 +469,23 @@ pub fn main_function() {
             for (_, rtv) in frame_images {
                 device.destroy_image_view(rtv);
             }
-            device.destroy_render_pass(render_pass);
             device.destroy_swapchain(swap_chain);
 
             #[cfg(not(feature = "gl"))]
             let window = &window;
             #[cfg(feature = "gl")]
             let window = &0;
-            let (
-                new_swap_chain,
-                new_render_pass,
-                new_framebuffers,
-                new_frame_images,
-                new_pipeline,
-                new_pipeline_layout,
-                new_extent,
-            ) = swapchain_stuff(
+            let (new_swap_chain, new_framebuffers, new_frame_images, new_extent) = swapchain_stuff(
                 &mut surface,
                 &mut device,
-                &adapter.physical_device,
-                &set_layout,
                 window,
+                &render_pass,
+                &caps,
+                format,
             );
             swap_chain = new_swap_chain;
-            render_pass = new_render_pass;
             framebuffers = new_framebuffers;
             frame_images = new_frame_images;
-            pipeline = new_pipeline;
-            pipeline_layout = new_pipeline_layout;
             extent = new_extent;
 
             viewport.rect.w = extent.width as _;
@@ -550,10 +547,8 @@ pub fn main_function() {
     // cleanup!
     device.destroy_command_pool(command_pool.into_raw());
     device.destroy_descriptor_pool(desc_pool);
-    device.destroy_descriptor_set_layout(set_layout);
 
     device.destroy_buffer(vertex_buffer);
-    device.destroy_buffer(image_upload_buffer);
     device.destroy_image(image_logo);
     device.destroy_image_view(image_srv);
     device.destroy_sampler(sampler);
@@ -562,7 +557,6 @@ pub fn main_function() {
     device.destroy_render_pass(render_pass);
     device.free_memory(buffer_memory);
     device.free_memory(image_memory);
-    device.free_memory(image_upload_memory);
     device.destroy_graphics_pipeline(pipeline);
     device.destroy_pipeline_layout(pipeline_layout);
     for framebuffer in framebuffers {
@@ -576,7 +570,7 @@ pub fn main_function() {
 }
 
 #[cfg(not(any(feature = "vulkan", feature = "dx12", feature = "gl")))]
-fn main() {
+fn main_function() {
     println!("You need to enable the native API feature (vulkan/dx12) in order to test the LL");
 }
 
@@ -584,31 +578,19 @@ fn main() {
 fn swapchain_stuff(
     surface: &mut <back::Backend as hal::Backend>::Surface,
     device: &mut back::Device,
-    physical_device: &back::PhysicalDevice,
-    set_layout: &<back::Backend as hal::Backend>::DescriptorSetLayout,
     window: &WindowType,
+    render_pass: &<back::Backend as hal::Backend>::RenderPass,
+    caps: &hal::SurfaceCapabilities,
+    format: hal::format::Format,
 ) -> (
     <back::Backend as hal::Backend>::Swapchain,
-    <back::Backend as hal::Backend>::RenderPass,
     std::vec::Vec<<back::Backend as hal::Backend>::Framebuffer>,
     std::vec::Vec<(
         <back::Backend as hal::Backend>::Image,
         <back::Backend as hal::Backend>::ImageView,
     )>,
-    <back::Backend as hal::Backend>::GraphicsPipeline,
-    <back::Backend as hal::Backend>::PipelineLayout,
     Extent2D,
 ) {
-    let (caps, formats, _present_modes) = surface.compatibility(physical_device);
-    println!("formats: {:?}", formats);
-    let format = formats.map_or(f::Format::Rgba8Srgb, |formats| {
-        formats
-            .iter()
-            .find(|format| format.base_format().1 == ChannelType::Srgb)
-            .map(|format| *format)
-            .unwrap_or(formats[0])
-    });
-
     let extent = match caps.current_extent {
         Some(e) => e,
         None => {
@@ -646,35 +628,6 @@ fn swapchain_stuff(
         .with_image_usage(i::Usage::COLOR_ATTACHMENT);
     let (swap_chain, backbuffer) = device.create_swapchain(surface, swap_config, None, &extent);
 
-    let render_pass = {
-        let attachment = pass::Attachment {
-            format: Some(format),
-            samples: 1,
-            ops: pass::AttachmentOps::new(
-                pass::AttachmentLoadOp::Clear,
-                pass::AttachmentStoreOp::Store,
-            ),
-            stencil_ops: pass::AttachmentOps::DONT_CARE,
-            layouts: i::Layout::Undefined..i::Layout::Present,
-        };
-
-        let subpass = pass::SubpassDesc {
-            colors: &[(0, i::Layout::ColorAttachmentOptimal)],
-            depth_stencil: None,
-            inputs: &[],
-            resolves: &[],
-            preserves: &[],
-        };
-
-        let dependency = pass::SubpassDependency {
-            passes: pass::SubpassRef::External..pass::SubpassRef::Pass(0),
-            stages: PipelineStage::COLOR_ATTACHMENT_OUTPUT..PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-            accesses: i::Access::empty()
-                ..(i::Access::COLOR_ATTACHMENT_READ | i::Access::COLOR_ATTACHMENT_WRITE),
-        };
-
-        device.create_render_pass(&[attachment], &[subpass], &[dependency])
-    };
     let (frame_images, framebuffers) = match backbuffer {
         Backbuffer::Images(images) => {
             let extent = i::Extent {
@@ -701,7 +654,7 @@ fn swapchain_stuff(
                 .iter()
                 .map(|&(_, ref rtv)| {
                     device
-                        .create_framebuffer(&render_pass, Some(rtv), extent)
+                        .create_framebuffer(render_pass, Some(rtv), extent)
                         .unwrap()
                 })
                 .collect();
@@ -710,109 +663,5 @@ fn swapchain_stuff(
         Backbuffer::Framebuffer(fbo) => (Vec::new(), vec![fbo]),
     };
 
-    let pipeline_layout =
-        device.create_pipeline_layout(Some(set_layout), &[(pso::ShaderStageFlags::VERTEX, 0..8)]);
-    let pipeline = {
-        let vs_module = {
-            //let glsl = include_str!("data/quad.frag");
-            let glsl = fs::read_to_string("src/data/quad.vert").unwrap();
-            let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Vertex)
-                .unwrap()
-                .bytes()
-                .map(|b| b.unwrap())
-                .collect();
-            device.create_shader_module(&spirv).unwrap()
-        };
-        let fs_module = {
-            let glsl = fs::read_to_string("src/data/quad.frag").unwrap();
-            let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Fragment)
-                .unwrap()
-                .bytes()
-                .map(|b| b.unwrap())
-                .collect();
-            device.create_shader_module(&spirv).unwrap()
-        };
-
-        let pipeline = {
-            let (vs_entry, fs_entry) = (
-                pso::EntryPoint::<back::Backend> {
-                    entry: ENTRY_NAME,
-                    module: &vs_module,
-                    specialization: &[Specialization {
-                        id: 0,
-                        value: pso::Constant::F32(0.8),
-                    }],
-                },
-                pso::EntryPoint::<back::Backend> {
-                    entry: ENTRY_NAME,
-                    module: &fs_module,
-                    specialization: &[],
-                },
-            );
-
-            let shader_entries = pso::GraphicsShaderSet {
-                vertex: vs_entry,
-                hull: None,
-                domain: None,
-                geometry: None,
-                fragment: Some(fs_entry),
-            };
-
-            let subpass = Subpass {
-                index: 0,
-                main_pass: &render_pass,
-            };
-
-            let mut pipeline_desc = pso::GraphicsPipelineDesc::new(
-                shader_entries,
-                Primitive::TriangleList,
-                pso::Rasterizer::FILL,
-                &pipeline_layout,
-                subpass,
-            );
-            pipeline_desc.blender.targets.push(pso::ColorBlendDesc(
-                pso::ColorMask::ALL,
-                pso::BlendState::ALPHA,
-            ));
-            pipeline_desc.vertex_buffers.push(pso::VertexBufferDesc {
-                binding: 0,
-                stride: std::mem::size_of::<Vertex>() as u32,
-                rate: 0,
-            });
-
-            pipeline_desc.attributes.push(pso::AttributeDesc {
-                location: 0,
-                binding: 0,
-                element: pso::Element {
-                    format: f::Format::Rg32Float,
-                    offset: 0,
-                },
-            });
-            pipeline_desc.attributes.push(pso::AttributeDesc {
-                location: 1,
-                binding: 0,
-                element: pso::Element {
-                    format: f::Format::Rg32Float,
-                    offset: 8,
-                },
-            });
-
-            device.create_graphics_pipeline(&pipeline_desc)
-        };
-
-        device.destroy_shader_module(vs_module);
-        device.destroy_shader_module(fs_module);
-
-        pipeline.unwrap()
-    };
-
-    (
-        swap_chain,
-        render_pass,
-        framebuffers,
-        frame_images,
-        pipeline,
-        pipeline_layout,
-        extent,
-    )
+    (swap_chain, framebuffers, frame_images, extent)
 }

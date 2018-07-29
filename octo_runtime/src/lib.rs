@@ -3,22 +3,23 @@
     allow(dead_code, unused_extern_crates, unused_imports)
 )]
 
-extern crate env_logger;
 #[cfg(feature = "dx12")]
-extern crate gfx_backend_dx12 as back;
+pub extern crate gfx_backend_dx12 as backend;
 #[cfg(feature = "gl")]
-extern crate gfx_backend_gl as back;
+pub extern crate gfx_backend_gl as backend;
 #[cfg(feature = "vulkan")]
-extern crate gfx_backend_vulkan as back;
-extern crate gfx_hal as hal;
+pub extern crate gfx_backend_vulkan as backend;
+pub extern crate gfx_hal as hal;
 
 #[cfg(feature = "gl")]
 use back::glutin::GlContext;
 
 extern crate glsl_to_spirv;
-extern crate image;
-extern crate winit;
+pub extern crate image;
+pub extern crate winit;
 
+mod data_loading;
 mod functionality;
 mod types;
+mod window;
 pub use functionality::*;

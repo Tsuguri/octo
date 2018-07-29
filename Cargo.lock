@@ -846,7 +846,6 @@ dependencies = [
 name = "octo_runtime"
 version = "0.1.0"
 dependencies = [
- "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx-backend-dx12 0.1.0 (git+https://github.com/gfx-rs/gfx.git?rev=308dd39e390ee79e7189c3d9170847bb2ca2a62f)",
  "gfx-backend-gl 0.1.0 (git+https://github.com/gfx-rs/gfx.git?rev=308dd39e390ee79e7189c3d9170847bb2ca2a62f)",
  "gfx-backend-vulkan 0.1.0 (git+https://github.com/gfx-rs/gfx.git?rev=308dd39e390ee79e7189c3d9170847bb2ca2a62f)",
@@ -861,6 +860,7 @@ dependencies = [
 name = "octo_showcase"
 version = "0.0.1"
 dependencies = [
+ "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "octo 0.1.0",
  "octo_runtime 0.1.0",
 ]
