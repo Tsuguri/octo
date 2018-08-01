@@ -8,16 +8,18 @@ use hal::format::{AsFormat, ChannelType, Rgba8Srgb as ColorFormat, Swizzle};
 use hal::pass::Subpass;
 use hal::pso::{PipelineStage, ShaderStageFlags, Specialization};
 use hal::queue::Submission;
+use hal::Backend;
 use hal::{buffer, command, format as f, image as i, memory as m, pass, pool, pso, window::Extent2D};
 use hal::{Backbuffer, DescriptorPool, FrameSync, Primitive, SwapchainConfig};
 use hal::{Device, PhysicalDevice, Surface, Swapchain};
 
 use data_loading::load_image;
+use generated_stub::*;
 use types::Vertex;
 use window::*;
 
 use std;
-use std::io::Read;
+use std::io::{Read, Write};
 
 const DIMS: Extent2D = Extent2D {
     width: 1024,
@@ -282,6 +284,7 @@ pub fn main_function(events_loop: &mut winit::EventsLoop) {
         device.create_shader_module(&spirv).unwrap()
     };
     let (caps, formats, _present_modes) = surface.compatibility(&adapter.physical_device);
+
     println!("formats: {:?}", formats);
     let format = formats.map_or(f::Format::Rgba8Srgb, |formats| {
         formats
@@ -290,6 +293,8 @@ pub fn main_function(events_loop: &mut winit::EventsLoop) {
             .map(|format| *format)
             .unwrap_or(formats[0])
     });
+    let octo_pipeline = Pipeline::<back::Backend>::new(&device, &memory_types, format);
+
     let render_pass = {
         let attachment = pass::Attachment {
             format: Some(format),
@@ -385,7 +390,7 @@ pub fn main_function(events_loop: &mut winit::EventsLoop) {
             });
 
             let p = device.create_graphics_pipeline(&pipeline_desc);
-            drop(pipeline_desc);
+            // drop(pipeline_desc);
             p
         };
 
@@ -397,7 +402,7 @@ pub fn main_function(events_loop: &mut winit::EventsLoop) {
     let mut swap_chain;
     let mut framebuffers;
     let mut frame_images;
-    let mut extent;
+    let mut extent: Extent2D;
 
     {
         let window = &window;
@@ -430,6 +435,9 @@ pub fn main_function(events_loop: &mut winit::EventsLoop) {
     //
     let mut running = true;
     let mut recreate_swapchain = false;
+    let mut frames = 0u32;
+    let mut now = std::time::Instant::now();
+    println!("");
     while running {
         events_loop.poll_events(|event| {
             if let winit::Event::WindowEvent { event, .. } = event {
@@ -487,7 +495,6 @@ pub fn main_function(events_loop: &mut winit::EventsLoop) {
             framebuffers = new_framebuffers;
             frame_images = new_frame_images;
             extent = new_extent;
-
             viewport.rect.w = extent.width as _;
             viewport.rect.h = extent.height as _;
             recreate_swapchain = false;
@@ -527,6 +534,17 @@ pub fn main_function(events_loop: &mut winit::EventsLoop) {
                 encoder.draw(0..6, 0..1);
             }
 
+            octo_pipeline.fill_command_buffer(
+                &mut cmd_buffer,
+                &framebuffers[frame as usize],
+                hal::pso::Rect {
+                    x: 0,
+                    y: viewport.rect.h / 2,
+                    w: viewport.rect.w,
+                    h: viewport.rect.h / 2,
+                },
+            );
+
             cmd_buffer.finish()
         };
 
@@ -541,6 +559,13 @@ pub fn main_function(events_loop: &mut winit::EventsLoop) {
         // present frame
         if let Err(_) = swap_chain.present(&mut queue_group.queues[0], frame, &[]) {
             recreate_swapchain = true;
+        }
+        frames += 1;
+        if now.elapsed().as_secs() >= 1 {
+            print!("\rframes in last sec: {}", frames);
+            std::io::stdout().flush();
+            frames = 0;
+            now = std::time::Instant::now();
         }
     }
 
