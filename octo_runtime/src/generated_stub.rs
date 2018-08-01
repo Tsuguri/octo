@@ -288,14 +288,24 @@ impl<B: hal::Backend> OctoPipeline<B> for Pipeline<B> {
         framebuffer: &B::Framebuffer,
         rect: hal::pso::Rect,
     ) {
-        let mut encoder = cmd_buffer.begin_render_pass_inline(
-            &self.render_pass,
-            framebuffer,
-            rect,
-            &[hal::command::ClearValue::Color(
-                hal::command::ClearColor::Float([0.3, 0.8, 0.8, 1.0]),
-            )],
+        cmd_buffer.bind_graphics_pipeline(&self.pipeline);
+        cmd_buffer.bind_vertex_buffers(0, Some((&self.vertex_buffer, 0)));
+        cmd_buffer.bind_graphics_descriptor_sets(
+            &self.pipeline_layout,
+            0,
+            Some(&self.descriptors_set),
+            &[],
         );
-        encoder.draw(0..6, 0..1);
+        {
+            let mut encoder = cmd_buffer.begin_render_pass_inline(
+                &self.render_pass,
+                framebuffer,
+                rect,
+                &[hal::command::ClearValue::Color(
+                    hal::command::ClearColor::Float([0.3, 0.8, 0.8, 1.0]),
+                )],
+            );
+            encoder.draw(0..6, 0..1);
+        }
     }
 }
