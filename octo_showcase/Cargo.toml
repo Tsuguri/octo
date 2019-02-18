@@ -18,7 +18,7 @@ gl = ["octo_runtime/gl"]
 
 [dependencies]
 octo_runtime = {path = "../octo_runtime", version = "0.1.0"}
-env_logger = "0.5"
+env_logger = "0.6"
 
 [build-dependencies]
 octo = {path="../octo", version="0.1.0"}

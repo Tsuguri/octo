@@ -1,4 +1,4 @@
-use hal;
+/*use hal;
 use hal::buffer;
 use hal::command;
 use hal::image as i;
@@ -101,4 +101,4 @@ pub fn load_image<B: hal::Backend>(
         row_pitch,
         stride,
     }
-}
+}*/

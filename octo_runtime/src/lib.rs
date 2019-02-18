@@ -24,4 +24,4 @@ mod generated_stub;
 mod types;
 mod window;
 pub use functionality::*;
-pub use generated_stub::Pipeline;
+//pub use generated_stub::Pipeline;

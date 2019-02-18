@@ -11,30 +11,27 @@ repository = "https://github.com/Tsuguri/octo"
 documentation = "None"
 
 [features]
-default = []
+default = ["vulkan"]
 gl = ["gfx-backend-gl"]
 dx12 = ["gfx-backend-dx12"]
 vulkan = ["gfx-backend-vulkan"]
 
 [dependencies]
-gfx-hal = {git = "https://github.com/gfx-rs/gfx.git", rev= "308dd39e390ee79e7189c3d9170847bb2ca2a62f"}
+gfx-hal = "0.1"
 image = "0.18"
 log = "0.4"
-winit = "0.16"
+winit = "0.18"
 glsl-to-spirv = "0.1.4"
 
 [dependencies.gfx-backend-gl]
-git = "https://github.com/gfx-rs/gfx.git"
-rev= "308dd39e390ee79e7189c3d9170847bb2ca2a62f"
+version = "0.1"
 features = ["glutin"]
 optional = true
 
 [dependencies.gfx-backend-vulkan]
-git = "https://github.com/gfx-rs/gfx.git"
-rev= "308dd39e390ee79e7189c3d9170847bb2ca2a62f"
+version = "0.1"
 optional = true
 
 [target.'cfg(windows)'.dependencies.gfx-backend-dx12]
-git = "https://github.com/gfx-rs/gfx.git"
-rev= "308dd39e390ee79e7189c3d9170847bb2ca2a62f"
+version = "0.1"
 optional = true

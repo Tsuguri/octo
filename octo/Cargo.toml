@@ -6,5 +6,5 @@ authors = ["Adam Winiarczuk <adamosca@gmail.com>"]
 [dependencies]
 structopt = "0.2"
 clap = { version = "2.20", default-features = false }
-lalrpop-util = "0.15.2"
+lalrpop-util = "0.16.3"
 octo_parser = { path = "../octo_parser", version = "0.0.1"}
