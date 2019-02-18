@@ -14,7 +14,6 @@ build = "build.rs"
 [features]
 vulkan = ["octo_runtime/vulkan"]
 dx12 = ["octo_runtime/dx12"]
-gl = ["octo_runtime/gl"]
 
 [dependencies]
 octo_runtime = {path = "../octo_runtime", version = "0.1.0"}

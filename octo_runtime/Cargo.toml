@@ -12,7 +12,6 @@ documentation = "None"
 
 [features]
 default = ["vulkan"]
-gl = ["gfx-backend-gl"]
 dx12 = ["gfx-backend-dx12"]
 vulkan = ["gfx-backend-vulkan"]
 
@@ -22,11 +21,6 @@ image = "0.18"
 log = "0.4"
 winit = "0.18"
 glsl-to-spirv = "0.1.4"
-
-[dependencies.gfx-backend-gl]
-version = "0.1"
-features = ["glutin"]
-optional = true
 
 [dependencies.gfx-backend-vulkan]
 version = "0.1"
