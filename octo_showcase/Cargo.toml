@@ -2,6 +2,7 @@
 name = "octo_showcase"
 version = "0.0.1"
 authors = ["Adam Winiarczuk <adam.winiarczuk@gmail.com>"]
+# edition = "2018"
 
 license = "MIT"
 
@@ -17,7 +18,10 @@ dx12 = ["octo_runtime/dx12"]
 
 [dependencies]
 octo_runtime = {path = "../octo_runtime", version = "0.1.0"}
-env_logger = "0.6"
+# env_logger = "0.6"
+log = "0.4.0"
+simple_logger = "1.0"
+winit = "0.18"
 
 [build-dependencies]
 octo = {path="../octo", version="0.1.0"}
