@@ -2,7 +2,7 @@
 name = "octo_showcase"
 version = "0.0.1"
 authors = ["Adam Winiarczuk <adam.winiarczuk@gmail.com>"]
-# edition = "2018"
+edition = "2018"
 
 license = "MIT"
 

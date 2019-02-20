@@ -31,7 +31,7 @@ impl Lines {
             offsets.push(len + last + 1);
             last = len + last + 1;
         }
-        let lines_count = offsets.len();
+        let _lines_count = offsets.len();
         // if lines_count > 1 {
         //     if offsets[lines_count - 1] == offsets[lines_count - 2] + 1 {
         //         offsets.pop();
@@ -250,7 +250,7 @@ fn show_unrecognized_token_error(
     match token {
         None => println!("Unexpected end of file. Expected tokens: {:?}", expected),
         Some((start, token, end)) => {
-            use lexer::Token::*;
+            use crate::lexer::Token::*;
             let message = match token {
                 BraceOpen => "unexpected block delimiter: '{'".to_owned(),
                 BraceClose => "unexpected block delimiter: '}'".to_owned(),

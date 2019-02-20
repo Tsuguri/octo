@@ -95,28 +95,28 @@ fn analyze_statement(statement: &Statement, env: &mut Scope) {
     };
 }
 
-fn analyze_expression(expression: &Expression, ev: &mut Scope) -> Type {
+fn analyze_expression(expression: &Expression, _ev: &mut Scope) -> Type {
     println!("Found expression");
     use octo_parser::ast::Expression::*;
     match expression {
-        Add(exp1, exp2) => (),
-        And(exp1, exp2) => (),
-        Variable(var) => (),
-        Literal(value) => (),
-        Negation(exp) => (),
-        Mul(exp1, exp2) => (),
-        Div(exp1, exp2) => (),
-        Add(exp1, exp2) => (),
-        Sub(exp1, exp2) => (),
-        Less(exp1, exp2) => (),
-        LessEqual(exp1, exp2) => (),
-        More(exp1, exp2) => (),
-        MoreEqual(exp1, exp2) => (),
-        Equals(exp1, exp2) => (),
-        NotEquals(exp1, exp2) => (),
-        And(exp1, exp2) => (),
-        Or(exp1, exp2) => (),
-        Invocation(func_name, arguments) => (),
+        Add(_exp1, _exp2) => (),
+        And(_exp1, _exp2) => (),
+        Variable(_var) => (),
+        Literal(_value) => (),
+        Negation(_exp) => (),
+        Mul(_exp1, _exp2) => (),
+        Div(_exp1, _exp2) => (),
+        Add(_exp1, _exp2) => (),
+        Sub(_exp1, _exp2) => (),
+        Less(_exp1, _exp2) => (),
+        LessEqual(_exp1, _exp2) => (),
+        More(_exp1, _exp2) => (),
+        MoreEqual(_exp1, _exp2) => (),
+        Equals(_exp1, _exp2) => (),
+        NotEquals(_exp1, _exp2) => (),
+        And(_exp1, _exp2) => (),
+        Or(_exp1, _exp2) => (),
+        Invocation(_func_name, _arguments) => (),
     }
     Type::Unknown
 }

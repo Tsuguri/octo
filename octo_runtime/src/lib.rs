@@ -23,5 +23,5 @@ mod functionality;
 mod generated_stub;
 mod types;
 mod window;
-pub use functionality::*;
+pub use crate::functionality::*;
 //pub use generated_stub::Pipeline;

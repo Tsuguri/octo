@@ -1,7 +1,7 @@
 // auto-generated: "lalrpop 0.15.2"
 // sha256: 8a5c939b995d32a2d19bd91204be1eeb97852aea59a8bcbfa8ebd739ead83ee
-use lexer;
-use ast;
+use crate::lexer;
+use crate::ast;
 #[allow(unused_extern_crates)]
 extern crate lalrpop_util as __lalrpop_util;
 
@@ -9,8 +9,8 @@ extern crate lalrpop_util as __lalrpop_util;
 mod __parse__Block {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use lexer;
-    use ast;
+    use crate::lexer;
+    use crate::ast;
     #[allow(unused_extern_crates)]
     extern crate lalrpop_util as __lalrpop_util;
     use super::__ToTriple;
@@ -2710,8 +2710,8 @@ pub use self::__parse__Block::BlockParser;
 mod __parse__Expression {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use lexer;
-    use ast;
+    use crate::lexer;
+    use crate::ast;
     #[allow(unused_extern_crates)]
     extern crate lalrpop_util as __lalrpop_util;
     use super::__ToTriple;
@@ -5315,8 +5315,8 @@ pub use self::__parse__Expression::ExpressionParser;
 mod __parse__Function {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use lexer;
-    use ast;
+    use crate::lexer;
+    use crate::ast;
     #[allow(unused_extern_crates)]
     extern crate lalrpop_util as __lalrpop_util;
     use super::__ToTriple;
@@ -8112,8 +8112,8 @@ pub use self::__parse__Function::FunctionParser;
 mod __parse__GpuFunction {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use lexer;
-    use ast;
+    use crate::lexer;
+    use crate::ast;
     #[allow(unused_extern_crates)]
     extern crate lalrpop_util as __lalrpop_util;
     use super::__ToTriple;
@@ -10525,8 +10525,8 @@ pub use self::__parse__GpuFunction::GpuFunctionParser;
 mod __parse__Primitive {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use lexer;
-    use ast;
+    use crate::lexer;
+    use crate::ast;
     #[allow(unused_extern_crates)]
     extern crate lalrpop_util as __lalrpop_util;
     use super::__ToTriple;
@@ -13130,8 +13130,8 @@ pub use self::__parse__Primitive::PrimitiveParser;
 mod __parse__Program {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use lexer;
-    use ast;
+    use crate::lexer;
+    use crate::ast;
     #[allow(unused_extern_crates)]
     extern crate lalrpop_util as __lalrpop_util;
     use super::__ToTriple;
@@ -15975,8 +15975,8 @@ pub use self::__parse__Program::ProgramParser;
 mod __parse__Statement {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens)]
 
-    use lexer;
-    use ast;
+    use crate::lexer;
+    use crate::ast;
     #[allow(unused_extern_crates)]
     extern crate lalrpop_util as __lalrpop_util;
     use super::__ToTriple;

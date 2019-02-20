@@ -1,6 +1,6 @@
-use backend as back;
-use hal;
-use hal::Instance;
+use crate::backend as back;
+use crate::hal;
+use crate::hal::Instance;
 use std;
 use winit;
 

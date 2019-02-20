@@ -1,19 +1,49 @@
-//extern crate simple_logger;
-//extern crate octo_runtime;
 //extern crate log;
-use octo_runtime::main_function;
-//use octo_runtime::winit;
 #[allow(unused_imports)]
 use log::{error, warn, info, debug, trace};
 
+use winit::{EventsLoop, Window, WindowBuilder, Event, WindowEvent, CreationError};
+
+#[derive(Debug)]
+struct WinitState {
+    pub events_loop: EventsLoop,
+    pub window: Window,
+}
+
+impl WinitState {
+    pub fn new<T: Into<String>>(title: T, size: winit::dpi::LogicalSize) -> Result<Self, CreationError> {
+
+        let mut events_loop = EventsLoop::new();
+        let output = WindowBuilder::new().with_title(title).with_dimensions(size).build(&events_loop);
+        output.map(|window| Self {events_loop, window,})
+
+    }
+
+}
+
+pub const window_name: &str = "Hello octo";
+
+impl Default for WinitState {
+    fn default() -> Self {
+        Self::new(window_name, winit::dpi::LogicalSize {width: 800.0, height: 600.0,}).expect("Could not create a window!")
+    }
+}
+
 fn main() {
-    //env_logger::init();
-    
-    //let mut events_loop = winit::EventsLoop::new();
-    
     simple_logger::init().unwrap();
 
     info!("whoop whoop");
 
-    main_function();//&mut events_loop);
+    let mut state = WinitState::default();
+
+
+    let mut running = true;
+
+    while running {
+        state.events_loop.poll_events(|event| match event {
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested, ..} => running = false,
+                _ => (),
+        });
+    }
 }
