@@ -12,16 +12,20 @@ repository = "https://github.com/Tsuguri/octo"
 documentation = "None"
 
 build = "build.rs"
-[features]
-vulkan = ["octo_runtime/vulkan"]
-dx12 = ["octo_runtime/dx12"]
+# [features]
+# vulkan = ["octo_runtime/vulkan"]
+# dx12 = ["octo_runtime/dx12"]
 
 [dependencies]
-octo_runtime = {path = "../octo_runtime", version = "0.1.0"}
-# env_logger = "0.6"
+# octo_runtime = {path = "../octo_runtime", version = "0.1.0"}
+
 log = "0.4.0"
 simple_logger = "1.0"
 winit = "0.18"
+gfx-hal = "0.1"
+arrayvec = "0.4"
+
+gfx-backend-vulkan = "0.1"
 
 [build-dependencies]
 octo = {path="../octo", version="0.1.0"}
