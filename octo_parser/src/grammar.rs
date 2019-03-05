@@ -1,7 +1,7 @@
 // auto-generated: "lalrpop 0.15.2"
 // sha256: 8a5c939b995d32a2d19bd91204be1eeb97852aea59a8bcbfa8ebd739ead83ee
-use crate::lexer;
 use crate::ast;
+use crate::lexer;
 #[allow(unused_extern_crates)]
 extern crate lalrpop_util as __lalrpop_util;
 
@@ -18624,88 +18624,47 @@ mod __parse__Statement {
 }
 pub use self::__parse__Statement::StatementParser;
 
-fn __action0<
->(
-    (_, __0, _): (usize, ast::Program, usize),
-) -> ast::Program
-{
+fn __action0((_, __0, _): (usize, ast::Program, usize)) -> ast::Program {
     (__0)
 }
 
-fn __action1<
->(
-    (_, __0, _): (usize, ast::Function, usize),
-) -> ast::Function
-{
+fn __action1((_, __0, _): (usize, ast::Function, usize)) -> ast::Function {
     (__0)
 }
 
-fn __action2<
->(
-    (_, __0, _): (usize, ast::GpuFunction, usize),
-) -> ast::GpuFunction
-{
+fn __action2((_, __0, _): (usize, ast::GpuFunction, usize)) -> ast::GpuFunction {
     (__0)
 }
 
-fn __action3<
->(
-    (_, __0, _): (usize, ast::Block, usize),
-) -> ast::Block
-{
+fn __action3((_, __0, _): (usize, ast::Block, usize)) -> ast::Block {
     (__0)
 }
 
-fn __action4<
->(
-    (_, __0, _): (usize, ast::Statement, usize),
-) -> ast::Statement
-{
+fn __action4((_, __0, _): (usize, ast::Statement, usize)) -> ast::Statement {
     (__0)
 }
 
-fn __action5<
->(
-    (_, __0, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+fn __action5((_, __0, _): (usize, Box<ast::Expression>, usize)) -> Box<ast::Expression> {
     (__0)
 }
 
-fn __action6<
->(
-    (_, __0, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+fn __action6((_, __0, _): (usize, Box<ast::Expression>, usize)) -> Box<ast::Expression> {
     (__0)
 }
 
-fn __action7<
->(
-    (_, items, _): (usize, ::std::vec::Vec<ast::ProgramItem>, usize),
-) -> ast::Program
-{
-    ast::Program{items}
+fn __action7((_, items, _): (usize, ::std::vec::Vec<ast::ProgramItem>, usize)) -> ast::Program {
+    ast::Program { items }
 }
 
-fn __action8<
->(
-    (_, __0, _): (usize, ast::Function, usize),
-) -> ast::ProgramItem
-{
+fn __action8((_, __0, _): (usize, ast::Function, usize)) -> ast::ProgramItem {
     ast::ProgramItem::Function(Box::new(__0))
 }
 
-fn __action9<
->(
-    (_, __0, _): (usize, ast::GpuFunction, usize),
-) -> ast::ProgramItem
-{
+fn __action9((_, __0, _): (usize, ast::GpuFunction, usize)) -> ast::ProgramItem {
     ast::ProgramItem::GpuFunction(Box::new(__0))
 }
 
-fn __action10<
->(
+fn __action10(
     (_, _, _): (usize, lexer::Token, usize),
     (_, i, _): (usize, String, usize),
     (_, _, _): (usize, lexer::Token, usize),
@@ -18713,13 +18672,16 @@ fn __action10<
     (_, _, _): (usize, lexer::Token, usize),
     (_, ri, _): (usize, ::std::option::Option<String>, usize),
     (_, b, _): (usize, ast::Block, usize),
-) -> ast::Function
-{
-    ast::Function{arguments: args, name: i, block: b, ret: ri.map_or(None, |x| Some(ast::Type::new(x)))}
+) -> ast::Function {
+    ast::Function {
+        arguments: args,
+        name: i,
+        block: b,
+        ret: ri.map_or(None, |x| Some(ast::Type::new(x))),
+    }
 }
 
-fn __action11<
->(
+fn __action11(
     (_, _, _): (usize, lexer::Token, usize),
     (_, i, _): (usize, String, usize),
     (_, _, _): (usize, lexer::Token, usize),
@@ -18728,294 +18690,220 @@ fn __action11<
     (_, _, _): (usize, lexer::Token, usize),
     (_, s, _): (usize, String, usize),
     (_, _, _): (usize, lexer::Token, usize),
-) -> ast::GpuFunction
-{
-    ast::GpuFunction{ name:i, code: s, arguments: args}
+) -> ast::GpuFunction {
+    ast::GpuFunction {
+        name: i,
+        code: s,
+        arguments: args,
+    }
 }
 
-fn __action12<
->(
+fn __action12(
     (_, i1, _): (usize, String, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, i2, _): (usize, String, usize),
-) -> (ast::Variable, ast::Type)
-{
+) -> (ast::Variable, ast::Type) {
     (ast::Variable::new(i1), ast::Type::new(i2))
 }
 
-fn __action13<
->(
+fn __action13(
     (_, _, _): (usize, lexer::Token, usize),
     (_, statements, _): (usize, ::std::vec::Vec<ast::Statement>, usize),
     (_, _, _): (usize, lexer::Token, usize),
-) -> ast::Block
-{
-    ast::Block{statements: statements }
+) -> ast::Block {
+    ast::Block {
+        statements: statements,
+    }
 }
 
-fn __action14<
->(
-    (_, __0, _): (usize, Box<ast::Expression>, usize),
-) -> ast::Statement
-{
+fn __action14((_, __0, _): (usize, Box<ast::Expression>, usize)) -> ast::Statement {
     ast::Statement::Expression(__0)
 }
 
-fn __action15<
->(
+fn __action15(
     (_, l, _): (usize, ::std::option::Option<lexer::Token>, usize),
     (_, i, _): (usize, String, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, e, _): (usize, Box<ast::Expression>, usize),
-) -> ast::Statement
-{
-    ast::Statement::Assignment(Box::new(ast::Variable::new(i)), e, match l {Some(_)=> true, None =>false,})
+) -> ast::Statement {
+    ast::Statement::Assignment(
+        Box::new(ast::Variable::new(i)),
+        e,
+        match l {
+            Some(_) => true,
+            None => false,
+        },
+    )
 }
 
-fn __action16<
->(
-    (_, __0, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+fn __action16((_, __0, _): (usize, Box<ast::Expression>, usize)) -> Box<ast::Expression> {
     __0
 }
 
-fn __action17<
->(
+fn __action17(
     (_, e1, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, e2, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::And(e1, e2))
 }
 
-fn __action18<
->(
+fn __action18(
     (_, e1, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, e2, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::Or(e1, e2))
 }
 
-fn __action19<
->(
-    (_, __0, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+fn __action19((_, __0, _): (usize, Box<ast::Expression>, usize)) -> Box<ast::Expression> {
     __0
 }
 
-fn __action20<
->(
+fn __action20(
     (_, a1, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, a2, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::Equals(a1, a2))
 }
 
-fn __action21<
->(
+fn __action21(
     (_, a1, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, a2, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::NotEquals(a1, a2))
 }
 
-fn __action22<
->(
-    (_, __0, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+fn __action22((_, __0, _): (usize, Box<ast::Expression>, usize)) -> Box<ast::Expression> {
     __0
 }
 
-fn __action23<
->(
+fn __action23(
     (_, r, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, a, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::Less(r, a))
 }
 
-fn __action24<
->(
+fn __action24(
     (_, r, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, a, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::LessEqual(r, a))
 }
 
-fn __action25<
->(
+fn __action25(
     (_, r, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, a, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::More(r, a))
 }
 
-fn __action26<
->(
+fn __action26(
     (_, r, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, a, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::MoreEqual(r, a))
 }
 
-fn __action27<
->(
-    (_, __0, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+fn __action27((_, __0, _): (usize, Box<ast::Expression>, usize)) -> Box<ast::Expression> {
     __0
 }
 
-fn __action28<
->(
+fn __action28(
     (_, a, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, m, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::Add(a, m))
 }
 
-fn __action29<
->(
+fn __action29(
     (_, a, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, m, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::Sub(a, m))
 }
 
-fn __action30<
->(
-    (_, __0, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+fn __action30((_, __0, _): (usize, Box<ast::Expression>, usize)) -> Box<ast::Expression> {
     __0
 }
 
-fn __action31<
->(
+fn __action31(
     (_, m, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, n, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::Mul(m, n))
 }
 
-fn __action32<
->(
+fn __action32(
     (_, m, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, n, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::Div(m, n))
 }
 
-fn __action33<
->(
+fn __action33(
     (_, _, _): (usize, lexer::Token, usize),
     (_, p, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::Negation(p))
 }
 
-fn __action34<
->(
-    (_, __0, _): (usize, Box<ast::Expression>, usize),
-) -> Box<ast::Expression>
-{
+fn __action34((_, __0, _): (usize, Box<ast::Expression>, usize)) -> Box<ast::Expression> {
     __0
 }
 
-fn __action35<
->(
-    (_, __0, _): (usize, ast::Literal, usize),
-) -> Box<ast::Expression>
-{
+fn __action35((_, __0, _): (usize, ast::Literal, usize)) -> Box<ast::Expression> {
     Box::new(ast::Expression::Literal(__0))
 }
 
-fn __action36<
->(
-    (_, __0, _): (usize, String, usize),
-) -> Box<ast::Expression>
-{
+fn __action36((_, __0, _): (usize, String, usize)) -> Box<ast::Expression> {
     Box::new(ast::Expression::Variable(ast::Variable::new(__0)))
 }
 
-fn __action37<
->(
+fn __action37(
     (_, _, _): (usize, lexer::Token, usize),
     (_, e, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     e
 }
 
-fn __action38<
->(
+fn __action38(
     (_, i, _): (usize, String, usize),
     (_, _, _): (usize, lexer::Token, usize),
     (_, args, _): (usize, Vec<Box<ast::Expression>>, usize),
     (_, _, _): (usize, lexer::Token, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     Box::new(ast::Expression::Invocation(i, args))
 }
 
-fn __action39<
->(
-    (_, __0, _): (usize, i64, usize),
-) -> ast::Literal
-{
+fn __action39((_, __0, _): (usize, i64, usize)) -> ast::Literal {
     ast::Literal::Int(__0)
 }
 
-fn __action40<
->(
-    (_, __0, _): (usize, f64, usize),
-) -> ast::Literal
-{
+fn __action40((_, __0, _): (usize, f64, usize)) -> ast::Literal {
     ast::Literal::Float(__0)
 }
 
-fn __action41<
->(
-    (_, __0, _): (usize, String, usize),
-) -> ast::Literal
-{
+fn __action41((_, __0, _): (usize, String, usize)) -> ast::Literal {
     ast::Literal::String(__0)
 }
 
-fn __action42<
->(
+fn __action42(
     (_, v, _): (usize, ::std::vec::Vec<Box<ast::Expression>>, usize),
     (_, e, _): (usize, ::std::option::Option<Box<ast::Expression>>, usize),
-) -> Vec<Box<ast::Expression>>
-{
+) -> Vec<Box<ast::Expression>> {
     match e {
         None => v,
         Some(e) => {
@@ -19026,72 +18914,47 @@ fn __action42<
     }
 }
 
-fn __action43<
->(
-    (_, __0, _): (usize, lexer::Token, usize),
-) -> ::std::option::Option<lexer::Token>
-{
+fn __action43((_, __0, _): (usize, lexer::Token, usize)) -> ::std::option::Option<lexer::Token> {
     Some(__0)
 }
 
-fn __action44<
->(
-    __lookbehind: &usize,
-    __lookahead: &usize,
-) -> ::std::option::Option<lexer::Token>
-{
+fn __action44(__lookbehind: &usize, __lookahead: &usize) -> ::std::option::Option<lexer::Token> {
     None
 }
 
-fn __action45<
->(
-    __lookbehind: &usize,
-    __lookahead: &usize,
-) -> ::std::vec::Vec<ast::Statement>
-{
+fn __action45(__lookbehind: &usize, __lookahead: &usize) -> ::std::vec::Vec<ast::Statement> {
     vec![]
 }
 
-fn __action46<
->(
+fn __action46(
     (_, v, _): (usize, ::std::vec::Vec<ast::Statement>, usize),
-) -> ::std::vec::Vec<ast::Statement>
-{
+) -> ::std::vec::Vec<ast::Statement> {
     v
 }
 
-fn __action47<
->(
+fn __action47(
     (_, __0, _): (usize, ast::Statement, usize),
     (_, _, _): (usize, lexer::Token, usize),
-) -> ast::Statement
-{
+) -> ast::Statement {
     (__0)
 }
 
-fn __action48<
->(
-    (_, __0, _): (usize, String, usize),
-) -> ::std::option::Option<String>
-{
+fn __action48((_, __0, _): (usize, String, usize)) -> ::std::option::Option<String> {
     Some(__0)
 }
 
-fn __action49<
->(
-    __lookbehind: &usize,
-    __lookahead: &usize,
-) -> ::std::option::Option<String>
-{
+fn __action49(__lookbehind: &usize, __lookahead: &usize) -> ::std::option::Option<String> {
     None
 }
 
-fn __action50<
->(
+fn __action50(
     (_, v, _): (usize, ::std::vec::Vec<(ast::Variable, ast::Type)>, usize),
-    (_, e, _): (usize, ::std::option::Option<(ast::Variable, ast::Type)>, usize),
-) -> Vec<(ast::Variable, ast::Type)>
-{
+    (_, e, _): (
+        usize,
+        ::std::option::Option<(ast::Variable, ast::Type)>,
+        usize,
+    ),
+) -> Vec<(ast::Variable, ast::Type)> {
     match e {
         None => v,
         Some(e) => {
@@ -19102,187 +18965,148 @@ fn __action50<
     }
 }
 
-fn __action51<
->(
-    __lookbehind: &usize,
-    __lookahead: &usize,
-) -> ::std::vec::Vec<ast::ProgramItem>
-{
+fn __action51(__lookbehind: &usize, __lookahead: &usize) -> ::std::vec::Vec<ast::ProgramItem> {
     vec![]
 }
 
-fn __action52<
->(
+fn __action52(
     (_, v, _): (usize, ::std::vec::Vec<ast::ProgramItem>, usize),
-) -> ::std::vec::Vec<ast::ProgramItem>
-{
+) -> ::std::vec::Vec<ast::ProgramItem> {
     v
 }
 
-fn __action53<
->(
-    (_, __0, _): (usize, ast::ProgramItem, usize),
-) -> ast::ProgramItem
-{
+fn __action53((_, __0, _): (usize, ast::ProgramItem, usize)) -> ast::ProgramItem {
     (__0)
 }
 
-fn __action54<
->(
-    (_, __0, _): (usize, ast::ProgramItem, usize),
-) -> ::std::vec::Vec<ast::ProgramItem>
-{
+fn __action54((_, __0, _): (usize, ast::ProgramItem, usize)) -> ::std::vec::Vec<ast::ProgramItem> {
     vec![__0]
 }
 
-fn __action55<
->(
+fn __action55(
     (_, v, _): (usize, ::std::vec::Vec<ast::ProgramItem>, usize),
     (_, e, _): (usize, ast::ProgramItem, usize),
-) -> ::std::vec::Vec<ast::ProgramItem>
-{
-    { let mut v = v; v.push(e); v }
+) -> ::std::vec::Vec<ast::ProgramItem> {
+    {
+        let mut v = v;
+        v.push(e);
+        v
+    }
 }
 
-fn __action56<
->(
+fn __action56(
     (_, __0, _): (usize, (ast::Variable, ast::Type), usize),
-) -> ::std::option::Option<(ast::Variable, ast::Type)>
-{
+) -> ::std::option::Option<(ast::Variable, ast::Type)> {
     Some(__0)
 }
 
-fn __action57<
->(
+fn __action57(
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> ::std::option::Option<(ast::Variable, ast::Type)>
-{
+) -> ::std::option::Option<(ast::Variable, ast::Type)> {
     None
 }
 
-fn __action58<
->(
+fn __action58(
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> ::std::vec::Vec<(ast::Variable, ast::Type)>
-{
+) -> ::std::vec::Vec<(ast::Variable, ast::Type)> {
     vec![]
 }
 
-fn __action59<
->(
+fn __action59(
     (_, v, _): (usize, ::std::vec::Vec<(ast::Variable, ast::Type)>, usize),
-) -> ::std::vec::Vec<(ast::Variable, ast::Type)>
-{
+) -> ::std::vec::Vec<(ast::Variable, ast::Type)> {
     v
 }
 
-fn __action60<
->(
+fn __action60(
     (_, __0, _): (usize, (ast::Variable, ast::Type), usize),
     (_, _, _): (usize, lexer::Token, usize),
-) -> (ast::Variable, ast::Type)
-{
+) -> (ast::Variable, ast::Type) {
     (__0)
 }
 
-fn __action61<
->(
-    (_, __0, _): (usize, ast::Statement, usize),
-) -> ::std::vec::Vec<ast::Statement>
-{
+fn __action61((_, __0, _): (usize, ast::Statement, usize)) -> ::std::vec::Vec<ast::Statement> {
     vec![__0]
 }
 
-fn __action62<
->(
+fn __action62(
     (_, v, _): (usize, ::std::vec::Vec<ast::Statement>, usize),
     (_, e, _): (usize, ast::Statement, usize),
-) -> ::std::vec::Vec<ast::Statement>
-{
-    { let mut v = v; v.push(e); v }
+) -> ::std::vec::Vec<ast::Statement> {
+    {
+        let mut v = v;
+        v.push(e);
+        v
+    }
 }
 
-fn __action63<
->(
+fn __action63(
     (_, __0, _): (usize, Box<ast::Expression>, usize),
-) -> ::std::option::Option<Box<ast::Expression>>
-{
+) -> ::std::option::Option<Box<ast::Expression>> {
     Some(__0)
 }
 
-fn __action64<
->(
+fn __action64(
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> ::std::option::Option<Box<ast::Expression>>
-{
+) -> ::std::option::Option<Box<ast::Expression>> {
     None
 }
 
-fn __action65<
->(
-    __lookbehind: &usize,
-    __lookahead: &usize,
-) -> ::std::vec::Vec<Box<ast::Expression>>
-{
+fn __action65(__lookbehind: &usize, __lookahead: &usize) -> ::std::vec::Vec<Box<ast::Expression>> {
     vec![]
 }
 
-fn __action66<
->(
+fn __action66(
     (_, v, _): (usize, ::std::vec::Vec<Box<ast::Expression>>, usize),
-) -> ::std::vec::Vec<Box<ast::Expression>>
-{
+) -> ::std::vec::Vec<Box<ast::Expression>> {
     v
 }
 
-fn __action67<
->(
+fn __action67(
     (_, __0, _): (usize, Box<ast::Expression>, usize),
     (_, _, _): (usize, lexer::Token, usize),
-) -> Box<ast::Expression>
-{
+) -> Box<ast::Expression> {
     (__0)
 }
 
-fn __action68<
->(
+fn __action68(
     (_, __0, _): (usize, Box<ast::Expression>, usize),
-) -> ::std::vec::Vec<Box<ast::Expression>>
-{
+) -> ::std::vec::Vec<Box<ast::Expression>> {
     vec![__0]
 }
 
-fn __action69<
->(
+fn __action69(
     (_, v, _): (usize, ::std::vec::Vec<Box<ast::Expression>>, usize),
     (_, e, _): (usize, Box<ast::Expression>, usize),
-) -> ::std::vec::Vec<Box<ast::Expression>>
-{
-    { let mut v = v; v.push(e); v }
+) -> ::std::vec::Vec<Box<ast::Expression>> {
+    {
+        let mut v = v;
+        v.push(e);
+        v
+    }
 }
 
-fn __action70<
->(
+fn __action70(
     (_, __0, _): (usize, (ast::Variable, ast::Type), usize),
-) -> ::std::vec::Vec<(ast::Variable, ast::Type)>
-{
+) -> ::std::vec::Vec<(ast::Variable, ast::Type)> {
     vec![__0]
 }
 
-fn __action71<
->(
+fn __action71(
     (_, v, _): (usize, ::std::vec::Vec<(ast::Variable, ast::Type)>, usize),
     (_, e, _): (usize, (ast::Variable, ast::Type), usize),
-) -> ::std::vec::Vec<(ast::Variable, ast::Type)>
-{
-    { let mut v = v; v.push(e); v }
+) -> ::std::vec::Vec<(ast::Variable, ast::Type)> {
+    {
+        let mut v = v;
+        v.push(e);
+        v
+    }
 }
 
-fn __action72<
->(
+fn __action72(
     __0: (usize, lexer::Token, usize),
     __1: (usize, String, usize),
     __2: (usize, lexer::Token, usize),
@@ -19290,545 +19114,316 @@ fn __action72<
     __4: (usize, lexer::Token, usize),
     __5: (usize, String, usize),
     __6: (usize, ast::Block, usize),
-) -> ast::Function
-{
+) -> ast::Function {
     let __start0 = __5.0.clone();
     let __end0 = __5.2.clone();
-    let __temp0 = __action48(
-        __5,
-    );
+    let __temp0 = __action48(__5);
     let __temp0 = (__start0, __temp0, __end0);
-    __action10(
-        __0,
-        __1,
-        __2,
-        __3,
-        __4,
-        __temp0,
-        __6,
-    )
+    __action10(__0, __1, __2, __3, __4, __temp0, __6)
 }
 
-fn __action73<
->(
+fn __action73(
     __0: (usize, lexer::Token, usize),
     __1: (usize, String, usize),
     __2: (usize, lexer::Token, usize),
     __3: (usize, Vec<(ast::Variable, ast::Type)>, usize),
     __4: (usize, lexer::Token, usize),
     __5: (usize, ast::Block, usize),
-) -> ast::Function
-{
+) -> ast::Function {
     let __start0 = __4.2.clone();
     let __end0 = __5.0.clone();
-    let __temp0 = __action49(
-        &__start0,
-        &__end0,
-    );
+    let __temp0 = __action49(&__start0, &__end0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action10(
-        __0,
-        __1,
-        __2,
-        __3,
-        __4,
-        __temp0,
-        __5,
-    )
+    __action10(__0, __1, __2, __3, __4, __temp0, __5)
 }
 
-fn __action74<
->(
+fn __action74(
     __0: (usize, lexer::Token, usize),
     __1: (usize, String, usize),
     __2: (usize, lexer::Token, usize),
     __3: (usize, Box<ast::Expression>, usize),
-) -> ast::Statement
-{
+) -> ast::Statement {
     let __start0 = __0.0.clone();
     let __end0 = __0.2.clone();
-    let __temp0 = __action43(
-        __0,
-    );
+    let __temp0 = __action43(__0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action15(
-        __temp0,
-        __1,
-        __2,
-        __3,
-    )
+    __action15(__temp0, __1, __2, __3)
 }
 
-fn __action75<
->(
+fn __action75(
     __0: (usize, String, usize),
     __1: (usize, lexer::Token, usize),
     __2: (usize, Box<ast::Expression>, usize),
-) -> ast::Statement
-{
+) -> ast::Statement {
     let __start0 = __0.0.clone();
     let __end0 = __0.0.clone();
-    let __temp0 = __action44(
-        &__start0,
-        &__end0,
-    );
+    let __temp0 = __action44(&__start0, &__end0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action15(
-        __temp0,
-        __0,
-        __1,
-        __2,
-    )
+    __action15(__temp0, __0, __1, __2)
 }
 
-fn __action76<
->(
+fn __action76(
     __0: (usize, (ast::Variable, ast::Type), usize),
     __1: (usize, lexer::Token, usize),
-) -> ::std::vec::Vec<(ast::Variable, ast::Type)>
-{
+) -> ::std::vec::Vec<(ast::Variable, ast::Type)> {
     let __start0 = __0.0.clone();
     let __end0 = __1.2.clone();
-    let __temp0 = __action60(
-        __0,
-        __1,
-    );
+    let __temp0 = __action60(__0, __1);
     let __temp0 = (__start0, __temp0, __end0);
-    __action70(
-        __temp0,
-    )
+    __action70(__temp0)
 }
 
-fn __action77<
->(
+fn __action77(
     __0: (usize, ::std::vec::Vec<(ast::Variable, ast::Type)>, usize),
     __1: (usize, (ast::Variable, ast::Type), usize),
     __2: (usize, lexer::Token, usize),
-) -> ::std::vec::Vec<(ast::Variable, ast::Type)>
-{
+) -> ::std::vec::Vec<(ast::Variable, ast::Type)> {
     let __start0 = __1.0.clone();
     let __end0 = __2.2.clone();
-    let __temp0 = __action60(
-        __1,
-        __2,
-    );
+    let __temp0 = __action60(__1, __2);
     let __temp0 = (__start0, __temp0, __end0);
-    __action71(
-        __0,
-        __temp0,
-    )
+    __action71(__0, __temp0)
 }
 
-fn __action78<
->(
-    __0: (usize, ::std::option::Option<(ast::Variable, ast::Type)>, usize),
-) -> Vec<(ast::Variable, ast::Type)>
-{
+fn __action78(
+    __0: (
+        usize,
+        ::std::option::Option<(ast::Variable, ast::Type)>,
+        usize,
+    ),
+) -> Vec<(ast::Variable, ast::Type)> {
     let __start0 = __0.0.clone();
     let __end0 = __0.0.clone();
-    let __temp0 = __action58(
-        &__start0,
-        &__end0,
-    );
+    let __temp0 = __action58(&__start0, &__end0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action50(
-        __temp0,
-        __0,
-    )
+    __action50(__temp0, __0)
 }
 
-fn __action79<
->(
+fn __action79(
     __0: (usize, ::std::vec::Vec<(ast::Variable, ast::Type)>, usize),
-    __1: (usize, ::std::option::Option<(ast::Variable, ast::Type)>, usize),
-) -> Vec<(ast::Variable, ast::Type)>
-{
+    __1: (
+        usize,
+        ::std::option::Option<(ast::Variable, ast::Type)>,
+        usize,
+    ),
+) -> Vec<(ast::Variable, ast::Type)> {
     let __start0 = __0.0.clone();
     let __end0 = __0.2.clone();
-    let __temp0 = __action59(
-        __0,
-    );
+    let __temp0 = __action59(__0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action50(
-        __temp0,
-        __1,
-    )
+    __action50(__temp0, __1)
 }
 
-fn __action80<
->(
+fn __action80(
     __0: (usize, Box<ast::Expression>, usize),
     __1: (usize, lexer::Token, usize),
-) -> ::std::vec::Vec<Box<ast::Expression>>
-{
+) -> ::std::vec::Vec<Box<ast::Expression>> {
     let __start0 = __0.0.clone();
     let __end0 = __1.2.clone();
-    let __temp0 = __action67(
-        __0,
-        __1,
-    );
+    let __temp0 = __action67(__0, __1);
     let __temp0 = (__start0, __temp0, __end0);
-    __action68(
-        __temp0,
-    )
+    __action68(__temp0)
 }
 
-fn __action81<
->(
+fn __action81(
     __0: (usize, ::std::vec::Vec<Box<ast::Expression>>, usize),
     __1: (usize, Box<ast::Expression>, usize),
     __2: (usize, lexer::Token, usize),
-) -> ::std::vec::Vec<Box<ast::Expression>>
-{
+) -> ::std::vec::Vec<Box<ast::Expression>> {
     let __start0 = __1.0.clone();
     let __end0 = __2.2.clone();
-    let __temp0 = __action67(
-        __1,
-        __2,
-    );
+    let __temp0 = __action67(__1, __2);
     let __temp0 = (__start0, __temp0, __end0);
-    __action69(
-        __0,
-        __temp0,
-    )
+    __action69(__0, __temp0)
 }
 
-fn __action82<
->(
+fn __action82(
     __0: (usize, ::std::option::Option<Box<ast::Expression>>, usize),
-) -> Vec<Box<ast::Expression>>
-{
+) -> Vec<Box<ast::Expression>> {
     let __start0 = __0.0.clone();
     let __end0 = __0.0.clone();
-    let __temp0 = __action65(
-        &__start0,
-        &__end0,
-    );
+    let __temp0 = __action65(&__start0, &__end0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action42(
-        __temp0,
-        __0,
-    )
+    __action42(__temp0, __0)
 }
 
-fn __action83<
->(
+fn __action83(
     __0: (usize, ::std::vec::Vec<Box<ast::Expression>>, usize),
     __1: (usize, ::std::option::Option<Box<ast::Expression>>, usize),
-) -> Vec<Box<ast::Expression>>
-{
+) -> Vec<Box<ast::Expression>> {
     let __start0 = __0.0.clone();
     let __end0 = __0.2.clone();
-    let __temp0 = __action66(
-        __0,
-    );
+    let __temp0 = __action66(__0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action42(
-        __temp0,
-        __1,
-    )
+    __action42(__temp0, __1)
 }
 
-fn __action84<
->(
+fn __action84(
     __0: (usize, ast::Statement, usize),
     __1: (usize, lexer::Token, usize),
-) -> ::std::vec::Vec<ast::Statement>
-{
+) -> ::std::vec::Vec<ast::Statement> {
     let __start0 = __0.0.clone();
     let __end0 = __1.2.clone();
-    let __temp0 = __action47(
-        __0,
-        __1,
-    );
+    let __temp0 = __action47(__0, __1);
     let __temp0 = (__start0, __temp0, __end0);
-    __action61(
-        __temp0,
-    )
+    __action61(__temp0)
 }
 
-fn __action85<
->(
+fn __action85(
     __0: (usize, ::std::vec::Vec<ast::Statement>, usize),
     __1: (usize, ast::Statement, usize),
     __2: (usize, lexer::Token, usize),
-) -> ::std::vec::Vec<ast::Statement>
-{
+) -> ::std::vec::Vec<ast::Statement> {
     let __start0 = __1.0.clone();
     let __end0 = __2.2.clone();
-    let __temp0 = __action47(
-        __1,
-        __2,
-    );
+    let __temp0 = __action47(__1, __2);
     let __temp0 = (__start0, __temp0, __end0);
-    __action62(
-        __0,
-        __temp0,
-    )
+    __action62(__0, __temp0)
 }
 
-fn __action86<
->(
-    __0: (usize, lexer::Token, usize),
-    __1: (usize, lexer::Token, usize),
-) -> ast::Block
-{
+fn __action86(__0: (usize, lexer::Token, usize), __1: (usize, lexer::Token, usize)) -> ast::Block {
     let __start0 = __0.2.clone();
     let __end0 = __1.0.clone();
-    let __temp0 = __action45(
-        &__start0,
-        &__end0,
-    );
+    let __temp0 = __action45(&__start0, &__end0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action13(
-        __0,
-        __temp0,
-        __1,
-    )
+    __action13(__0, __temp0, __1)
 }
 
-fn __action87<
->(
+fn __action87(
     __0: (usize, lexer::Token, usize),
     __1: (usize, ::std::vec::Vec<ast::Statement>, usize),
     __2: (usize, lexer::Token, usize),
-) -> ast::Block
-{
+) -> ast::Block {
     let __start0 = __1.0.clone();
     let __end0 = __1.2.clone();
-    let __temp0 = __action46(
-        __1,
-    );
+    let __temp0 = __action46(__1);
     let __temp0 = (__start0, __temp0, __end0);
-    __action13(
-        __0,
-        __temp0,
-        __2,
-    )
+    __action13(__0, __temp0, __2)
 }
 
-fn __action88<
->(
-    __0: (usize, ast::ProgramItem, usize),
-) -> ::std::vec::Vec<ast::ProgramItem>
-{
+fn __action88(__0: (usize, ast::ProgramItem, usize)) -> ::std::vec::Vec<ast::ProgramItem> {
     let __start0 = __0.0.clone();
     let __end0 = __0.2.clone();
-    let __temp0 = __action53(
-        __0,
-    );
+    let __temp0 = __action53(__0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action54(
-        __temp0,
-    )
+    __action54(__temp0)
 }
 
-fn __action89<
->(
+fn __action89(
     __0: (usize, ::std::vec::Vec<ast::ProgramItem>, usize),
     __1: (usize, ast::ProgramItem, usize),
-) -> ::std::vec::Vec<ast::ProgramItem>
-{
+) -> ::std::vec::Vec<ast::ProgramItem> {
     let __start0 = __1.0.clone();
     let __end0 = __1.2.clone();
-    let __temp0 = __action53(
-        __1,
-    );
+    let __temp0 = __action53(__1);
     let __temp0 = (__start0, __temp0, __end0);
-    __action55(
-        __0,
-        __temp0,
-    )
+    __action55(__0, __temp0)
 }
 
-fn __action90<
->(
-    __lookbehind: &usize,
-    __lookahead: &usize,
-) -> ast::Program
-{
+fn __action90(__lookbehind: &usize, __lookahead: &usize) -> ast::Program {
     let __start0 = __lookbehind.clone();
     let __end0 = __lookahead.clone();
-    let __temp0 = __action51(
-        &__start0,
-        &__end0,
-    );
+    let __temp0 = __action51(&__start0, &__end0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action7(
-        __temp0,
-    )
+    __action7(__temp0)
 }
 
-fn __action91<
->(
-    __0: (usize, ::std::vec::Vec<ast::ProgramItem>, usize),
-) -> ast::Program
-{
+fn __action91(__0: (usize, ::std::vec::Vec<ast::ProgramItem>, usize)) -> ast::Program {
     let __start0 = __0.0.clone();
     let __end0 = __0.2.clone();
-    let __temp0 = __action52(
-        __0,
-    );
+    let __temp0 = __action52(__0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action7(
-        __temp0,
-    )
+    __action7(__temp0)
 }
 
-fn __action92<
->(
-    __0: (usize, (ast::Variable, ast::Type), usize),
-) -> Vec<(ast::Variable, ast::Type)>
-{
+fn __action92(__0: (usize, (ast::Variable, ast::Type), usize)) -> Vec<(ast::Variable, ast::Type)> {
     let __start0 = __0.0.clone();
     let __end0 = __0.2.clone();
-    let __temp0 = __action56(
-        __0,
-    );
+    let __temp0 = __action56(__0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action78(
-        __temp0,
-    )
+    __action78(__temp0)
 }
 
-fn __action93<
->(
-    __lookbehind: &usize,
-    __lookahead: &usize,
-) -> Vec<(ast::Variable, ast::Type)>
-{
+fn __action93(__lookbehind: &usize, __lookahead: &usize) -> Vec<(ast::Variable, ast::Type)> {
     let __start0 = __lookbehind.clone();
     let __end0 = __lookahead.clone();
-    let __temp0 = __action57(
-        &__start0,
-        &__end0,
-    );
+    let __temp0 = __action57(&__start0, &__end0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action78(
-        __temp0,
-    )
+    __action78(__temp0)
 }
 
-fn __action94<
->(
+fn __action94(
     __0: (usize, ::std::vec::Vec<(ast::Variable, ast::Type)>, usize),
     __1: (usize, (ast::Variable, ast::Type), usize),
-) -> Vec<(ast::Variable, ast::Type)>
-{
+) -> Vec<(ast::Variable, ast::Type)> {
     let __start0 = __1.0.clone();
     let __end0 = __1.2.clone();
-    let __temp0 = __action56(
-        __1,
-    );
+    let __temp0 = __action56(__1);
     let __temp0 = (__start0, __temp0, __end0);
-    __action79(
-        __0,
-        __temp0,
-    )
+    __action79(__0, __temp0)
 }
 
-fn __action95<
->(
+fn __action95(
     __0: (usize, ::std::vec::Vec<(ast::Variable, ast::Type)>, usize),
-) -> Vec<(ast::Variable, ast::Type)>
-{
+) -> Vec<(ast::Variable, ast::Type)> {
     let __start0 = __0.2.clone();
     let __end0 = __0.2.clone();
-    let __temp0 = __action57(
-        &__start0,
-        &__end0,
-    );
+    let __temp0 = __action57(&__start0, &__end0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action79(
-        __0,
-        __temp0,
-    )
+    __action79(__0, __temp0)
 }
 
-fn __action96<
->(
-    __0: (usize, Box<ast::Expression>, usize),
-) -> Vec<Box<ast::Expression>>
-{
+fn __action96(__0: (usize, Box<ast::Expression>, usize)) -> Vec<Box<ast::Expression>> {
     let __start0 = __0.0.clone();
     let __end0 = __0.2.clone();
-    let __temp0 = __action63(
-        __0,
-    );
+    let __temp0 = __action63(__0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action82(
-        __temp0,
-    )
+    __action82(__temp0)
 }
 
-fn __action97<
->(
-    __lookbehind: &usize,
-    __lookahead: &usize,
-) -> Vec<Box<ast::Expression>>
-{
+fn __action97(__lookbehind: &usize, __lookahead: &usize) -> Vec<Box<ast::Expression>> {
     let __start0 = __lookbehind.clone();
     let __end0 = __lookahead.clone();
-    let __temp0 = __action64(
-        &__start0,
-        &__end0,
-    );
+    let __temp0 = __action64(&__start0, &__end0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action82(
-        __temp0,
-    )
+    __action82(__temp0)
 }
 
-fn __action98<
->(
+fn __action98(
     __0: (usize, ::std::vec::Vec<Box<ast::Expression>>, usize),
     __1: (usize, Box<ast::Expression>, usize),
-) -> Vec<Box<ast::Expression>>
-{
+) -> Vec<Box<ast::Expression>> {
     let __start0 = __1.0.clone();
     let __end0 = __1.2.clone();
-    let __temp0 = __action63(
-        __1,
-    );
+    let __temp0 = __action63(__1);
     let __temp0 = (__start0, __temp0, __end0);
-    __action83(
-        __0,
-        __temp0,
-    )
+    __action83(__0, __temp0)
 }
 
-fn __action99<
->(
+fn __action99(
     __0: (usize, ::std::vec::Vec<Box<ast::Expression>>, usize),
-) -> Vec<Box<ast::Expression>>
-{
+) -> Vec<Box<ast::Expression>> {
     let __start0 = __0.2.clone();
     let __end0 = __0.2.clone();
-    let __temp0 = __action64(
-        &__start0,
-        &__end0,
-    );
+    let __temp0 = __action64(&__start0, &__end0);
     let __temp0 = (__start0, __temp0, __end0);
-    __action83(
-        __0,
-        __temp0,
-    )
+    __action83(__0, __temp0)
 }
 
-pub trait __ToTriple<> {
+pub trait __ToTriple {
     type Error;
-    fn to_triple(value: Self) -> Result<(usize,lexer::Token,usize),Self::Error>;
+    fn to_triple(value: Self) -> Result<(usize, lexer::Token, usize), Self::Error>;
 }
 
-impl<> __ToTriple<> for (usize, lexer::Token, usize) {
+impl __ToTriple for (usize, lexer::Token, usize) {
     type Error = lexer::LexicalError;
-    fn to_triple(value: Self) -> Result<(usize,lexer::Token,usize),lexer::LexicalError> {
+    fn to_triple(value: Self) -> Result<(usize, lexer::Token, usize), lexer::LexicalError> {
         Ok(value)
     }
 }
-impl<> __ToTriple<> for Result<(usize, lexer::Token, usize),lexer::LexicalError> {
+impl __ToTriple for Result<(usize, lexer::Token, usize), lexer::LexicalError> {
     type Error = lexer::LexicalError;
-    fn to_triple(value: Self) -> Result<(usize,lexer::Token,usize),lexer::LexicalError> {
+    fn to_triple(value: Self) -> Result<(usize, lexer::Token, usize), lexer::LexicalError> {
         value
     }
 }
