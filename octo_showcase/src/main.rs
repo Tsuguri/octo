@@ -10,11 +10,11 @@ use core::mem::{size_of, ManuallyDrop};
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-mod images;
 mod buffers;
+mod images;
 
-use images::ImageData;
 use buffers::BufferBundle;
+use images::ImageData;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Triangle {
@@ -80,12 +80,11 @@ impl Triangle {
     }
 }
 
-
 use std::time::Instant;
 
 use gfx_hal::{
     adapter::{Adapter, MemoryTypeId, PhysicalDevice},
-    buffer::{IndexBufferView, Usage as BufferUsage,},
+    buffer::{IndexBufferView, Usage as BufferUsage},
     command::{ClearColor, ClearValue, CommandBuffer, MultiShot, Primary},
     device::Device,
     format::{Aspects, ChannelType, Format, Swizzle},
@@ -102,7 +101,7 @@ use gfx_hal::{
     },
     queue::{family::QueueGroup, Submission},
     window::{Backbuffer, Extent2D, FrameSync, PresentMode, Swapchain, SwapchainConfig},
-    Backend, Gpu, Graphics, Instance, Primitive, QueueFamily, Surface, IndexType, DescriptorPool,
+    Backend, DescriptorPool, Gpu, Graphics, IndexType, Instance, Primitive, QueueFamily, Surface,
 };
 pub const VERTEX_SOURCE: &str = "#version 450
 layout (location = 0) in vec2 position;
@@ -452,8 +451,13 @@ impl HalState {
             .map(|_| command_pool.acquire_command_buffer())
             .collect();
 
-        let (descriptor_set_layouts, descriptor_pool, descriptor_set, pipeline_layout, graphics_pipeline) =
-            Self::create_pipeline(&mut device, extent, &render_pass)?;
+        let (
+            descriptor_set_layouts,
+            descriptor_pool,
+            descriptor_set,
+            pipeline_layout,
+            graphics_pipeline,
+        ) = Self::create_pipeline(&mut device, extent, &render_pass)?;
 
         let (vertices, indices) = unsafe {
             const F32_XY_RGB_UV_QUAD: usize = size_of::<f32>() * (2 + 3 + 2) * 4;
@@ -482,7 +486,10 @@ impl HalState {
             &device,
             &mut command_pool,
             &mut queue_group.queues[0],
-            image::load_from_memory(CREATURE_BYTES).expect("binary corrupted").to_rgba(),)?;
+            image::load_from_memory(CREATURE_BYTES)
+                .expect("binary corrupted")
+                .to_rgba(),
+        )?;
 
         unsafe {
             device.write_descriptor_sets(vec![
@@ -503,7 +510,6 @@ impl HalState {
                 },
             ]);
         }
-
 
         Ok(Self {
             vertices,
@@ -581,7 +587,13 @@ impl HalState {
                 .create_shader_module(fragment_compile_artifact.as_binary_u8())
                 .map_err(|_| "Couldn't make the fragment module")?
         };
-        let (descriptor_set_layouts, descriptor_pool, descriptor_set, pipeline_layout, gfx_pipeline) = {
+        let (
+            descriptor_set_layouts,
+            descriptor_pool,
+            descriptor_set,
+            pipeline_layout,
+            gfx_pipeline,
+        ) = {
             let (vs_entry, fs_entry) = (
                 EntryPoint {
                     entry: "main",
@@ -707,29 +719,30 @@ impl HalState {
                         .create_descriptor_set_layout(bindings, immutable_samplers)
                         .map_err(|_| "Couldn't make a DescriptorSetLayout")?
                 }];
-            
+
             let mut descriptor_pool = unsafe {
-                device.create_descriptor_pool(
-                    1,
-                    &[
-                        gfx_hal::pso::DescriptorRangeDesc {
-                            ty: gfx_hal::pso::DescriptorType::SampledImage,
-                            count: 1,
-                        },
-                        gfx_hal::pso::DescriptorRangeDesc {
-                            ty: gfx_hal::pso::DescriptorType::Sampler,
-                            count: 1,
-                        },
-                    ],
-                ).map_err(|_| "Couldn't create a descriptor pool!")?
+                device
+                    .create_descriptor_pool(
+                        1,
+                        &[
+                            gfx_hal::pso::DescriptorRangeDesc {
+                                ty: gfx_hal::pso::DescriptorType::SampledImage,
+                                count: 1,
+                            },
+                            gfx_hal::pso::DescriptorRangeDesc {
+                                ty: gfx_hal::pso::DescriptorType::Sampler,
+                                count: 1,
+                            },
+                        ],
+                    )
+                    .map_err(|_| "Couldn't create a descriptor pool!")?
             };
 
             let descriptor_set = unsafe {
-                descriptor_pool.allocate_set(&descriptor_set_layouts[0])
+                descriptor_pool
+                    .allocate_set(&descriptor_set_layouts[0])
                     .map_err(|_| "Couldn't make a Descriptor Set")?
             };
-
-
 
             let push_constants = vec![(ShaderStageFlags::FRAGMENT, 0..1)];
             let layout = unsafe {
@@ -765,14 +778,26 @@ impl HalState {
                 }
             };
 
-            (descriptor_set_layouts, descriptor_pool, descriptor_set, layout, gfx_pipeline)
+            (
+                descriptor_set_layouts,
+                descriptor_pool,
+                descriptor_set,
+                layout,
+                gfx_pipeline,
+            )
         };
         unsafe {
             device.destroy_shader_module(vertex_shader_module);
             device.destroy_shader_module(fragment_shader_module);
         }
 
-        Ok((descriptor_set_layouts, descriptor_pool, descriptor_set, pipeline_layout, gfx_pipeline))
+        Ok((
+            descriptor_set_layouts,
+            descriptor_pool,
+            descriptor_set,
+            pipeline_layout,
+            gfx_pipeline,
+        ))
     }
 
     pub fn draw_quad_frame(&mut self, quad: Quad) -> Result<(), &'static str> {
@@ -847,7 +872,7 @@ impl HalState {
                     0,
                     &[time_f32.to_bits()],
                 );
-                encoder.draw_indexed(0..6, 0,  0..1);
+                encoder.draw_indexed(0..6, 0, 0..1);
             }
             buffer.finish();
         }
@@ -961,7 +986,8 @@ impl core::ops::Drop for HalState {
             self.vertices.manually_drop(&self.device);
             self.indices.manually_drop(&self.device);
             self.texture.manually_drop(&self.device);
-            self.device.destroy_descriptor_pool(ManuallyDrop::into_inner(read(&self.descriptor_pool)));
+            self.device
+                .destroy_descriptor_pool(ManuallyDrop::into_inner(read(&self.descriptor_pool)));
             self.device
                 .destroy_pipeline_layout(ManuallyDrop::into_inner(read(&self.pipeline_layout)));
             self.device
@@ -1017,7 +1043,12 @@ pub fn do_the_render(hal: &mut HalState, local_state: &LocalState) -> Result<(),
     let triangle = Triangle {
         points: [[-0.5, 0.5], [-0.5, -0.5], [x as f32, y as f32]],
     };
-    let quad = Quad {x:-0.5, y:-0.5, w: 1.0, h: 1.0};
+    let quad = Quad {
+        x: -0.5,
+        y: -0.5,
+        w: 1.0,
+        h: 1.0,
+    };
     hal.draw_quad_frame(quad)
 }
 
