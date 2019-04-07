@@ -16,6 +16,9 @@ mod images;
 use buffers::BufferBundle;
 use images::ImageData;
 
+use octo_runtime::OctoModule;
+use serde_json;
+
 #[derive(Debug, Clone, Copy)]
 pub struct Triangle {
     pub points: [[f32; 2]; 3],
@@ -83,13 +86,13 @@ impl Triangle {
 use std::time::Instant;
 
 use gfx_hal::{
-    adapter::{Adapter, MemoryTypeId, PhysicalDevice},
+    adapter::{Adapter, /*MemoryTypeId,*/ PhysicalDevice},
     buffer::{IndexBufferView, Usage as BufferUsage},
     command::{ClearColor, ClearValue, CommandBuffer, MultiShot, Primary},
     device::Device,
     format::{Aspects, ChannelType, Format, Swizzle},
     image::{Extent, Layout, SubresourceRange, Usage, ViewKind},
-    memory::{Properties, Requirements},
+    //memory::{Properties, Requirements},
     pass::{Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp, Subpass, SubpassDesc},
     pool::{CommandPool, CommandPoolCreateFlags},
     pso::{
@@ -101,7 +104,15 @@ use gfx_hal::{
     },
     queue::{family::QueueGroup, Submission},
     window::{Backbuffer, Extent2D, FrameSync, PresentMode, Swapchain, SwapchainConfig},
-    Backend, DescriptorPool, Gpu, Graphics, IndexType, Instance, Primitive, QueueFamily, Surface,
+    Backend,
+    DescriptorPool,
+    Gpu,
+    Graphics,
+    IndexType,
+    Instance,
+    Primitive,
+    QueueFamily,
+    Surface,
 };
 pub const VERTEX_SOURCE: &str = "#version 450
 layout (location = 0) in vec2 position;
@@ -180,8 +191,6 @@ pub struct WinitState {
 }
 
 pub struct HalState {
-    //buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
-    //memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
     vertices: BufferBundle<back::Backend, back::Device>,
     indices: BufferBundle<back::Backend, back::Device>,
     descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
@@ -232,6 +241,10 @@ impl LocalState {
 
 impl HalState {
     pub fn new(window: &Window) -> Result<Self, &'static str> {
+        let p = 12;
+        for i in 0..5 {
+            println!("heh")
+        }
         let instance = back::Instance::create(WINDOW_NAME, 1);
         let mut surface = instance.create_surface(window);
 
@@ -319,6 +332,7 @@ impl HalState {
                         .min(window_client_area.height as u32),
                 }
             };
+
             let image_count = if present_mode == PresentMode::Mailbox {
                 (caps.image_count.end - 1).min(3)
             } else {
@@ -506,7 +520,9 @@ impl HalState {
                     set: &descriptor_set,
                     binding: 1,
                     array_offset: 0,
-                    descriptors: Some(gfx_hal::pso::Descriptor::Sampler(texture.sampler.deref())),
+                    descriptors: Some(gfx_hal::pso::Descriptor::Sampler(
+                        texture.sampler.samp.deref(),
+                    )),
                 },
             ]);
         }
@@ -1052,10 +1068,16 @@ pub fn do_the_render(hal: &mut HalState, local_state: &LocalState) -> Result<(),
     hal.draw_quad_frame(quad)
 }
 
+use std::fs::File;
 fn main() {
     simple_logger::init().unwrap();
 
     info!("whoop whoop");
+
+    let f = File::open("src/file.octo_bin").unwrap();
+
+    let module: OctoModule = serde_json::from_reader(&f).unwrap();
+    println!("name: {}", module.name);
 
     let mut winit_state = WinitState::default();
     let mut hal_state = HalState::new(&winit_state.window).unwrap();

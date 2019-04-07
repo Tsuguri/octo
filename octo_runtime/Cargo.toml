@@ -2,6 +2,7 @@
 name = "octo_runtime"
 version = "0.1.0"
 authors = ["Adam Winiarczuk <adam.winiarczuk@gmail.com>"]
+edition = "2018"
 
 license = "MIT"
 
@@ -10,22 +11,5 @@ description = "Runtime for octo"
 repository = "https://github.com/Tsuguri/octo"
 documentation = "None"
 
-[features]
-default = ["vulkan"]
-dx12 = ["gfx-backend-dx12"]
-vulkan = ["gfx-backend-vulkan"]
-
 [dependencies]
-gfx-hal = "0.1"
-image = "0.18"
-log = "0.4"
-winit = "0.18"
-glsl-to-spirv = "0.1.4"
-
-[dependencies.gfx-backend-vulkan]
-version = "0.1"
-optional = true
-
-[target.'cfg(windows)'.dependencies.gfx-backend-dx12]
-version = "0.1"
-optional = true
+serde = {version = "1.0.60", features = ["derive"]}

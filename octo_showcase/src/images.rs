@@ -19,14 +19,18 @@ use gfx_hal::{
     Backend,
 };
 
-pub struct Sampler<B::Backend, D: Device<B>> {
+pub struct Sampler<B: Backend, D: Device<B>> {
     pub samp: ManuallyDrop<B::Sampler>,
     phantom: PhantomData<D>,
 }
 
 impl<B: Backend, D:Device<B>> Sampler<B,D> {
+    pub fn new(samp: B::Sampler) -> Self {
+        Self {samp: ManuallyDrop::new(samp), phantom: PhantomData}
+    }
 
-    pub unsafe manually_drop(&self, device: &D) {
+    pub unsafe fn manually_drop(&self, device: &D) {
+        device.destroy_sampler(ManuallyDrop::into_inner(core::ptr::read(&self.samp)));
     }
 }
 
@@ -35,14 +39,15 @@ pub struct ImageData<B: Backend, D: Device<B>> {
     pub requirements: Requirements,
     pub memory: ManuallyDrop<B::Memory>,
     pub image_view: ManuallyDrop<B::ImageView>,
-    pub sampler: ManuallyDrop<B::Sampler>,
+    pub sampler: Sampler<B, D>,
     pub phantom: PhantomData<D>,
 }
 
 impl<B: Backend, D: Device<B>> ImageData<B, D> {
     pub unsafe fn manually_drop(&self, device: &D) {
         use core::ptr::read;
-        device.destroy_sampler(ManuallyDrop::into_inner(read(&self.sampler)));
+        self.sampler.manually_drop(device);
+
         device.destroy_image_view(ManuallyDrop::into_inner(read(&self.image_view)));
         device.destroy_image(ManuallyDrop::into_inner(read(&self.image)));
         device.free_memory(ManuallyDrop::into_inner(read(&self.memory)));
@@ -215,7 +220,7 @@ impl<B: Backend, D: Device<B>> ImageData<B, D> {
                 requirements,
                 memory: ManuallyDrop::new(memory),
                 image_view: ManuallyDrop::new(image_view),
-                sampler: ManuallyDrop::new(sampler),
+                sampler: Sampler::new(sampler),
                 phantom: PhantomData,
             })
         }
