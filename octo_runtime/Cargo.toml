@@ -1,0 +1,15 @@
+[package]
+name = "octo_runtime"
+version = "0.1.0"
+authors = ["Adam Winiarczuk <adam.winiarczuk@gmail.com>"]
+edition = "2018"
+
+license = "MIT"
+
+description = "Runtime for octo"
+
+repository = "https://github.com/Tsuguri/octo"
+documentation = "None"
+
+[dependencies]
+serde = {version = "1.0.60", features = ["derive"]}

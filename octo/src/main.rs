@@ -1,11 +1,8 @@
 #[macro_use]
 extern crate structopt;
+extern crate octo;
 
-extern crate lalrpop_util;
-extern crate octo_parser;
-
-mod semantics;
-
+use octo::*;
 use std::fs::File;
 use std::io::prelude::*;
 use std::string::ToString;
