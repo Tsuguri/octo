@@ -377,7 +377,7 @@ impl<'input> Iterator for Lexer<'input> {
                                     i,
                                     Token::Identifier(x.to_owned()),
                                     i + len - 1,
-                                )))
+                                )));
                             }
                         }
                     }

@@ -1,0 +1,13 @@
+[package]
+name = "octo"
+version = "0.1.0"
+authors = ["Adam Winiarczuk <adamosca@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+structopt = "0.2"
+clap = { version = "2.20", default-features = false }
+lalrpop-util = "0.16.3"
+serde_json = "1.0"
+octo_parser = { path = "../octo_parser", version = "0.0.1"}
+octo_runtime = { path = "../octo_runtime", version = "0.1"}

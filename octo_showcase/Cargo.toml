@@ -1,0 +1,35 @@
+[package]
+name = "octo_showcase"
+version = "0.0.1"
+authors = ["Adam Winiarczuk <adam.winiarczuk@gmail.com>"]
+edition = "2018"
+
+license = "MIT"
+
+description = "Showcase of octo runtime"
+
+repository = "https://github.com/Tsuguri/octo"
+documentation = "None"
+
+build = "build.rs"
+# [features]
+# vulkan = ["octo_runtime/vulkan"]
+# dx12 = ["octo_runtime/dx12"]
+
+[dependencies]
+octo_runtime = {path = "../octo_runtime", version = "0.1.0"}
+
+log = "0.4.0"
+simple_logger = "1.0"
+winit = "0.18"
+gfx-hal = "0.1"
+arrayvec = "0.4"
+shaderc = "0.3.16"
+image = "0.21"
+nalgebra-glm = "0.2"
+
+gfx-backend-vulkan = "0.1"
+serde_json = "1.0"
+
+[build-dependencies]
+octo = {path="../octo", version="0.1.0"}

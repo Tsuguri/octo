@@ -1,3 +1,4 @@
 **/target
 **/*.rs.bk
 parser/src/grammar.rs
+**/*.octo_bin
