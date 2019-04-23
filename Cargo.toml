@@ -4,5 +4,4 @@ members = [
         "octo_parser",
         "octo_runtime",
         "octo_showcase",
-	"octo_gtk",
 ]
