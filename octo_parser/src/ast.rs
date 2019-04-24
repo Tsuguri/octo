@@ -131,3 +131,12 @@ impl Variable {
         Variable { identifier, typ }
     }
 }
+
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn firt_test() {
+        assert_eq!(1, 1);
+    }
+}
