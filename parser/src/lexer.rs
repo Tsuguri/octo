@@ -270,6 +270,7 @@ impl<'input> Iterator for Lexer<'input> {
                 Some((_, ' ')) => continue,  // skip whitespace characters
                 Some((_, '\t')) => continue, //
                 Some((_, '\n')) => continue, //
+                Some((_, '\r')) => continue, //
 
                 Some((i, '(')) => return ok!(ParOpen, i),
                 Some((i, ')')) => return ok!(ParClose, i),

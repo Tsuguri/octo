@@ -92,13 +92,12 @@ fn show_code_snippet(
     help: Option<&str>,
 ) {
     //
-    //println!("Entire code lenght: {}", src.len());
     let snippet = match line {
         0 => [0, 1, 2],                                   // first line
         n if n + 1 == lines.lines() => [n - 2, n - 1, n], // last line
         n => [n - 1, n, n + 1],                           // all others
     };
-    for snip in snippet.iter() {
+    for snip in snippet.iter().filter(|x| **x < lines.lines()) {
         let (from, to) = lines.get_line_span(*snip).unwrap();
         // println!(
         //     "start: {}, end: {}, from: {}, to: {}",
@@ -131,7 +130,7 @@ pub fn show_location(
     match lines.get_line(location.0) {
         None => println!("in file: {} at unknown position", filepath),
         Some((line, _, _)) => {
-            println!("--> at: {},{}", filepath, line);
+            println!("--> at: {},{}", filepath, line + 1);
             show_code_snippet(line, lines, (location.0, location.1), help);
         }
     }

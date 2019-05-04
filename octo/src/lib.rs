@@ -1,22 +1,37 @@
 extern crate lalrpop_util;
 
 use std::path::Path;
-use std::io::Write;
+use std::io::{Write, Read};
 use std::fs::File;
 use octo_runtime::OctoModule;
 
-pub fn hello(path: &str) {
+pub fn process_file(path: &str) {
     println!("Processing file at: {}", path);
-    process_file(path);
-}
-
-fn process_file(path: &str) {
     let p = Path::new(path);
 
     if !p.is_file() {
         panic!("given path is not a file: {}", path);
     }
     let result_path = p.with_extension("octo_bin");
+
+    let mut file = File::open(path).unwrap();
+    let mut data = String::new();
+    file.read_to_string(&mut data).unwrap();
+
+    // do something here;
+
+    let mut ast = match parser::parse(path, &data, false) {
+        Err(warning) => {
+            panic!("Command failed: {:?}", warning);
+        },
+        Ok(ast) => ast,
+    };
+
+    semantics::analyze(ast).map_err(|errs| {
+        for error in errs {
+            println!("--> {:?}", error);
+        }
+    }).unwrap();
 
     let module = OctoModule::new();
     

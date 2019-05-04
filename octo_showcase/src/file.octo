@@ -1,1 +1,6 @@
-wut
+fun superFun(first: string, second: float) float {
+    print(first);
+    let p = (((((1222346543234))))) + second;
+    let f = p > 0 or superFun(2,3);
+    f = p > 0;
+}
