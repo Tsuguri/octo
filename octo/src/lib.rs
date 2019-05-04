@@ -1,5 +1,4 @@
 extern crate lalrpop_util;
-extern crate octo_parser;
 
 use std::path::Path;
 use std::io::Write;

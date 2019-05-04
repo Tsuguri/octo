@@ -1,7 +1,8 @@
 [workspace]
 members = [
         "octo",
-        "octo_parser",
+        "parser",
         "octo_runtime",
         "octo_showcase",
+        "errors"
 ]

@@ -48,7 +48,7 @@ fn main() {
 }
 
 fn interpret(location: &str, data: &str, lex: bool) -> bool {
-    match octo_parser::parse(location, data, lex) {
+    match parser::parse(location, data, lex) {
         Ok(something) => match semantics::analyze(something) {
             Result::Ok(_) => true,
             Result::Err(errors) => {

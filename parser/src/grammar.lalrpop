@@ -1,10 +1,11 @@
-use lexer;
-use ast;
+use super::lexer;
+use super::ast;
+use errors;
 
 grammar<>;
 extern {
     type Location = usize;
-    type Error = lexer::LexicalError;
+    type Error = errors::LexicalError;
 
     enum lexer::Token<> {
         "ident" => lexer::Token::Identifier(<String>),

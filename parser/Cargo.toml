@@ -1,5 +1,5 @@
 [package]
-name = "octo_parser"
+name = "parser"
 version = "0.0.1"
 authors = ["Adam Winiarczuk <adam.winiarczuk@gmail.com>"]
 edition = "2018"
@@ -14,7 +14,8 @@ documentation = "None"
 build = "build.rs"
 
 [dependencies]
-regex = "0.2.0"
+errors = { path = "../errors", version = "0.0.1"}
+# regex = "0.2.0"
 # collect-mac = "0.1.0"
 # itertools = "0.7"
 # quick-error = "1.0.0"

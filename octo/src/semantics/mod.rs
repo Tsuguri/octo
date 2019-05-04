@@ -1,4 +1,4 @@
-use octo_parser::ast::*;
+use parser::ast::*;
 mod env;
 
 use self::env::Scope;
@@ -48,7 +48,7 @@ pub fn analyze(program: Program) -> Result<(), Vec<SemanticError>> {
 fn analyze_function_header(function: &Function, env: &Scope) -> Result<(), SemanticError> {
     for arg in &function.arguments {
         if !env.check_type(&arg.1) {
-            println!("Unknow argument type");
+            println!("Unknown argument type");
             return Result::Err(SemanticError::UndefinedIdentifier);
         }
     }
@@ -97,7 +97,7 @@ fn analyze_statement(statement: &Statement, env: &mut Scope) {
 
 fn analyze_expression(expression: &Expression, _ev: &mut Scope) -> Type {
     println!("Found expression");
-    use octo_parser::ast::Expression::*;
+    use Expression::*;
     match expression {
         Add(_exp1, _exp2) => (),
         And(_exp1, _exp2) => (),
@@ -106,7 +106,6 @@ fn analyze_expression(expression: &Expression, _ev: &mut Scope) -> Type {
         Negation(_exp) => (),
         Mul(_exp1, _exp2) => (),
         Div(_exp1, _exp2) => (),
-        Add(_exp1, _exp2) => (),
         Sub(_exp1, _exp2) => (),
         Less(_exp1, _exp2) => (),
         LessEqual(_exp1, _exp2) => (),
@@ -114,7 +113,6 @@ fn analyze_expression(expression: &Expression, _ev: &mut Scope) -> Type {
         MoreEqual(_exp1, _exp2) => (),
         Equals(_exp1, _exp2) => (),
         NotEquals(_exp1, _exp2) => (),
-        And(_exp1, _exp2) => (),
         Or(_exp1, _exp2) => (),
         Invocation(_func_name, _arguments) => (),
     }

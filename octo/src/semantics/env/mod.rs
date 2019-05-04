@@ -1,4 +1,4 @@
-use octo_parser::ast::*;
+use parser::ast::*;
 
 #[derive(Debug)]
 pub struct Scope<'a> {
