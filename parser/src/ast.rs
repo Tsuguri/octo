@@ -81,6 +81,7 @@ pub struct Block {
 pub enum Statement {
     Expression(Box<Expression>),
     Assignment(Box<Variable>, Box<Expression>, bool),
+    Return(Box<Expression>),
 }
 
 #[derive(Debug)]

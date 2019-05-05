@@ -93,6 +93,7 @@ fn analyze_statement(statement: &Statement, env: &mut Scope) {
         Statement::Expression(exp) => {
             analyze_expression(exp, env);
         }
+        Statement::Return(exp) => {}
     };
 }
 

@@ -1,0 +1,4 @@
+fun main(color: vec4, worldPosition: vec3) vec4 {
+    let result = vec4(1.0,1.0,1.0,0.0);
+    return result;
+}

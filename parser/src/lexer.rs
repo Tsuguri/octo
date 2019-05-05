@@ -40,6 +40,7 @@ pub enum Token {
     GreaterEqual, //
     Less,         //
     LessEqual,    //
+    Return,
     Let,
     Fun,
     Import,
@@ -86,6 +87,7 @@ impl fmt::Display for Token {
             Let => "let".to_owned(),
             Fun => "fun".to_owned(),
             Import => "import".to_owned(),
+            Return => "return".to_owned(),
         };
         val.fmt(f)
     }
@@ -361,6 +363,7 @@ impl<'input> Iterator for Lexer<'input> {
                             "let" => return ok_m!(Let, i, i + 3),
                             "fun" => return ok_m!(Fun, i, i + 3),
                             "import" => return ok_m!(Import, i, i + 6),
+                            "return" => return ok_m!(Return, i, i + 6),
                             x => {
                                 return Some(Result::Ok((
                                     i,

@@ -12,6 +12,7 @@ extern {
         "string" => lexer::Token::StringLiteral(<String>),
         "int" => lexer::Token::IntLiteral(<i64>),
         "float" => lexer::Token::FloatLiteral(<f64>),
+        "return" => lexer::Token::Return,
     
         "and" => lexer::Token::And,
         "or" => lexer::Token::Or,
@@ -92,6 +93,7 @@ pub Block: ast::Block = {
 pub Statement: ast::Statement = {
     Expression => ast::Statement::Expression(<>),
     <l:"let"?> <i:"ident"> "=" <e:Expression> => ast::Statement::Assignment(Box::new(ast::Variable::new(i)), e, match l {Some(_)=> true, None =>false,}),
+    "return" <e:Expression> => ast::Statement::Return(e),
 }
 
 

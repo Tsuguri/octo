@@ -117,7 +117,7 @@ impl HalState {
 
         let module: OctoModule = serde_json::from_str(&f).unwrap();
         drop(f);
-        println!("name: {}", module.name);
+        println!("Loading octo module: {}", module.name);
 
         let vertex_shader_module = unsafe {
             device
