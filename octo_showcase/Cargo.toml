@@ -24,7 +24,6 @@ simple_logger = "1.0"
 winit = "0.18"
 gfx-hal = "0.1"
 arrayvec = "0.4"
-shaderc = "0.3.16"
 image = "0.21"
 nalgebra-glm = "0.2"
 

@@ -1,15 +1,15 @@
-use core::mem::{size_of, ManuallyDrop};
+use core::mem::ManuallyDrop;
 use std::marker::PhantomData;
 
 use gfx_hal::{
     adapter::{Adapter, MemoryTypeId, PhysicalDevice},
-    buffer::Usage as BufferUsage,
+    Backend,
     //format::{Format, Aspects},
     //image::{Layout},
     //pso::{PipelineStage},
+    buffer::Usage as BufferUsage,
     device::Device,
     memory::{Properties, Requirements},
-    Backend,
 };
 
 pub struct BufferBundle<B: Backend, D: Device<B>> {

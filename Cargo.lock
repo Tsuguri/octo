@@ -790,6 +790,7 @@ dependencies = [
  "octo_runtime 0.0.1",
  "parser 0.0.1",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shaderc 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -813,7 +814,6 @@ dependencies = [
  "octo 0.1.0",
  "octo_runtime 0.0.1",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
- "shaderc 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "simple_logger 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "winit 0.18.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

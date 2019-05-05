@@ -1,7 +1,8 @@
 use parser::ast::*;
-mod env;
 
 use self::env::Scope;
+
+mod env;
 
 #[derive(Debug)]
 pub enum SemanticError {
@@ -11,7 +12,7 @@ pub enum SemanticError {
     ArgumentsNumberMismatch,
 }
 
-pub fn analyze(program: Program) -> Result<(), Vec<SemanticError>> {
+pub fn analyze(program: &mut Program) -> Result<(), Vec<SemanticError>> {
     println!("Analyzing program semantics");
     let global_scope = Scope::global();
     println!("Using global env: {:?}", global_scope);

@@ -154,6 +154,13 @@ impl<'input> Lexer<'input> {
         }
     }
 
+    fn test_underscore(&self) -> bool {
+        match self.lookahead {
+            None => false,
+            Some((_, x)) => x == '_',
+        }
+    }
+
     fn read_string_literal(&mut self, start: usize) -> Result<String, LexicalError> {
         let mut string = String::new();
         while let Some((_, x)) = self.pop() {
@@ -204,7 +211,7 @@ impl<'input> Lexer<'input> {
     fn read_identifier(&mut self, first: char) -> Result<String, LexicalError> {
         let mut string = String::new();
         string.push(first);
-        while self.test_alphanumeric() {
+        while self.test_alphanumeric() || self.test_underscore() {
             match self.pop() {
                 None => unreachable!(),
                 Some((_, x)) => string.push(x),

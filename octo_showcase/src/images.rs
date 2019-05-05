@@ -1,10 +1,9 @@
-use core::mem::{size_of, ManuallyDrop};
+use core::mem::{ManuallyDrop, size_of};
 use std::marker::PhantomData;
-
-use crate::buffers::BufferBundle;
 
 use gfx_hal::{
     adapter::{Adapter, MemoryTypeId, PhysicalDevice},
+    Backend,
     buffer::Usage as BufferUsage,
     device::Device,
     format::{Aspects, Format},
@@ -16,8 +15,9 @@ use gfx_hal::{
         capability::{Capability, Supports, Transfer},
         CommandQueue,
     },
-    Backend,
 };
+
+use crate::hal::buffers::BufferBundle;
 
 pub struct Sampler<B: Backend, D: Device<B>> {
     pub samp: ManuallyDrop<B::Sampler>,

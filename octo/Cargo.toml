@@ -12,3 +12,4 @@ serde_json = "1.0"
 parser = { path = "../parser", version = "0.0.1"}
 octo_runtime = { path = "../octo_runtime", version = "0.0.1"}
 errors = { path = "../errors", version = "0.0.1"}
+shaderc = "0.3.16"
