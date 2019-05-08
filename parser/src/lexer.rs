@@ -2,6 +2,7 @@ use std::fmt;
 use std::str::CharIndices;
 
 use errors::LexicalError;
+use errors::Sp;
 
 #[derive(Debug, Clone)]
 pub enum Token {
@@ -93,6 +94,9 @@ impl fmt::Display for Token {
     }
 }
 
+pub fn span(from: usize, to: usize) -> Sp {
+    Sp::new(((from + 1) as u32).into(), ((to + 1) as u32).into())
+}
 
 pub struct Lexer<'input> {
     _source: &'input str,
@@ -172,7 +176,7 @@ impl<'input> Lexer<'input> {
             }
         }
 
-        Result::Err(LexicalError::OpenStringLiteral(start))
+        Result::Err(LexicalError::OpenStringLiteral(span(start, start + 1)))
     }
 
     fn read_number(&mut self, first: char, start: usize) -> Result<(Token, usize), LexicalError> {
@@ -198,9 +202,10 @@ impl<'input> Lexer<'input> {
         if !is_float {
             match string.parse::<i64>() {
                 Result::Ok(literal) => Result::Ok((Token::IntLiteral(literal), string.len())),
-                Result::Err(_) => {
-                    Result::Err(LexicalError::LiteralIntOverflow(start, string.len()))
-                }
+                Result::Err(_) => Result::Err(LexicalError::LiteralIntOverflow(span(
+                    start,
+                    start + string.len(),
+                ))),
             }
         } else {
             match string.parse::<f64>() {
@@ -248,7 +253,7 @@ impl<'input> Lexer<'input> {
                 _ => (),
             }
         }
-        Result::Err(LexicalError::OpenComment(start - 1))
+        Result::Err(LexicalError::OpenComment(span(start, start + 1)))
     }
 }
 macro_rules! ok_m {
@@ -375,7 +380,7 @@ impl<'input> Iterator for Lexer<'input> {
                     }
                     Result::Err(err) => return err!(err),
                 },
-                Some((i, c)) => return err!(LexicalError::UnexpectedCharacter(i, c)),
+                Some((i, c)) => return err!(LexicalError::UnexpectedCharacter(span(i, i + 1), c)),
             }
         }
     }

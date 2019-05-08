@@ -1,3 +1,18 @@
+pub use codespan::ByteIndex;
+pub use codespan::Span;
+
+#[derive(Debug)]
+pub struct Spanned<T> {
+    pub span: Span<ByteIndex>,
+    pub val: T,
+}
+
+impl<T> Spanned<T> {
+    pub fn new(val: T, span: Span<ByteIndex>) -> Spanned<T> {
+        Spanned { span, val }
+    }
+}
+
 #[derive(Debug)]
 pub struct Program {
     pub items: Vec<ProgramItem>,
@@ -106,9 +121,9 @@ pub enum Expression {
 
 #[derive(Debug)]
 pub enum Literal {
-    Int(i64),
-    Float(f64),
-    String(String),
+    Int(Spanned<i64>),
+    Float(Spanned<f64>),
+    String(Spanned<String>),
 }
 
 #[derive(Debug)]

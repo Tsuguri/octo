@@ -142,8 +142,8 @@ pub Primitive: Box<ast::Expression> = {
 }
 
 Literal: ast::Literal = {
-    "int" => ast::Literal::Int(<>),
-    "float" => ast::Literal::Float(<>),
-    "string" => ast::Literal::String(<>),
+    <l:@L> <val:"int"> <r:@R>=> ast::Literal::Int(ast::Spanned::new(val, lexer::span(l,r))),
+    <l:@L> <val:"float"> <r:@R> => ast::Literal::Float(ast::Spanned::new(val, lexer::span(l,r))),
+    <l:@L> <val:"string"> <r:@R> => ast::Literal::String(ast::Spanned::new(val, lexer::span(l,r))),
 
 }

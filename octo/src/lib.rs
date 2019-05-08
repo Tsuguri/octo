@@ -41,7 +41,8 @@ fn create_module(ast: ast::Program, module: &mut OctoModule) {
         module.basic_vertex_spirv = vertex_compile_artifact.as_binary_u8().to_owned();
     }
 }
-pub fn process_file(path: &str) {
+
+pub fn process_file(path: &str) -> Result<(), ()> {
     println!("Processing file at: {}", path);
     let p = Path::new(path);
 
@@ -58,7 +59,8 @@ pub fn process_file(path: &str) {
     // syntax analysis
     let mut ast = match parser::parse(path, &data, false) {
         Err(warning) => {
-            panic!("Command failed: {:?}", warning);
+            println!("Command failed: {:?}", warning);
+            return Result::Err(());
         },
         Ok(ast) => ast,
     };
@@ -79,6 +81,6 @@ pub fn process_file(path: &str) {
     output_file.write_all(module_data.as_bytes()).unwrap();
 
     println!("processed as: {:?}", result_path);
-
+    Result::Ok(())
 }
 pub mod semantics;
