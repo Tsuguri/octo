@@ -41,6 +41,21 @@ pub fn parse(location: &str, src: &str, lex: bool) -> Result<ast::Program, ()> {
 
 struct ErrWrap(ParseErr);
 
+
+macro_rules! error {
+    ($message:expr; $from:expr, $to: expr) => {
+        error!($message, lexer::span($from, $to))
+    };
+    ($message:expr, $span:expr) => {
+        Diagnostic::new_error($message)
+            .with_label(codespan_reporting::Label::new_primary($span))
+    };
+    ($message:expr, $span:expr, $label:expr) => {
+        Diagnostic::new_error($message)
+            .with_label(codespan_reporting::Label::new_primary($span).with_message($label))
+    };
+}
+
 impl From<ErrWrap> for Diagnostic {
     fn from(w: ErrWrap) -> Diagnostic {
         match w.0 {
@@ -68,48 +83,27 @@ impl From<ErrWrap> for Diagnostic {
                 }
             }
             ParseError::InvalidToken { location } => {
-                Diagnostic::new_error("Parser found invalid token:")
-                    .with_label(codespan_reporting::Label::new_primary(lexer::span(
-                        location, location + 1,
-                    )))
+                error!("Parser found invalid token."; location, location + 1)
             }
             ParseError::ExtraToken { token } => {
-                Diagnostic::new_error(format!("Parser found unexpected token: {}", token.1))
-                    .with_label(codespan_reporting::Label::new_primary(lexer::span(
-                        token.0, token.2,
-                    )))
+                error!(format!("Parser found unexpected token: {}", token.1);token.0, token.2)
             }
             ParseError::User { error } => match error {
-                errors::LexicalError::LiteralFloatOverflow(span) => {
-                    Diagnostic::new_error("Literal float overflow").with_label(
-                        codespan_reporting::Label::new_primary(span)
-                            .with_message("Consider changing this value"),
-                    )
-                }
-                errors::LexicalError::LiteralIntOverflow(span) => {
-                    Diagnostic::new_error("Literal int overflow").with_label(
-                        codespan_reporting::Label::new_primary(span)
-                            .with_message("Consider changing this value"),
-                    )
-                }
-                errors::LexicalError::OpenComment(span) => {
-                    Diagnostic::new_error("Unclosed comment").with_label(
-                        codespan_reporting::Label::new_primary(span)
-                            .with_message("Not closed comment starting here"),
-                    )
-                }
+                errors::LexicalError::LiteralFloatOverflow(span) =>
+                    error!("Float literal overflow", span, "Consider changing this value"),
+
+                errors::LexicalError::LiteralIntOverflow(span) =>
+                    error!("Int literal overflow", span, "Consider changing this value"),
+
+                errors::LexicalError::OpenComment(span) =>
+                    error!("Unclosed comment", span, "Not closed comment starting here"),
+
                 errors::LexicalError::IsVeryBad => panic!("Very bad error, please fill bug report"),
-                errors::LexicalError::OpenStringLiteral(span) => {
-                    Diagnostic::new_error("Parser found not closed string literal").with_label(
-                        codespan_reporting::Label::new_primary(span)
-                            .with_message("Not closed literal starting here"),
-                    )
-                }
-                errors::LexicalError::UnexpectedCharacter(span, character) => {
-                    Diagnostic::new_error(format!("Parser found unexpected character: {}", character)).with_label(
-                        codespan_reporting::Label::new_primary(span)
-                    )
-                }
+                errors::LexicalError::OpenStringLiteral(span) =>
+                    error!("Parser found not closed string literal", span, "Not closed literal starts here."),
+
+                errors::LexicalError::UnexpectedCharacter(span, character) =>
+                    error!(format!("Parser found unexpected character: {}", character), span),
             }
         }
     }
