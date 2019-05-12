@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate structopt;
-
 use structopt::StructOpt;
 use octo::process_file;
 
@@ -13,6 +10,6 @@ fn main() {
     let opt = Parameters::from_args();
 
     for file in opt.path {
-        process_file(&file);
+        process_file(&file).unwrap();
     }
 }

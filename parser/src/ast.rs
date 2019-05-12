@@ -15,7 +15,7 @@ impl<T> Spanned<T> {
 
 #[derive(Debug)]
 pub struct Program {
-    pub items: Vec<ProgramItem>,
+    pub items: Vec<GpuFunction>,
 }
 
 #[derive(Debug, Clone)]
@@ -55,30 +55,30 @@ impl Type {
     }
 }
 
-#[derive(Debug)]
-pub enum ProgramItem {
-    Function(Box<Function>),
-    GpuFunction(Box<GpuFunction>),
-}
+//#[derive(Debug)]
+//pub enum ProgramItem {
+//    Function(Box<Function>),
+//    GpuFunction(Box<GpuFunction>),
+//}
 
-#[derive(Debug)]
-pub struct Function {
-    pub arguments: Vec<(Variable, Type)>,
-    pub name: String,
-    pub block: Block,
-    pub ret: Option<Type>,
-}
-
-impl Function {
-    pub fn new(name: String, arguments: Vec<(Variable, Type)>, block: Block) -> Function {
-        Function {
-            name,
-            arguments,
-            block,
-            ret: None,
-        }
-    }
-}
+//#[derive(Debug)]
+//pub struct Function {
+//    pub arguments: Vec<(Variable, Type)>,
+//    pub name: String,
+//    pub block: Block,
+//    pub ret: Option<Type>,
+//}
+//
+//impl Function {
+//    pub fn new(name: String, arguments: Vec<(Variable, Type)>, block: Block) -> Function {
+//        Function {
+//            name,
+//            arguments,
+//            block,
+//            ret: None,
+//        }
+//    }
+//}
 
 #[derive(Debug)]
 pub struct GpuFunction {
@@ -86,38 +86,38 @@ pub struct GpuFunction {
     pub code: String,
     pub arguments: Vec<(Variable, Type)>,
 }
-
-#[derive(Debug)]
-pub struct Block {
-    pub statements: Vec<Statement>,
-}
-
-#[derive(Debug)]
-pub enum Statement {
-    Expression(Box<Expression>),
-    Assignment(Box<Variable>, Box<Expression>, bool),
-    Return(Box<Expression>),
-}
-
-#[derive(Debug)]
-pub enum Expression {
-    Variable(Variable),
-    Literal(Literal),
-    Negation(Box<Expression>),
-    Mul(Box<Expression>, Box<Expression>),
-    Div(Box<Expression>, Box<Expression>),
-    Add(Box<Expression>, Box<Expression>),
-    Sub(Box<Expression>, Box<Expression>),
-    Less(Box<Expression>, Box<Expression>),
-    LessEqual(Box<Expression>, Box<Expression>),
-    More(Box<Expression>, Box<Expression>),
-    MoreEqual(Box<Expression>, Box<Expression>),
-    Equals(Box<Expression>, Box<Expression>),
-    NotEquals(Box<Expression>, Box<Expression>),
-    And(Box<Expression>, Box<Expression>),
-    Or(Box<Expression>, Box<Expression>),
-    Invocation(String, Vec<Box<Expression>>),
-}
+//
+//#[derive(Debug)]
+//pub struct Block {
+//    pub statements: Vec<Statement>,
+//}
+//
+//#[derive(Debug)]
+//pub enum Statement {
+//    Expression(Box<Expression>),
+//    Assignment(Box<Variable>, Box<Expression>, bool),
+//    Return(Box<Expression>),
+//}
+//
+//#[derive(Debug)]
+//pub enum Expression {
+//    Variable(Variable),
+//    Literal(Literal),
+//    Negation(Box<Expression>),
+//    Mul(Box<Expression>, Box<Expression>),
+//    Div(Box<Expression>, Box<Expression>),
+//    Add(Box<Expression>, Box<Expression>),
+//    Sub(Box<Expression>, Box<Expression>),
+//    Less(Box<Expression>, Box<Expression>),
+//    LessEqual(Box<Expression>, Box<Expression>),
+//    More(Box<Expression>, Box<Expression>),
+//    MoreEqual(Box<Expression>, Box<Expression>),
+//    Equals(Box<Expression>, Box<Expression>),
+//    NotEquals(Box<Expression>, Box<Expression>),
+//    And(Box<Expression>, Box<Expression>),
+//    Or(Box<Expression>, Box<Expression>),
+//    Invocation(String, Vec<Box<Expression>>),
+//}
 
 #[derive(Debug)]
 pub enum Literal {
@@ -126,9 +126,9 @@ pub enum Literal {
     String(Spanned<String>),
 }
 
-#[derive(Debug)]
-pub struct Negated(Expression);
-
+//#[derive(Debug)]
+//pub struct Negated(Expression);
+//
 #[derive(Debug)]
 pub struct Variable {
     pub identifier: String,

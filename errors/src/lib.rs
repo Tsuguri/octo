@@ -30,3 +30,11 @@ impl fmt::Display for LexicalError {
         val.fmt(f)
     }
 }
+
+#[derive(Debug)]
+pub enum SemanticError {
+    UndefinedIdentifier,
+    UnusedArgument,
+    TypeMismatch,
+    ArgumentsNumberMismatch,
+}

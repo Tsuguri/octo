@@ -344,7 +344,7 @@ impl HalState {
 }
 
 
-pub fn do_the_render(hal: &mut HalState, local_state: &LocalState) -> Result<(), &'static str> {
+pub fn do_the_render(hal: &mut HalState, _local_state: &LocalState) -> Result<(), &'static str> {
     let quad = Quad {
         x: -0.5,
         y: -0.5,

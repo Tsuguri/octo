@@ -8,7 +8,6 @@ use gfx_hal::{
     Backend,
     buffer::{IndexBufferView, Usage as BufferUsage},
     command::{ClearColor, ClearValue, CommandBuffer, MultiShot, Primary},
-    DescriptorPool,
     device::Device,
     //memory::{Properties, Requirements},
     format::{Aspects, ChannelType, Format, Swizzle},
@@ -17,15 +16,11 @@ use gfx_hal::{
     image::{Extent, Layout, SubresourceRange, Usage, ViewKind},
     IndexType,
     Instance,
-    pass::{Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp, Subpass, SubpassDesc},
+    pass::{Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp, SubpassDesc},
     pool::{CommandPool, CommandPoolCreateFlags},
-    Primitive,
     pso::{
-        AttributeDesc, BakedStates, BasePipeline, BlendDesc, BlendOp, BlendState, ColorBlendDesc,
-        ColorMask, DepthStencilDesc, DepthTest, DescriptorSetLayoutBinding, Element, ElemOffset,
-        ElemStride, EntryPoint, Face, Factor, FrontFace, GraphicsPipelineDesc, GraphicsShaderSet,
-        InputAssemblerDesc, LogicOp, PipelineCreationFlags, PipelineStage, PolygonMode, Rasterizer,
-        Rect, ShaderStageFlags, Specialization, StencilTest, VertexBufferDesc, Viewport,
+        PipelineStage,
+        Rect, ShaderStageFlags,
     },
     queue::{family::QueueGroup, Submission},
     QueueFamily,
@@ -459,7 +454,7 @@ impl HalState {
             graphics_pipeline,
         ) = Self::create_pipeline(&mut device, extent, &render_pass)?;
 
-        let (vertices, indices) = unsafe {
+        let (vertices, indices) = {
             const F32_XY_RGB_UV_QUAD: usize = size_of::<f32>() * (2 + 3 + 2) * 4;
             let vertices =
                 BufferBundle::new(&adapter, &device, F32_XY_RGB_UV_QUAD, BufferUsage::VERTEX)?;
