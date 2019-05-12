@@ -1,4 +1,4 @@
-fun firstGPU(){
+gpu_fun firstGPU(wut: float, color: vec3, kawa: float){
 "#version 450
 layout (push_constant) uniform PushConsts {
     float time;
@@ -19,7 +19,7 @@ void main()
 }"
 }
 
-fun second_GPU() {
+gpu_fun second_GPU() {
 "#version 450
 layout (location = 2) in vec2 frag_uv;
 

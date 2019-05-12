@@ -1,5 +1,6 @@
 pub use codespan::ByteIndex;
 pub use codespan::Span;
+use crate::lexer::span;
 
 #[derive(Debug)]
 pub struct Spanned<T> {
@@ -10,6 +11,9 @@ pub struct Spanned<T> {
 impl<T> Spanned<T> {
     pub fn new(val: T, span: Span<ByteIndex>) -> Spanned<T> {
         Spanned { span, val }
+    }
+    pub fn from_loc(val: T, from: usize, to: usize) -> Spanned<T> {
+        Self::new(val, span(from, to))
     }
 }
 
@@ -82,9 +86,9 @@ impl Type {
 
 #[derive(Debug)]
 pub struct GpuFunction {
-    pub name: String,
-    pub code: String,
-    pub arguments: Vec<(Variable, Type)>,
+    pub name: Spanned<String>,
+    pub code: Spanned<String>,
+    pub arguments: Vec<Variable>,
 }
 //
 //#[derive(Debug)]
@@ -131,19 +135,19 @@ pub enum Literal {
 //
 #[derive(Debug)]
 pub struct Variable {
-    pub identifier: String,
+    pub identifier: Spanned<String>,
     pub typ: Type,
 }
 
 impl Variable {
-    pub fn new(identifier: String) -> Variable {
+    pub fn new(identifier: Spanned<String>) -> Variable {
         Variable {
             identifier,
             typ: Type::Unknown,
         }
     }
 
-    pub fn typed(identifier: String, typ: Type) -> Variable {
+    pub fn typed(identifier: Spanned<String>, typ: Type) -> Variable {
         Variable { identifier, typ }
     }
 }

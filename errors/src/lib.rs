@@ -37,4 +37,10 @@ pub enum SemanticError {
     UnusedArgument,
     TypeMismatch,
     ArgumentsNumberMismatch,
+    NotAssignedReturnVariable(Sp, String),
+}
+
+#[derive(Debug)]
+pub enum SemanticWarning {
+    NotUsedArgument(Sp, String),
 }

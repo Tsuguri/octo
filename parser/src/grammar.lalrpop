@@ -2,6 +2,8 @@ use super::lexer;
 use super::ast;
 use errors;
 
+use super::ast::Spanned as Sp;
+
 grammar<>;
 extern {
     type Location = usize;
@@ -22,7 +24,7 @@ extern {
         "true" => lexer::Token::True,
         "false" => lexer::Token::False,
         "let" => lexer::Token::Let,
-        "fun" => lexer::Token::Fun,
+        "gpu_fun" => lexer::Token::GpuFun,
         
 	    "(" => lexer::Token::ParOpen,
         ")" => lexer::Token::ParClose,
@@ -68,16 +70,16 @@ pub Program: ast::Program = {
 }
 
 pub GpuFunction: ast::GpuFunction = {
-    "fun" <i:"ident"> "(" <args:Comma<Definition>> ")" "{" <s:"string"> "}" => ast::GpuFunction{ name:i, code: s, arguments: args}
+    "gpu_fun" <l:@L> <i:"ident"> <r:@R> "(" <args:Comma<Definition>> ")" "{" <l2:@L> <s:"string"> <r2:@R> "}" => ast::GpuFunction{ name: Sp::from_loc(i, l,r), code: Sp::from_loc(s, l2, r2), arguments: args}
 }
 
-Definition: (ast::Variable, ast::Type) = {
-    <i1:"ident"> ":" <i2:"ident"> => (ast::Variable::new(i1), ast::Type::new(i2))
+Definition: ast::Variable = {
+    <l:@L> <i1:"ident"> <r:@R> ":" <i2:"ident"> => ast::Variable::typed(Sp::from_loc(i1, l,r), ast::Type::new(i2))
 }
 
 Literal: ast::Literal = {
-    <l:@L> <val:"int"> <r:@R>=> ast::Literal::Int(ast::Spanned::new(val, lexer::span(l,r))),
-    <l:@L> <val:"float"> <r:@R> => ast::Literal::Float(ast::Spanned::new(val, lexer::span(l,r))),
-    <l:@L> <val:"string"> <r:@R> => ast::Literal::String(ast::Spanned::new(val, lexer::span(l,r))),
+    <l:@L> <val:"int"> <r:@R>=> ast::Literal::Int(Sp::from_loc(val, l,r)),
+    <l:@L> <val:"float"> <r:@R> => ast::Literal::Float(Sp::from_loc(val, l,r)),
+    <l:@L> <val:"string"> <r:@R> => ast::Literal::String(Sp::from_loc(val, l,r)),
 
 }

@@ -29,8 +29,8 @@ impl<'a> Scope<'a> {
 
     pub fn add_function(&mut self, func: &GpuFunction) {
         self.functions.push((
-            func.name.to_owned(),
-            func.arguments.iter().map(|x| x.1.clone()).collect(),
+            func.name.val.to_owned(),
+            func.arguments.iter().map(|x| x.typ.clone()).collect(),
         ));
     }
 }
