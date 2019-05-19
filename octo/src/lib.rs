@@ -26,6 +26,7 @@ fn create_module(ast: ast::Program, module: &mut OctoModule) {
                 "Couldn't compile fragment shader!"
             }).unwrap();
         module.fragment_shaders.insert(func.name.val, (func.code.val, compilation_result.as_binary_u8().to_owned()));
+
     }
 
     let vertex_compile_artifact = compiler

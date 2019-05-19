@@ -89,6 +89,7 @@ pub struct GpuFunction {
     pub name: Spanned<String>,
     pub code: Spanned<String>,
     pub arguments: Vec<Variable>,
+    pub results: Vec<Variable>,
 }
 //
 //#[derive(Debug)]

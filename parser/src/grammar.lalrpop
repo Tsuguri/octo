@@ -49,6 +49,7 @@ extern {
         ">=" => lexer::Token::GreaterEqual, //
         "<" => lexer::Token::Less,         //
         "<=" => lexer::Token::LessEqual,    //
+        "->" => lexer::Token::FunResultsArrow,
     }
     
 }
@@ -70,7 +71,7 @@ pub Program: ast::Program = {
 }
 
 pub GpuFunction: ast::GpuFunction = {
-    "gpu_fun" <l:@L> <i:"ident"> <r:@R> "(" <args:Comma<Definition>> ")" "{" <l2:@L> <s:"string"> <r2:@R> "}" => ast::GpuFunction{ name: Sp::from_loc(i, l,r), code: Sp::from_loc(s, l2, r2), arguments: args}
+    "gpu_fun" <l:@L> <i:"ident"> <r:@R> "(" <args:Comma<Definition>> ")" "->" "(" <results:Comma<Definition>> ")" "{" <l2:@L> <s:"string"> <r2:@R> "}" => ast::GpuFunction{ name: Sp::from_loc(i, l,r), code: Sp::from_loc(s, l2, r2), arguments: args, results}
 }
 
 Definition: ast::Variable = {

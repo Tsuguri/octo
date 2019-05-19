@@ -45,6 +45,7 @@ pub enum Token {
     Let,
     GpuFun,
     Import,
+    FunResultsArrow,
 }
 
 impl fmt::Display for Token {
@@ -89,6 +90,7 @@ impl fmt::Display for Token {
             GpuFun => "fun".to_owned(),
             Import => "import".to_owned(),
             Return => "return".to_owned(),
+            FunResultsArrow => "->".to_owned(),
         };
         val.fmt(f)
     }
@@ -299,7 +301,13 @@ impl<'input> Iterator for Lexer<'input> {
                 Some((i, '?')) => return ok!(Question, i),
                 Some((i, '*')) => return ok!(Star, i),
                 Some((i, '+')) => return ok!(Plus, i),
-                Some((i, '-')) => return ok!(Minus, i),
+                Some((i, '-')) => match self.peek() {
+                    Some('>') => {
+                        self.pop();
+                        return ok_m!(FunResultsArrow, i, 2);
+                    }
+                    _ => return ok!(Minus, i),
+                },
                 Some((i, '!')) => match self.peek() {
                     Some('=') => {
                         self.pop();
