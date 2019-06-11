@@ -40,9 +40,14 @@ use crate::Quad;
 
 pub mod buffers;
 
-pub struct HalState {
+pub struct Object {
     vertices: BufferBundle<back::Backend, back::Device>,
     indices: BufferBundle<back::Backend, back::Device>,
+}
+
+pub struct HalState {
+    objects: Vec<Object>,
+    postprocessing_quad: Object,
     descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
     descriptor_pool: ManuallyDrop<<back::Backend as Backend>::DescriptorPool>,
     descriptor_set: ManuallyDrop<<back::Backend as Backend>::DescriptorSet>,
@@ -62,7 +67,7 @@ pub struct HalState {
     queue_group: QueueGroup<back::Backend, Graphics>,
     swapchain: ManuallyDrop<<back::Backend as Backend>::Swapchain>,
     device: ManuallyDrop<back::Device>,
-    _adapter: Adapter<back::Backend>,
+    adapter: Adapter<back::Backend>,
     _surface: <back::Backend as Backend>::Surface,
     _instance: ManuallyDrop<back::Instance>,
     creation_instant: Instant,
@@ -70,7 +75,39 @@ pub struct HalState {
 }
 
 impl HalState {
-    pub fn draw_quad_frame(&mut self, quad: Quad) -> Result<(), &'static str> {
+    fn upload_quad(obj: &mut Object, quad: Quad, device: &back::Device) -> Result<(), &'static str> {
+        unsafe {
+            let mut data_target =
+                device
+                .acquire_mapping_writer(&obj.vertices.memory, 0..obj.vertices.requirements.size)
+                .map_err(|_| "Failed to acquire a memory writer!")?;
+            let points = quad.vertex_attributes();
+            data_target[..points.len()].copy_from_slice(&points);
+            device
+                .release_mapping_writer(data_target)
+                .map_err(|_| "Couldn't release the mapping writer!")?;
+        }
+        Result::Ok(())
+
+    }
+
+    pub fn add_object(&mut self) -> Result<(), &'static str>{
+        let (vertices, indices) = {
+            const F32_XY_RGB_UV_QUAD: usize = size_of::<f32>() * (2 + 3 + 2) * 4;
+            let vertices =
+                BufferBundle::new(&self.adapter, &*self.device, F32_XY_RGB_UV_QUAD, BufferUsage::VERTEX)?;
+
+            const U16_QUAD_INDICES: usize = size_of::<u16>() * 2 * 3;
+            let indexes =
+                BufferBundle::new(&self.adapter, &*self.device, U16_QUAD_INDICES, BufferUsage::INDEX)?;
+            (vertices, indexes)
+        };
+        self.objects.push(Object{vertices, indices});
+        Result::Ok(())
+
+    }
+
+    pub fn draw_quad_frame(&mut self) -> Result<(), &'static str> {
         // SETUP FOR THIS FRAME
         let image_available = &self.image_available_semaphores[self.current_frame];
         let render_finished = &self.render_finished_semaphores[self.current_frame];
@@ -94,17 +131,6 @@ impl HalState {
                 .reset_fence(flight_fence)
                 .map_err(|_| "Couldn't reset the fence!")?;
         }
-        unsafe {
-            let mut data_target = self
-                .device
-                .acquire_mapping_writer(&self.vertices.memory, 0..self.vertices.requirements.size)
-                .map_err(|_| "Failed to acquire a memory writer!")?;
-            let points = quad.vertex_attributes();
-            data_target[..points.len()].copy_from_slice(&points);
-            self.device
-                .release_mapping_writer(data_target)
-                .map_err(|_| "Couldn't release the mapping writer!")?;
-        }
 
         unsafe {
             let duration = Instant::now().duration_since(self.creation_instant);
@@ -122,11 +148,11 @@ impl HalState {
                     TRIANGLE_CLEAR.iter(),
                 );
                 encoder.bind_graphics_pipeline(&self.graphics_pipeline);
-                let buffer_ref: &<back::Backend as Backend>::Buffer = &self.vertices.buffer;
+                let buffer_ref: &<back::Backend as Backend>::Buffer = &self.postprocessing_quad.vertices.buffer;
                 let buffers: ArrayVec<[_; 1]> = [(buffer_ref, 0)].into();
                 encoder.bind_vertex_buffers(0, buffers);
                 encoder.bind_index_buffer(IndexBufferView {
-                    buffer: &self.indices.buffer,
+                    buffer: &self.postprocessing_quad.indices.buffer,
                     offset: 0,
                     index_type: IndexType::U16,
                 });
@@ -192,6 +218,7 @@ impl HalState {
         }
 
         //record commands
+        // gdzieś tutaj pójdzie generowanie command bufferów na podstawie danych octo
 
         unsafe {
             let buffer = &mut self.command_buffers[i_usize];
@@ -225,9 +252,10 @@ impl HalState {
                 .map_err(|_| "Failed to present into the swapchain!")
         }
     }
-    pub fn new(window: &Window) -> Result<Self, &'static str> {
+
+    fn initialize_hardware(window: &Window) -> Result<(back::Instance,<back::Backend as Backend>::Surface , Adapter<back::Backend>, back::Device,QueueGroup<back::Backend, Graphics> ), &'static str>{
         let instance = back::Instance::create(crate::window::WINDOW_NAME, 1);
-        let mut surface = instance.create_surface(window);
+        let surface = instance.create_surface(window);
 
         let adapter = instance
             .enumerate_adapters()
@@ -260,6 +288,11 @@ impl HalState {
             }?;
             (device, queue_group)
         };
+
+        Result::Ok((instance, surface, adapter, device, queue_group))
+    }
+    pub fn new(window: &Window) -> Result<Self, &'static str> {
+        let (instance, mut surface, adapter, mut device, mut queue_group) = Self::initialize_hardware(window)?;
 
         let (swapchain, extent, backbuffer, format, frames_in_flight) = {
             let (caps, preferred_formats, present_modes, composite_alphas) =
@@ -464,10 +497,18 @@ impl HalState {
                 BufferBundle::new(&adapter, &device, U16_QUAD_INDICES, BufferUsage::INDEX)?;
             (vertices, indexes)
         };
+        let mut postprocessing_quad = Object {vertices, indices};
+        let quad = Quad {
+            x: -1.0,
+            y: -1.0,
+            w: 2.0,
+            h: 2.0,
+        };
+        Self::upload_quad(&mut postprocessing_quad, quad, &device)?;
 
         unsafe {
             let mut data_target = device
-                .acquire_mapping_writer(&indices.memory, 0..indices.requirements.size)
+                .acquire_mapping_writer(&postprocessing_quad.indices.memory, 0..postprocessing_quad.indices.requirements.size)
                 .map_err(|_| "Failed to acquire and index buffer mapping writer!")?;
             const INDEX_DATA: &[u16] = &[0, 1, 2, 2, 3, 0];
             data_target[..INDEX_DATA.len()].copy_from_slice(&INDEX_DATA);
@@ -509,11 +550,11 @@ impl HalState {
         }
 
         Ok(Self {
-            vertices,
-            indices,
+            objects: vec![],
+            postprocessing_quad,
             _instance: ManuallyDrop::new(instance),
             _surface: surface,
-            _adapter: adapter,
+            adapter,
             device: ManuallyDrop::new(device),
             queue_group,
             swapchain: ManuallyDrop::new(swapchain),
@@ -565,8 +606,12 @@ impl core::ops::Drop for HalState {
             // LAST RESORT STYLE CODE, NOT TO BE IMITATED LIGHTLY
             use core::ptr::read;
 
-            self.vertices.manually_drop(&self.device);
-            self.indices.manually_drop(&self.device);
+            self.postprocessing_quad.vertices.manually_drop(&self.device);
+            self.postprocessing_quad.indices.manually_drop(&self.device);
+            for obj in &self.objects {
+                obj.vertices.manually_drop(&self.device);
+                obj.indices.manually_drop(&self.device);
+            }
             self.texture.manually_drop(&self.device);
             self.device
                 .destroy_descriptor_pool(ManuallyDrop::into_inner(read(&self.descriptor_pool)));

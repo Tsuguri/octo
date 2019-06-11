@@ -39,6 +39,35 @@ pub struct Triangle {
     pub points: [[f32; 2]; 3],
 }
 
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct Vertex {
+    xyz: [f32; 3],
+    uv: [f32; 2],
+}
+
+impl Vertex {
+    pub fn attributes() -> Vec<AttributeDesc> {
+        let position_attribute = AttributeDesc {
+            location: 0,
+            binding: 0,
+            element: Element {
+                format: Format::Rgb32Float,
+                offset: 0,
+            },
+        };
+        let uv_attribute = AttributeDesc {
+            location: 1,
+            binding: 0,
+            element: Element {
+                format: Format::Rg32Float,
+                offset: size_of::<[f32; 3]>() as ElemOffset,
+            },
+        };
+        vec![position_attribute, uv_attribute]
+    }
+}
+
 pub static CREATURE_BYTES: &[u8] = include_bytes!("creature.png");
 
 #[derive(Debug, Clone, Copy)]
@@ -345,13 +374,7 @@ impl HalState {
 
 
 pub fn do_the_render(hal: &mut HalState, _local_state: &LocalState) -> Result<(), &'static str> {
-    let quad = Quad {
-        x: -0.5,
-        y: -0.5,
-        w: 1.0,
-        h: 1.0,
-    };
-    hal.draw_quad_frame(quad)
+    hal.draw_quad_frame()
 }
 
 fn main() {
