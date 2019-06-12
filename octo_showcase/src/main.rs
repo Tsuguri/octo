@@ -21,6 +21,7 @@ use gfx_hal::{
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use serde_json;
+use nalgebra_glm as glm;
 
 use hal::HalState;
 use input::UserInput;
@@ -79,7 +80,7 @@ pub struct Quad {
 }
 
 impl Quad {
-    pub fn vertex_attributes(self) -> [f32; 4 * (2 + 3 + 2)] {
+    pub fn vertex_attributes(self) -> [f32; 4 * (3 + 2)] {
         let x = self.x;
         let y = self.y;
         let w = self.w;
@@ -88,30 +89,22 @@ impl Quad {
         [
             x,
             y + h,
-            1.0,
-            0.0,
             0.0,
             0.0,
             1.0,
             x,
             y,
             0.0,
-            1.0,
-            0.0,
             0.0,
             0.0,
             x + w,
             y,
             0.0,
-            0.0,
-            1.0,
             1.0,
             0.0,
             x + w,
             y + h,
-            1.0,
             0.0,
-            1.0,
             1.0,
             1.0,
         ]
@@ -195,35 +188,10 @@ impl HalState {
 
             let vertex_buffers: Vec<VertexBufferDesc> = vec![VertexBufferDesc {
                 binding: 0,
-                stride: (size_of::<f32>() * (2 + 3 + 2)) as ElemStride,
+                stride: (size_of::<f32>() * 5) as ElemStride,
                 rate: 0,
             }];
-            let attributes: Vec<AttributeDesc> = vec![
-                AttributeDesc {
-                    location: 0,
-                    binding: 0,
-                    element: Element {
-                        format: Format::Rg32Float,
-                        offset: 0,
-                    },
-                },
-                AttributeDesc {
-                    location: 1,
-                    binding: 0,
-                    element: Element {
-                        format: Format::Rgb32Float,
-                        offset: (size_of::<f32>() * 2) as ElemOffset,
-                    },
-                },
-                AttributeDesc {
-                    location: 2,
-                    binding: 0,
-                    element: Element {
-                        format: Format::Rg32Float,
-                        offset: (size_of::<f32>() * 5) as ElemOffset,
-                    },
-                },
-            ];
+            let attributes = Vertex::attributes();
 
             let rasterizer = Rasterizer {
                 depth_clamping: false,
@@ -315,7 +283,7 @@ impl HalState {
                     .map_err(|_| "Couldn't make a Descriptor Set")?
             };
 
-            let push_constants = vec![(ShaderStageFlags::FRAGMENT, 0..1)];
+            let push_constants = vec![(ShaderStageFlags::VERTEX, 0..32)];
             let layout = unsafe {
                 device
                     .create_pipeline_layout(&descriptor_set_layouts, push_constants)
@@ -373,8 +341,8 @@ impl HalState {
 }
 
 
-pub fn do_the_render(hal: &mut HalState, _local_state: &LocalState) -> Result<(), &'static str> {
-    hal.draw_quad_frame()
+pub fn do_the_render(hal: &mut HalState, local_state: &LocalState) -> Result<(), &'static str> {
+    hal.draw_quad_frame(local_state)
 }
 
 fn main() {

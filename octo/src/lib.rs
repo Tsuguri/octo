@@ -37,7 +37,7 @@ fn create_module(ast: ast::Program, module: &mut OctoModule) {
             "main",
             None,
         )
-        .map_err(|_| "Couldn't compile vertex shader!").unwrap();
+        .map_err(|e| e.to_string() + "Couldn't compile vertex shader!").unwrap();
     module.basic_vertex_spirv = vertex_compile_artifact.as_binary_u8().to_owned();
 }
 

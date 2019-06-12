@@ -16,6 +16,7 @@ use gfx_hal::{
     image::{Extent, Layout, SubresourceRange, Usage, ViewKind},
     IndexType,
     Instance,
+    memory::cast_slice,
     pass::{Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp, SubpassDesc},
     pool::{CommandPool, CommandPoolCreateFlags},
     pso::{
@@ -35,14 +36,17 @@ use buffers::BufferBundle;
 use crate::back;
 use crate::images::ImageData;
 use crate::Quad;
+use crate::LocalState;
 
 //use winit::Window;
+use nalgebra_glm as glm;
 
 pub mod buffers;
 
 pub struct Object {
     vertices: BufferBundle<back::Backend, back::Device>,
     indices: BufferBundle<back::Backend, back::Device>,
+    mat: glm::TMat4<f32>,
 }
 
 pub struct HalState {
@@ -79,8 +83,8 @@ impl HalState {
         unsafe {
             let mut data_target =
                 device
-                .acquire_mapping_writer(&obj.vertices.memory, 0..obj.vertices.requirements.size)
-                .map_err(|_| "Failed to acquire a memory writer!")?;
+                    .acquire_mapping_writer(&obj.vertices.memory, 0..obj.vertices.requirements.size)
+                    .map_err(|_| "Failed to acquire a memory writer!")?;
             let points = quad.vertex_attributes();
             data_target[..points.len()].copy_from_slice(&points);
             device
@@ -88,12 +92,11 @@ impl HalState {
                 .map_err(|_| "Couldn't release the mapping writer!")?;
         }
         Result::Ok(())
-
     }
 
-    pub fn add_object(&mut self) -> Result<(), &'static str>{
+    pub fn add_object(&mut self, position: glm::TVec3<f32>) -> Result<(), &'static str> {
         let (vertices, indices) = {
-            const F32_XY_RGB_UV_QUAD: usize = size_of::<f32>() * (2 + 3 + 2) * 4;
+            const F32_XY_RGB_UV_QUAD: usize = size_of::<f32>() * (2 + 3) * 4;
             let vertices =
                 BufferBundle::new(&self.adapter, &*self.device, F32_XY_RGB_UV_QUAD, BufferUsage::VERTEX)?;
 
@@ -102,12 +105,11 @@ impl HalState {
                 BufferBundle::new(&self.adapter, &*self.device, U16_QUAD_INDICES, BufferUsage::INDEX)?;
             (vertices, indexes)
         };
-        self.objects.push(Object{vertices, indices});
+        self.objects.push(Object { vertices, indices , mat: glm::translation(&position)});
         Result::Ok(())
-
     }
 
-    pub fn draw_quad_frame(&mut self) -> Result<(), &'static str> {
+    pub fn draw_quad_frame(&mut self, state: &LocalState) -> Result<(), &'static str> {
         // SETUP FOR THIS FRAME
         let image_available = &self.image_available_semaphores[self.current_frame];
         let render_finished = &self.render_finished_semaphores[self.current_frame];
@@ -148,9 +150,10 @@ impl HalState {
                     TRIANGLE_CLEAR.iter(),
                 );
                 encoder.bind_graphics_pipeline(&self.graphics_pipeline);
-                let buffer_ref: &<back::Backend as Backend>::Buffer = &self.postprocessing_quad.vertices.buffer;
-                let buffers: ArrayVec<[_; 1]> = [(buffer_ref, 0)].into();
-                encoder.bind_vertex_buffers(0, buffers);
+
+                //let buffer_ref: &<back::Backend as Backend>::Buffer = &self.postprocessing_quad.vertices.buffer;
+                //let buffers: ArrayVec<[_; 1]> = [(buffer_ref, 0)].into();
+                encoder.bind_vertex_buffers(0, &[(&self.postprocessing_quad.vertices.buffer as &<back::Backend as Backend>::Buffer, 0u64)].into());
                 encoder.bind_index_buffer(IndexBufferView {
                     buffer: &self.postprocessing_quad.indices.buffer,
                     offset: 0,
@@ -162,11 +165,25 @@ impl HalState {
                     Some(self.descriptor_set.deref()),
                     &[],
                 );
+                /*
                 encoder.push_graphics_constants(
                     &self.pipeline_layout,
                     ShaderStageFlags::FRAGMENT,
                     0,
                     &[time_f32.to_bits()],
+                );
+                */
+                encoder.push_graphics_constants(
+                    &self.pipeline_layout,
+                    ShaderStageFlags::VERTEX,
+                    0,
+                    cast_slice::<f32, u32>(&state.view.data),
+                );
+                encoder.push_graphics_constants(
+                    &self.pipeline_layout,
+                    ShaderStageFlags::VERTEX,
+                    16,
+                    cast_slice::<f32, u32>(&state.projection.data),
                 );
                 encoder.draw_indexed(0..6, 0, 0..1);
             }
@@ -253,7 +270,7 @@ impl HalState {
         }
     }
 
-    fn initialize_hardware(window: &Window) -> Result<(back::Instance,<back::Backend as Backend>::Surface , Adapter<back::Backend>, back::Device,QueueGroup<back::Backend, Graphics> ), &'static str>{
+    fn initialize_hardware(window: &Window) -> Result<(back::Instance, <back::Backend as Backend>::Surface, Adapter<back::Backend>, back::Device, QueueGroup<back::Backend, Graphics>), &'static str> {
         let instance = back::Instance::create(crate::window::WINDOW_NAME, 1);
         let surface = instance.create_surface(window);
 
@@ -292,6 +309,7 @@ impl HalState {
         Result::Ok((instance, surface, adapter, device, queue_group))
     }
     pub fn new(window: &Window) -> Result<Self, &'static str> {
+        println!("init start");
         let (instance, mut surface, adapter, mut device, mut queue_group) = Self::initialize_hardware(window)?;
 
         let (swapchain, extent, backbuffer, format, frames_in_flight) = {
@@ -497,7 +515,7 @@ impl HalState {
                 BufferBundle::new(&adapter, &device, U16_QUAD_INDICES, BufferUsage::INDEX)?;
             (vertices, indexes)
         };
-        let mut postprocessing_quad = Object {vertices, indices};
+        let mut postprocessing_quad = Object { vertices, indices };
         let quad = Quad {
             x: -1.0,
             y: -1.0,
@@ -548,6 +566,8 @@ impl HalState {
                 },
             ]);
         }
+
+        println!("init end");
 
         Ok(Self {
             objects: vec![],
