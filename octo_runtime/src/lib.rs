@@ -42,6 +42,8 @@ impl OctoModule {
 layout (push_constant) uniform PushConsts {
   mat4 view;
   mat4 projection;
+  mat4 model;
+
 } push;
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec2 uv;
@@ -51,9 +53,11 @@ layout (location = 0) out gl_PerVertex {
 };
 layout (location = 1) out vec2 frag_uv;
 
+mat4 mvp = push.projection * push.view * push.model;
+
 void main()
 {
-  gl_Position = push.projection * push.view * vec4(position, 1.0);
+  gl_Position = mvp * vec4(position, 1.0);
   frag_uv = uv;
 }".to_owned(),
             fragment_shaders: HashMap::new(),

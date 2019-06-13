@@ -91,6 +91,17 @@ impl HalState {
                 .release_mapping_writer(data_target)
                 .map_err(|_| "Couldn't release the mapping writer!")?;
         }
+
+        unsafe {
+            let mut data_target = device
+                .acquire_mapping_writer(&obj.indices.memory, 0..obj.indices.requirements.size)
+                .map_err(|_| "Failed to acquire and index buffer mapping writer!")?;
+            const INDEX_DATA: &[u16] = &[0, 1, 2, 2, 3, 0];
+            data_target[..INDEX_DATA.len()].copy_from_slice(&INDEX_DATA);
+            device
+                .release_mapping_writer(data_target)
+                .map_err(|_| "Couldn't release the index buffer mapping writer!")?
+        }
         Result::Ok(())
     }
 
@@ -105,8 +116,23 @@ impl HalState {
                 BufferBundle::new(&self.adapter, &*self.device, U16_QUAD_INDICES, BufferUsage::INDEX)?;
             (vertices, indexes)
         };
-        self.objects.push(Object { vertices, indices , mat: glm::translation(&position)});
+        let quad = Quad {
+            x: -1.0,
+            y: -1.0,
+            w: 2.0,
+            h: 2.0,
+        };
+        let mut obj = Object { vertices, indices, mat: glm::translation(&position) };
+        Self::upload_quad(&mut obj, quad, &self.device)?;
+        self.objects.push(obj);
+
         Result::Ok(())
+    }
+
+    fn vertex(obj: &Object) -> ArrayVec<[(&<back::Backend as Backend>::Buffer, u64); 1]> {
+        let buffer_ref: &<back::Backend as Backend>::Buffer = &obj.vertices.buffer;
+        let buffers: ArrayVec<[_; 1]> = [(buffer_ref, 0)].into();
+        buffers
     }
 
     pub fn draw_quad_frame(&mut self, state: &LocalState) -> Result<(), &'static str> {
@@ -150,15 +176,6 @@ impl HalState {
                     TRIANGLE_CLEAR.iter(),
                 );
                 encoder.bind_graphics_pipeline(&self.graphics_pipeline);
-
-                //let buffer_ref: &<back::Backend as Backend>::Buffer = &self.postprocessing_quad.vertices.buffer;
-                //let buffers: ArrayVec<[_; 1]> = [(buffer_ref, 0)].into();
-                encoder.bind_vertex_buffers(0, &[(&self.postprocessing_quad.vertices.buffer as &<back::Backend as Backend>::Buffer, 0u64)].into());
-                encoder.bind_index_buffer(IndexBufferView {
-                    buffer: &self.postprocessing_quad.indices.buffer,
-                    offset: 0,
-                    index_type: IndexType::U16,
-                });
                 encoder.bind_graphics_descriptor_sets(
                     &self.pipeline_layout,
                     0,
@@ -185,7 +202,38 @@ impl HalState {
                     16,
                     cast_slice::<f32, u32>(&state.projection.data),
                 );
+                //let buffer_ref: &<back::Backend as Backend>::Buffer = &self.postprocessing_quad.vertices.buffer;
+                //let buffers: ArrayVec<[_; 1]> = [(buffer_ref, 0)].into();
+                /*
+                let buffers = Self::vertex(&self.postprocessing_quad);
+                encoder.bind_vertex_buffers(0, buffers);
+                encoder.bind_index_buffer(IndexBufferView {
+                    buffer: &self.postprocessing_quad.indices.buffer,
+                    offset: 0,
+                    index_type: IndexType::U16,
+                });
+
                 encoder.draw_indexed(0..6, 0, 0..1);
+                */
+
+                for obj in &self.objects {
+                    encoder.push_graphics_constants(
+                        &self.pipeline_layout,
+                        ShaderStageFlags::VERTEX,
+                        32,
+                        cast_slice::<f32, u32>(&obj.mat.data),
+                    );
+
+                    let buffers = Self::vertex(obj);
+                    encoder.bind_vertex_buffers(0, buffers);
+                    encoder.bind_index_buffer(IndexBufferView {
+                        buffer: &obj.indices.buffer,
+                        offset: 0,
+                        index_type: IndexType::U16,
+                    });
+
+                    encoder.draw_indexed(0..6, 0, 0..1);
+                }
             }
             buffer.finish();
         }
@@ -205,67 +253,6 @@ impl HalState {
             the_command_queue.submit(submission, Some(flight_fence));
             self.swapchain
                 .present(the_command_queue, i_u32, present_wait_semaphores)
-                .map_err(|_| "Failed to present into the swapchain!")
-        }
-    }
-
-    pub fn draw_clear_frame(&mut self, color: [f32; 4]) -> Result<(), &'static str> {
-        // setup to clear
-        let image_available = &self.image_available_semaphores[self.current_frame];
-        let render_finished = &self.render_finished_semaphores[self.current_frame];
-
-        self.current_frame = (self.current_frame + 1) % self.frames_in_flight;
-
-        let (i_u32, i_usize) = unsafe {
-            let image_index = self
-                .swapchain
-                .acquire_image(core::u64::MAX, FrameSync::Semaphore(image_available))
-                .map_err(|_| "Couldn't acquire an image from the swapchain!")?;
-            (image_index, image_index as usize)
-        };
-
-        let flight_fence = &self.in_flight_fences[i_usize];
-        unsafe {
-            self.device
-                .wait_for_fence(flight_fence, core::u64::MAX)
-                .map_err(|_| "Failed to wait on the fence!")?;
-            self.device
-                .reset_fence(flight_fence)
-                .map_err(|_| "Couldn't reset the fence1")?;
-        }
-
-        //record commands
-        // gdzieś tutaj pójdzie generowanie command bufferów na podstawie danych octo
-
-        unsafe {
-            let buffer = &mut self.command_buffers[i_usize];
-            let clear_values = [ClearValue::Color(ClearColor::Float(color))];
-            buffer.begin(false);
-            buffer.begin_render_pass_inline(
-                &self.render_pass,
-                &self.framebuffers[i_usize],
-                self.render_area,
-                clear_values.iter(),
-            );
-            buffer.finish();
-        }
-
-        // submit and present
-        let command_buffers = &self.command_buffers[i_usize..=i_usize];
-        let wait_semaphores: ArrayVec<[_; 1]> =
-            [(image_available, PipelineStage::COLOR_ATTACHMENT_OUTPUT)].into();
-        let signal_semaphores: ArrayVec<[_; 1]> = [render_finished].into();
-        let present_wait_semaphores: ArrayVec<[_; 1]> = [render_finished].into();
-        let submission = Submission {
-            command_buffers,
-            wait_semaphores,
-            signal_semaphores,
-        };
-        let command_queue = &mut self.queue_group.queues[0];
-        unsafe {
-            command_queue.submit(submission, Some(flight_fence));
-            self.swapchain
-                .present(command_queue, i_u32, present_wait_semaphores)
                 .map_err(|_| "Failed to present into the swapchain!")
         }
     }
@@ -515,7 +502,7 @@ impl HalState {
                 BufferBundle::new(&adapter, &device, U16_QUAD_INDICES, BufferUsage::INDEX)?;
             (vertices, indexes)
         };
-        let mut postprocessing_quad = Object { vertices, indices };
+        let mut postprocessing_quad = Object { vertices, indices, mat: glm::identity() };
         let quad = Quad {
             x: -1.0,
             y: -1.0,

@@ -283,7 +283,7 @@ impl HalState {
                     .map_err(|_| "Couldn't make a Descriptor Set")?
             };
 
-            let push_constants = vec![(ShaderStageFlags::VERTEX, 0..32)];
+            let push_constants = vec![(ShaderStageFlags::VERTEX, 0..48)];
             let layout = unsafe {
                 device
                     .create_pipeline_layout(&descriptor_set_layouts, push_constants)
@@ -351,6 +351,8 @@ fn main() {
 
     let mut winit_state = WinitState::default();
     let mut hal_state = HalState::new(&winit_state.window).unwrap();
+
+    hal_state.add_object(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
     let mut local_state = LocalState::default();
 
     loop {
@@ -366,6 +368,9 @@ fn main() {
                 Ok(state) => state,
                 Err(e) => panic!(e),
             };
+            hal_state.add_object(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
+            hal_state.add_object(glm::vec3(0.5f32, 0.2f32, 0.0f32)).unwrap();
+            hal_state.add_object(glm::vec3(0.0f32, 0.0f32, 1.0f32)).unwrap();
         }
         local_state.update_from_input(inputs);
         if let Err(e) = do_the_render(&mut hal_state, &local_state) {
