@@ -1,16 +1,16 @@
 use core::mem::ManuallyDrop;
 use std::marker::PhantomData;
+use crate::back;
 
 use gfx_hal::{
     adapter::{Adapter, MemoryTypeId, PhysicalDevice},
     Backend,
-    //format::{Format, Aspects},
-    //image::{Layout},
-    //pso::{PipelineStage},
-    buffer::Usage as BufferUsage,
     device::Device,
     memory::{Properties, Requirements},
 };
+
+pub type BufferBundleS = BufferBundle<back::Backend, back::Device>;
+pub type BufferUsage = gfx_hal::buffer::Usage;
 
 pub struct BufferBundle<B: Backend, D: Device<B>> {
     pub buffer: ManuallyDrop<B::Buffer>,

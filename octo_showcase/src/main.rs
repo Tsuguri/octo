@@ -355,6 +355,7 @@ fn main() {
     hal_state.add_object(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
     let mut local_state = LocalState::default();
 
+    //return;
     loop {
         let inputs = UserInput::poll_events_loop(&mut winit_state.events_loop);
         if inputs.end_requested {

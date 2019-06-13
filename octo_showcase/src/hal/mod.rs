@@ -1,3 +1,7 @@
+pub mod prelude;
+
+use prelude::*;
+
 use core::mem::{ManuallyDrop, size_of};
 use std::ops::Deref;
 use std::time::Instant;
@@ -32,6 +36,7 @@ use log::info;
 use winit::Window;
 
 use buffers::BufferBundle;
+use hardware::Hardware;
 
 use crate::back;
 use crate::images::ImageData;
@@ -42,6 +47,7 @@ use crate::LocalState;
 use nalgebra_glm as glm;
 
 pub mod buffers;
+pub mod hardware;
 
 pub struct Object {
     vertices: BufferBundle<back::Backend, back::Device>,
@@ -60,20 +66,16 @@ pub struct HalState {
     current_frame: usize,
     frames_in_flight: usize,
     in_flight_fences: Vec<<back::Backend as Backend>::Fence>,
-    render_finished_semaphores: Vec<<back::Backend as Backend>::Semaphore>,
-    image_available_semaphores: Vec<<back::Backend as Backend>::Semaphore>,
+    render_finished_semaphores: Vec<Semaphore>,
+    image_available_semaphores: Vec<Semaphore>,
     command_buffers: Vec<CommandBuffer<back::Backend, Graphics, MultiShot, Primary>>,
     command_pool: ManuallyDrop<CommandPool<back::Backend, Graphics>>,
     framebuffers: Vec<<back::Backend as Backend>::Framebuffer>,
     image_views: Vec<(<back::Backend as Backend>::ImageView)>,
     render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
     render_area: Rect,
-    queue_group: QueueGroup<back::Backend, Graphics>,
     swapchain: ManuallyDrop<<back::Backend as Backend>::Swapchain>,
-    device: ManuallyDrop<back::Device>,
-    adapter: Adapter<back::Backend>,
-    _surface: <back::Backend as Backend>::Surface,
-    _instance: ManuallyDrop<back::Instance>,
+    hardware: Hardware,
     creation_instant: Instant,
     texture: ImageData<back::Backend, back::Device>,
 }
@@ -108,12 +110,10 @@ impl HalState {
     pub fn add_object(&mut self, position: glm::TVec3<f32>) -> Result<(), &'static str> {
         let (vertices, indices) = {
             const F32_XY_RGB_UV_QUAD: usize = size_of::<f32>() * (2 + 3) * 4;
-            let vertices =
-                BufferBundle::new(&self.adapter, &*self.device, F32_XY_RGB_UV_QUAD, BufferUsage::VERTEX)?;
+            let vertices = self.hardware.create_buffer_bundle(F32_XY_RGB_UV_QUAD, BufferUsage::VERTEX)?;
 
             const U16_QUAD_INDICES: usize = size_of::<u16>() * 2 * 3;
-            let indexes =
-                BufferBundle::new(&self.adapter, &*self.device, U16_QUAD_INDICES, BufferUsage::INDEX)?;
+            let indexes = self.hardware.create_buffer_bundle(U16_QUAD_INDICES, BufferUsage::INDEX)?;
             (vertices, indexes)
         };
         let quad = Quad {
@@ -123,7 +123,7 @@ impl HalState {
             h: 2.0,
         };
         let mut obj = Object { vertices, indices, mat: glm::translation(&position) };
-        Self::upload_quad(&mut obj, quad, &self.device)?;
+        Self::upload_quad(&mut obj, quad, &self.hardware.device)?;
         self.objects.push(obj);
 
         Result::Ok(())
@@ -152,10 +152,10 @@ impl HalState {
 
         let flight_fence = &self.in_flight_fences[i_usize];
         unsafe {
-            self.device
+            self.hardware.device
                 .wait_for_fence(flight_fence, core::u64::MAX)
                 .map_err(|_| "Failed to wait on the fence!")?;
-            self.device
+            self.hardware.device
                 .reset_fence(flight_fence)
                 .map_err(|_| "Couldn't reset the fence!")?;
         }
@@ -248,7 +248,7 @@ impl HalState {
             wait_semaphores,
             signal_semaphores,
         };
-        let the_command_queue = &mut self.queue_group.queues[0];
+        let the_command_queue = &mut self.hardware.queue_group.queues[0];
         unsafe {
             the_command_queue.submit(submission, Some(flight_fence));
             self.swapchain
@@ -383,8 +383,8 @@ impl HalState {
         };
 
         let (image_available_semaphores, render_finished_semaphores, in_flight_fences) = {
-            let mut image_available_semaphores: Vec<<back::Backend as Backend>::Semaphore> = vec![];
-            let mut render_finished_semaphores: Vec<<back::Backend as Backend>::Semaphore> = vec![];
+            let mut image_available_semaphores: Vec<Semaphore> = vec![];
+            let mut render_finished_semaphores: Vec<Semaphore> = vec![];
             let mut in_flight_fences: Vec<<back::Backend as Backend>::Fence> = vec![];
             for _ in 0..frames_in_flight {
                 in_flight_fences.push(
@@ -559,11 +559,7 @@ impl HalState {
         Ok(Self {
             objects: vec![],
             postprocessing_quad,
-            _instance: ManuallyDrop::new(instance),
-            _surface: surface,
-            adapter,
-            device: ManuallyDrop::new(device),
-            queue_group,
+            hardware: Hardware::new(device,instance, adapter, surface, queue_group),
             swapchain: ManuallyDrop::new(swapchain),
             render_area: extent.to_extent().rect(),
             render_pass: ManuallyDrop::new(render_pass),
@@ -589,52 +585,53 @@ impl HalState {
 
 impl core::ops::Drop for HalState {
     fn drop(&mut self) {
-        let _ = self.device.wait_idle();
+        let _ = self.hardware.device.wait_idle();
         unsafe {
             for descriptor_set_layout in self.descriptor_set_layouts.drain(..) {
-                self.device
+                self.hardware.device
                     .destroy_descriptor_set_layout(descriptor_set_layout)
             }
             for fence in self.in_flight_fences.drain(..) {
-                self.device.destroy_fence(fence)
+                self.hardware.device.destroy_fence(fence)
             }
             for semaphore in self.render_finished_semaphores.drain(..) {
-                self.device.destroy_semaphore(semaphore)
+                self.hardware.device.destroy_semaphore(semaphore)
             }
             for semaphore in self.image_available_semaphores.drain(..) {
-                self.device.destroy_semaphore(semaphore)
+                self.hardware.device.destroy_semaphore(semaphore)
             }
             for framebuffer in self.framebuffers.drain(..) {
-                self.device.destroy_framebuffer(framebuffer);
+                self.hardware.device.destroy_framebuffer(framebuffer);
             }
             for image_view in self.image_views.drain(..) {
-                self.device.destroy_image_view(image_view);
+                self.hardware.device.destroy_image_view(image_view);
             }
             // LAST RESORT STYLE CODE, NOT TO BE IMITATED LIGHTLY
             use core::ptr::read;
 
-            self.postprocessing_quad.vertices.manually_drop(&self.device);
-            self.postprocessing_quad.indices.manually_drop(&self.device);
+            self.postprocessing_quad.vertices.manually_drop(&self.hardware.device);
+            self.postprocessing_quad.indices.manually_drop(&self.hardware.device);
             for obj in &self.objects {
-                obj.vertices.manually_drop(&self.device);
-                obj.indices.manually_drop(&self.device);
+                obj.vertices.manually_drop(&self.hardware.device);
+                obj.indices.manually_drop(&self.hardware.device);
             }
-            self.texture.manually_drop(&self.device);
-            self.device
+            self.texture.manually_drop(&self.hardware.device);
+            self.hardware.device
                 .destroy_descriptor_pool(ManuallyDrop::into_inner(read(&self.descriptor_pool)));
-            self.device
+            self.hardware.device
                 .destroy_pipeline_layout(ManuallyDrop::into_inner(read(&self.pipeline_layout)));
-            self.device
+            self.hardware.device
                 .destroy_graphics_pipeline(ManuallyDrop::into_inner(read(&self.graphics_pipeline)));
-            self.device.destroy_command_pool(
+            self.hardware.device.destroy_command_pool(
                 ManuallyDrop::into_inner(read(&self.command_pool)).into_raw(),
             );
-            self.device
+            self.hardware.device
                 .destroy_render_pass(ManuallyDrop::into_inner(read(&self.render_pass)));
-            self.device
+            self.hardware.device
                 .destroy_swapchain(ManuallyDrop::into_inner(read(&self.swapchain)));
-            ManuallyDrop::drop(&mut self.device);
-            ManuallyDrop::drop(&mut self._instance);
+            println!("dropped hal");
+
+            //ManuallyDrop::drop(&mut self.hardware);
         }
     }
 }
