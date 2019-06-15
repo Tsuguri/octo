@@ -334,8 +334,8 @@ impl HalState {
 }
 
 
-pub fn do_the_render(hal: &mut HalState, local_state: &LocalState) -> Result<(), &'static str> {
-    hal.draw_quad_frame(local_state)
+pub fn do_the_render(hal: &mut HalState,hardware: &mut hal::hardware::Hardware, local_state: &LocalState) -> Result<(), &'static str> {
+    hal.draw_quad_frame(local_state, hardware)
 }
 
 fn main() {
@@ -343,13 +343,25 @@ fn main() {
 
 
     let mut winit_state = WinitState::default();
-    let mut hal_state = HalState::new(&winit_state.window).unwrap();
+    let mut hardware = hal::hardware::Hardware::new(&winit_state.window).unwrap();
+    let mut hal_state = HalState::new(&winit_state.window, &mut hardware).unwrap();
 
-    hal_state.add_object(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
+    hardware.add_object(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
+    hardware.add_object(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
+    hardware.add_object(glm::vec3(0.0f32, 0.0f32, 1.0f32)).unwrap();
     let mut local_state = LocalState::default();
 
+    let mut reinitialize = false;
     //return;
     loop {
+        if reinitialize {
+            hal_state.drop_stuff(&mut hardware);
+            hal_state = match HalState::new(&winit_state.window, &mut hardware) {
+                Ok(state) => state,
+                Err(e) => panic!(e),
+            };
+
+        }
         let inputs = UserInput::poll_events_loop(&mut winit_state.events_loop);
         if inputs.end_requested {
             break;
@@ -357,24 +369,16 @@ fn main() {
 
         if inputs.new_frame_size.is_some() {
             debug!("Window changed size, restarting HalState");
-            drop(hal_state);
-            hal_state = match HalState::new(&winit_state.window) {
-                Ok(state) => state,
-                Err(e) => panic!(e),
-            };
-            hal_state.add_object(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
-            hal_state.add_object(glm::vec3(0.5f32, 0.2f32, 0.0f32)).unwrap();
-            hal_state.add_object(glm::vec3(0.0f32, 0.0f32, 1.0f32)).unwrap();
+            reinitialize = true;
+            continue;
         }
         local_state.update_from_input(inputs);
-        if let Err(e) = do_the_render(&mut hal_state, &local_state) {
+        if let Err(e) = do_the_render(&mut hal_state, &mut hardware, &local_state) {
             error!("Rendering error: {:?}", e);
             debug!("trying to restart hal");
-            drop(hal_state);
-            hal_state = match HalState::new(&winit_state.window) {
-                Ok(state) => state,
-                Err(_) => panic!(e),
-            };
+            reinitialize = true;
+            continue;
         }
     }
+    hal_state.drop_stuff(&mut hardware);
 }
