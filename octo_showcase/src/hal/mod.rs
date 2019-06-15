@@ -107,6 +107,8 @@ impl HalState {
         unsafe {
             let duration = Instant::now().duration_since(self.creation_instant);
             let time_f32 = duration.as_secs() as f32 + duration.subsec_nanos() as f32 * 1e-9;
+            let projection = state.camera.make_projection_matrix();
+            let view = state.camera.make_view_matrix();
 
             let buffer = &mut self.command_buffers[i_usize];
             const TRIANGLE_CLEAR: [ClearValue; 1] =
@@ -130,13 +132,13 @@ impl HalState {
                     &self.pipeline.pipeline_layout,
                     ShaderStageFlags::VERTEX,
                     0,
-                    cast_slice::<f32, u32>(&state.view.data),
+                    cast_slice::<f32, u32>(&view.data),
                 );
                 encoder.push_graphics_constants(
                     &self.pipeline.pipeline_layout,
                     ShaderStageFlags::VERTEX,
                     16,
-                    cast_slice::<f32, u32>(&state.projection.data),
+                    cast_slice::<f32, u32>(&projection.data),
                 );
 
                 for obj in &hardware.objects {

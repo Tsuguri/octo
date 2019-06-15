@@ -121,6 +121,7 @@ impl Triangle {
 }
 
 use hal::pipeline::Pipeline;
+use std::time::Instant;
 
 impl HalState {
     fn create_pipeline(
@@ -343,6 +344,7 @@ fn main() {
 
 
     let mut winit_state = WinitState::default();
+    let mut keyboard_state = input::keyboard_state::KeyboardState::default();
     let mut hardware = hal::hardware::Hardware::new(&winit_state.window).unwrap();
     let mut hal_state = HalState::new(&winit_state.window, &mut hardware).unwrap();
 
@@ -351,10 +353,13 @@ fn main() {
     hardware.add_object(glm::vec3(0.0f32, 0.0f32, 1.0f32)).unwrap();
     let mut local_state = LocalState::default();
 
+    local_state.camera.position = glm::vec3(0f32, 0.1f32, -3.0f32);
     let mut reinitialize = false;
+    let mut prev = Instant::now();
     //return;
     loop {
         if reinitialize {
+            reinitialize = false;
             hal_state.drop_stuff(&mut hardware);
             hal_state = match HalState::new(&winit_state.window, &mut hardware) {
                 Ok(state) => state,
@@ -362,7 +367,7 @@ fn main() {
             };
 
         }
-        let inputs = UserInput::poll_events_loop(&mut winit_state.events_loop);
+        let inputs = UserInput::poll_events_loop(&mut winit_state.events_loop, &mut keyboard_state);
         if inputs.end_requested {
             break;
         }
@@ -372,7 +377,12 @@ fn main() {
             reinitialize = true;
             continue;
         }
-        local_state.update_from_input(inputs);
+        let now = Instant::now();
+
+        let dt = now - prev;
+        let duration = dt.as_secs() as f32 + dt.subsec_nanos() as f32 / 1_000_000_000.0;
+        prev = now;
+        local_state.update(inputs, &keyboard_state, duration);
         if let Err(e) = do_the_render(&mut hal_state, &mut hardware, &local_state) {
             error!("Rendering error: {:?}", e);
             debug!("trying to restart hal");
