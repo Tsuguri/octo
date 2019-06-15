@@ -1,4 +1,4 @@
-use core::mem::size_of;
+use core::mem::{ManuallyDrop, size_of};
 
 use gfx_backend_vulkan as back;
 use gfx_hal::{
@@ -120,21 +120,14 @@ impl Triangle {
     }
 }
 
+use hal::pipeline::Pipeline;
+
 impl HalState {
     fn create_pipeline(
         device: &mut back::Device,
         extent: Extent2D,
         render_pass: &<back::Backend as Backend>::RenderPass,
-    ) -> Result<
-        (
-            Vec<<back::Backend as Backend>::DescriptorSetLayout>,
-            <back::Backend as Backend>::DescriptorPool,
-            <back::Backend as Backend>::DescriptorSet,
-            <back::Backend as Backend>::PipelineLayout,
-            <back::Backend as Backend>::GraphicsPipeline,
-        ),
-        &'static str,
-    > {
+    ) -> Result<Pipeline, &'static str > {
         let f = include_str!("file.octo_bin");
 
         let module: OctoModule = serde_json::from_str(&f).unwrap();
@@ -330,13 +323,13 @@ impl HalState {
             device.destroy_shader_module(fragment_shader_module);
         }
 
-        Ok((
+        Ok(Pipeline {
             descriptor_set_layouts,
-            descriptor_pool,
-            descriptor_set,
-            pipeline_layout,
-            gfx_pipeline,
-        ))
+            descriptor_pool: ManuallyDrop::new(descriptor_pool),
+            descriptor_set: ManuallyDrop::new(descriptor_set),
+            pipeline_layout: ManuallyDrop::new(pipeline_layout),
+            graphics_pipeline: ManuallyDrop::new(gfx_pipeline),
+        })
     }
 }
 

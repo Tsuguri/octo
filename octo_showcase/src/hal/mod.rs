@@ -48,6 +48,7 @@ use nalgebra_glm as glm;
 
 pub mod buffers;
 pub mod hardware;
+pub mod pipeline;
 
 pub struct Object {
     vertices: BufferBundle<back::Backend, back::Device>,
@@ -57,14 +58,9 @@ pub struct Object {
 
 pub struct HalState {
     objects: Vec<Object>,
-    postprocessing_quad: Object,
-    descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
-    descriptor_pool: ManuallyDrop<<back::Backend as Backend>::DescriptorPool>,
-    descriptor_set: ManuallyDrop<<back::Backend as Backend>::DescriptorSet>,
-    pipeline_layout: ManuallyDrop<<back::Backend as Backend>::PipelineLayout>,
-    graphics_pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
+    pipeline: pipeline::Pipeline,
+
     current_frame: usize,
-    frames_in_flight: usize,
     in_flight_fences: Vec<<back::Backend as Backend>::Fence>,
     render_finished_semaphores: Vec<Semaphore>,
     image_available_semaphores: Vec<Semaphore>,
@@ -75,35 +71,21 @@ pub struct HalState {
     render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
     render_area: Rect,
     swapchain: ManuallyDrop<<back::Backend as Backend>::Swapchain>,
+    frames_in_flight: usize,
     hardware: Hardware,
     creation_instant: Instant,
     texture: ImageData<back::Backend, back::Device>,
 }
 
 impl HalState {
-    fn upload_quad(obj: &mut Object, quad: Quad, device: &back::Device) -> Result<(), &'static str> {
-        unsafe {
-            let mut data_target =
-                device
-                    .acquire_mapping_writer(&obj.vertices.memory, 0..obj.vertices.requirements.size)
-                    .map_err(|_| "Failed to acquire a memory writer!")?;
+    fn upload_quad(obj: &mut Object, quad: Quad, hardware: &Hardware) -> Result<(), &'static str> {
             let points = quad.vertex_attributes();
-            data_target[..points.len()].copy_from_slice(&points);
-            device
-                .release_mapping_writer(data_target)
-                .map_err(|_| "Couldn't release the mapping writer!")?;
-        }
+        hardware.write_data(&obj.vertices, &points)?;
 
-        unsafe {
-            let mut data_target = device
-                .acquire_mapping_writer(&obj.indices.memory, 0..obj.indices.requirements.size)
-                .map_err(|_| "Failed to acquire and index buffer mapping writer!")?;
             const INDEX_DATA: &[u16] = &[0, 1, 2, 2, 3, 0];
-            data_target[..INDEX_DATA.len()].copy_from_slice(&INDEX_DATA);
-            device
-                .release_mapping_writer(data_target)
-                .map_err(|_| "Couldn't release the index buffer mapping writer!")?
-        }
+        hardware.write_data(&obj.indices, INDEX_DATA)?;
+
+
         Result::Ok(())
     }
 
@@ -123,7 +105,7 @@ impl HalState {
             h: 2.0,
         };
         let mut obj = Object { vertices, indices, mat: glm::translation(&position) };
-        Self::upload_quad(&mut obj, quad, &self.hardware.device)?;
+        Self::upload_quad(&mut obj, quad, &self.hardware)?;
         self.objects.push(obj);
 
         Result::Ok(())
@@ -175,50 +157,29 @@ impl HalState {
                     self.render_area,
                     TRIANGLE_CLEAR.iter(),
                 );
-                encoder.bind_graphics_pipeline(&self.graphics_pipeline);
+                encoder.bind_graphics_pipeline(&self.pipeline.graphics_pipeline);
                 encoder.bind_graphics_descriptor_sets(
-                    &self.pipeline_layout,
+                    &self.pipeline.pipeline_layout,
                     0,
-                    Some(self.descriptor_set.deref()),
+                    Some(self.pipeline.descriptor_set.deref()),
                     &[],
                 );
-                /*
                 encoder.push_graphics_constants(
-                    &self.pipeline_layout,
-                    ShaderStageFlags::FRAGMENT,
-                    0,
-                    &[time_f32.to_bits()],
-                );
-                */
-                encoder.push_graphics_constants(
-                    &self.pipeline_layout,
+                    &self.pipeline.pipeline_layout,
                     ShaderStageFlags::VERTEX,
                     0,
                     cast_slice::<f32, u32>(&state.view.data),
                 );
                 encoder.push_graphics_constants(
-                    &self.pipeline_layout,
+                    &self.pipeline.pipeline_layout,
                     ShaderStageFlags::VERTEX,
                     16,
                     cast_slice::<f32, u32>(&state.projection.data),
                 );
-                //let buffer_ref: &<back::Backend as Backend>::Buffer = &self.postprocessing_quad.vertices.buffer;
-                //let buffers: ArrayVec<[_; 1]> = [(buffer_ref, 0)].into();
-                /*
-                let buffers = Self::vertex(&self.postprocessing_quad);
-                encoder.bind_vertex_buffers(0, buffers);
-                encoder.bind_index_buffer(IndexBufferView {
-                    buffer: &self.postprocessing_quad.indices.buffer,
-                    offset: 0,
-                    index_type: IndexType::U16,
-                });
-
-                encoder.draw_indexed(0..6, 0, 0..1);
-                */
 
                 for obj in &self.objects {
                     encoder.push_graphics_constants(
-                        &self.pipeline_layout,
+                        &self.pipeline.pipeline_layout,
                         ShaderStageFlags::VERTEX,
                         32,
                         cast_slice::<f32, u32>(&obj.mat.data),
@@ -257,51 +218,13 @@ impl HalState {
         }
     }
 
-    fn initialize_hardware(window: &Window) -> Result<(back::Instance, <back::Backend as Backend>::Surface, Adapter<back::Backend>, back::Device, QueueGroup<back::Backend, Graphics>), &'static str> {
-        let instance = back::Instance::create(crate::window::WINDOW_NAME, 1);
-        let surface = instance.create_surface(window);
-
-        let adapter = instance
-            .enumerate_adapters()
-            .into_iter()
-            .find(|a| {
-                a.queue_families
-                    .iter()
-                    .any(|qf| qf.supports_graphics() && surface.supports_queue_family(qf))
-            })
-            .ok_or("Couldn't find a graphical Adapter!")?;
-        let (mut device, mut queue_group) = {
-            let queue_family = adapter
-                .queue_families
-                .iter()
-                .find(|qf| qf.supports_graphics() && surface.supports_queue_family(qf))
-                .ok_or("Couldn't find a QueueFamily with graphics!")?;
-            let Gpu { device, mut queues } = unsafe {
-                adapter
-                    .physical_device
-                    .open(&[(&queue_family, &[1.0; 1])])
-                    .map_err(|_| "Couldn't open the PhysicalDevice!")?
-            };
-            let queue_group = queues
-                .take::<Graphics>(queue_family.id())
-                .ok_or("Couldn't take ownership of the QueueGroup!")?;
-            let _ = if queue_group.queues.len() > 0 {
-                Ok(())
-            } else {
-                Err("The QueueGroup did not have any CommandQueues available!")
-            }?;
-            (device, queue_group)
-        };
-
-        Result::Ok((instance, surface, adapter, device, queue_group))
-    }
     pub fn new(window: &Window) -> Result<Self, &'static str> {
         println!("init start");
-        let (instance, mut surface, adapter, mut device, mut queue_group) = Self::initialize_hardware(window)?;
+        let mut hardware = hardware::Hardware::new(window)?;
 
         let (swapchain, extent, backbuffer, format, frames_in_flight) = {
             let (caps, preferred_formats, present_modes, composite_alphas) =
-                surface.compatibility(&adapter.physical_device);
+                hardware.surface.compatibility(&hardware.adapter.physical_device);
             info!("{:?}", caps);
             info!("Preferred Formats: {:?}", preferred_formats);
             info!("Present Modes: {:?}", present_modes);
@@ -375,8 +298,8 @@ impl HalState {
             info!("{:?}", swapchain_config);
             //
             let (swapchain, backbuffer) = unsafe {
-                device
-                    .create_swapchain(&mut surface, swapchain_config, None)
+                hardware.device
+                    .create_swapchain(&mut hardware.surface, swapchain_config, None)
                     .map_err(|_| "Failed to create the swapchain!")?
             };
             (swapchain, extent, backbuffer, format, image_count as usize)
@@ -388,17 +311,17 @@ impl HalState {
             let mut in_flight_fences: Vec<<back::Backend as Backend>::Fence> = vec![];
             for _ in 0..frames_in_flight {
                 in_flight_fences.push(
-                    device
+                    hardware.device
                         .create_fence(true)
                         .map_err(|_| "Could not create a fence!")?,
                 );
                 image_available_semaphores.push(
-                    device
+                    hardware.device
                         .create_semaphore()
                         .map_err(|_| "Could not create a semaphore!")?,
                 );
                 render_finished_semaphores.push(
-                    device
+                    hardware.device
                         .create_semaphore()
                         .map_err(|_| "Could not create a semaphore!")?,
                 );
@@ -429,7 +352,7 @@ impl HalState {
                 preserves: &[],
             };
             unsafe {
-                device
+                hardware.device
                     .create_render_pass(&[color_attachment], &[subpass], &[])
                     .map_err(|_| "Couldn't create a render pass!")?
             }
@@ -438,7 +361,7 @@ impl HalState {
             Backbuffer::Images(images) => images
                 .into_iter()
                 .map(|image| unsafe {
-                    device
+                    hardware.device
                         .create_image_view(
                             &image,
                             ViewKind::D2,
@@ -460,7 +383,7 @@ impl HalState {
             image_views
                 .iter()
                 .map(|image_view| unsafe {
-                    device
+                    hardware.device
                         .create_framebuffer(
                             &render_pass,
                             vec![image_view],
@@ -475,8 +398,8 @@ impl HalState {
                 .collect::<Result<Vec<_>, &str>>()?
         };
         let mut command_pool = unsafe {
-            device
-                .create_command_pool_typed(&queue_group, CommandPoolCreateFlags::RESET_INDIVIDUAL)
+            hardware.device
+                .create_command_pool_typed(&hardware.queue_group, CommandPoolCreateFlags::RESET_INDIVIDUAL)
                 .map_err(|_| "Could not create the raw command pool!")?
         };
         let command_buffers: Vec<_> = framebuffers
@@ -484,58 +407,22 @@ impl HalState {
             .map(|_| command_pool.acquire_command_buffer())
             .collect();
 
-        let (
-            descriptor_set_layouts,
-            descriptor_pool,
-            descriptor_set,
-            pipeline_layout,
-            graphics_pipeline,
-        ) = Self::create_pipeline(&mut device, extent, &render_pass)?;
-
-        let (vertices, indices) = {
-            const F32_XY_RGB_UV_QUAD: usize = size_of::<f32>() * (2 + 3 + 2) * 4;
-            let vertices =
-                BufferBundle::new(&adapter, &device, F32_XY_RGB_UV_QUAD, BufferUsage::VERTEX)?;
-
-            const U16_QUAD_INDICES: usize = size_of::<u16>() * 2 * 3;
-            let indexes =
-                BufferBundle::new(&adapter, &device, U16_QUAD_INDICES, BufferUsage::INDEX)?;
-            (vertices, indexes)
-        };
-        let mut postprocessing_quad = Object { vertices, indices, mat: glm::identity() };
-        let quad = Quad {
-            x: -1.0,
-            y: -1.0,
-            w: 2.0,
-            h: 2.0,
-        };
-        Self::upload_quad(&mut postprocessing_quad, quad, &device)?;
-
-        unsafe {
-            let mut data_target = device
-                .acquire_mapping_writer(&postprocessing_quad.indices.memory, 0..postprocessing_quad.indices.requirements.size)
-                .map_err(|_| "Failed to acquire and index buffer mapping writer!")?;
-            const INDEX_DATA: &[u16] = &[0, 1, 2, 2, 3, 0];
-            data_target[..INDEX_DATA.len()].copy_from_slice(&INDEX_DATA);
-            device
-                .release_mapping_writer(data_target)
-                .map_err(|_| "Couldn't release the index buffer mapping writer!")?
-        }
+        let pipeline = Self::create_pipeline(&mut hardware.device, extent, &render_pass)?;
 
         let texture = ImageData::new(
-            &adapter,
-            &device,
+            &hardware.adapter,
+            &*hardware.device,
             &mut command_pool,
-            &mut queue_group.queues[0],
+            &mut hardware.queue_group.queues[0],
             image::load_from_memory(crate::CREATURE_BYTES)
                 .expect("binary corrupted")
                 .to_rgba(),
         )?;
 
         unsafe {
-            device.write_descriptor_sets(vec![
+            hardware.device.write_descriptor_sets(vec![
                 gfx_hal::pso::DescriptorSetWrite {
-                    set: &descriptor_set,
+                    set: &*pipeline.descriptor_set,
                     binding: 0,
                     array_offset: 0,
                     descriptors: Some(gfx_hal::pso::Descriptor::Image(
@@ -544,7 +431,7 @@ impl HalState {
                     )),
                 },
                 gfx_hal::pso::DescriptorSetWrite {
-                    set: &descriptor_set,
+                    set: &*pipeline.descriptor_set,
                     binding: 1,
                     array_offset: 0,
                     descriptors: Some(gfx_hal::pso::Descriptor::Sampler(
@@ -558,10 +445,7 @@ impl HalState {
 
         Ok(Self {
             objects: vec![],
-            postprocessing_quad,
-            hardware: Hardware::new(device,instance, adapter, surface, queue_group),
-            swapchain: ManuallyDrop::new(swapchain),
-            render_area: extent.to_extent().rect(),
+            hardware,
             render_pass: ManuallyDrop::new(render_pass),
             image_views,
             framebuffers,
@@ -569,16 +453,14 @@ impl HalState {
             command_buffers,
             image_available_semaphores,
             render_finished_semaphores,
-            descriptor_pool: ManuallyDrop::new(descriptor_pool),
-            descriptor_set: ManuallyDrop::new(descriptor_set),
+            pipeline,
             in_flight_fences,
             frames_in_flight,
             current_frame: 0,
-            descriptor_set_layouts,
-            pipeline_layout: ManuallyDrop::new(pipeline_layout),
-            graphics_pipeline: ManuallyDrop::new(graphics_pipeline),
             creation_instant: Instant::now(),
             texture,
+            render_area: extent.to_extent().rect(),
+            swapchain: ManuallyDrop::new(swapchain),
         })
     }
 }
@@ -587,10 +469,9 @@ impl core::ops::Drop for HalState {
     fn drop(&mut self) {
         let _ = self.hardware.device.wait_idle();
         unsafe {
-            for descriptor_set_layout in self.descriptor_set_layouts.drain(..) {
-                self.hardware.device
-                    .destroy_descriptor_set_layout(descriptor_set_layout)
-            }
+            self.pipeline.manually_drop(&*self.hardware.device);
+
+
             for fence in self.in_flight_fences.drain(..) {
                 self.hardware.device.destroy_fence(fence)
             }
@@ -609,19 +490,11 @@ impl core::ops::Drop for HalState {
             // LAST RESORT STYLE CODE, NOT TO BE IMITATED LIGHTLY
             use core::ptr::read;
 
-            self.postprocessing_quad.vertices.manually_drop(&self.hardware.device);
-            self.postprocessing_quad.indices.manually_drop(&self.hardware.device);
             for obj in &self.objects {
                 obj.vertices.manually_drop(&self.hardware.device);
                 obj.indices.manually_drop(&self.hardware.device);
             }
             self.texture.manually_drop(&self.hardware.device);
-            self.hardware.device
-                .destroy_descriptor_pool(ManuallyDrop::into_inner(read(&self.descriptor_pool)));
-            self.hardware.device
-                .destroy_pipeline_layout(ManuallyDrop::into_inner(read(&self.pipeline_layout)));
-            self.hardware.device
-                .destroy_graphics_pipeline(ManuallyDrop::into_inner(read(&self.graphics_pipeline)));
             self.hardware.device.destroy_command_pool(
                 ManuallyDrop::into_inner(read(&self.command_pool)).into_raw(),
             );
