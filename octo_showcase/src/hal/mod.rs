@@ -40,11 +40,14 @@ use hardware::Hardware;
 
 use crate::back;
 use crate::images::ImageData;
+use crate::images::DepthImage;
 use crate::Quad;
 use crate::LocalState;
 
 //use winit::Window;
 use nalgebra_glm as glm;
+use gfx_hal::pass::{SubpassDependency, SubpassRef};
+use gfx_hal::image::Access as ImageAccess;
 
 pub mod buffers;
 pub mod hardware;
@@ -68,11 +71,10 @@ pub struct HalState {
     frames_in_flight: usize,
     creation_instant: Instant,
     texture: ImageData<back::Backend, back::Device>,
+    depth: Vec<DepthImage<back::Backend, back::Device>>,
 }
 
 impl HalState {
-
-
     fn vertex(obj: &hardware::Object) -> ArrayVec<[(&<back::Backend as Backend>::Buffer, u64); 1]> {
         let buffer_ref: &<back::Backend as Backend>::Buffer = &obj.vertices.buffer;
         let buffers: ArrayVec<[_; 1]> = [(buffer_ref, 0)].into();
@@ -111,8 +113,10 @@ impl HalState {
             let view = state.camera.make_view_matrix();
 
             let buffer = &mut self.command_buffers[i_usize];
-            const TRIANGLE_CLEAR: [ClearValue; 1] =
-                [ClearValue::Color(ClearColor::Float([0.1, 0.2, 0.3, 1.0]))];
+            const TRIANGLE_CLEAR: [ClearValue; 2] =
+                [
+                    ClearValue::Color(ClearColor::Float([0.1, 0.2, 0.3, 1.0])),
+                    ClearValue::DepthStencil(gfx_hal::command::ClearDepthStencil(1.0, 0))];
             buffer.begin(false);
             {
                 let mut encoder = buffer.begin_render_pass_inline(
@@ -307,59 +311,97 @@ impl HalState {
                 stencil_ops: AttachmentOps::DONT_CARE,
                 layouts: Layout::Undefined..Layout::Present,
             };
+            let depth_attachment = Attachment {
+                format: Some(Format::D32Float),
+                samples: 1,
+                ops: AttachmentOps {
+                    load: AttachmentLoadOp::Clear,
+                    store: AttachmentStoreOp::DontCare,
+                },
+                stencil_ops: AttachmentOps::DONT_CARE,
+                layouts: Layout::Undefined..Layout::DepthStencilAttachmentOptimal,
+            };
             let subpass = SubpassDesc {
                 colors: &[(0, Layout::ColorAttachmentOptimal)],
-                depth_stencil: None,
+                depth_stencil: Some(&(1, Layout::DepthStencilAttachmentOptimal)),
                 inputs: &[],
                 resolves: &[],
                 preserves: &[],
             };
+
+
+            let in_dependency = SubpassDependency {
+                passes: SubpassRef::External..SubpassRef::Pass(0),
+                stages: PipelineStage::COLOR_ATTACHMENT_OUTPUT
+                    ..PipelineStage::COLOR_ATTACHMENT_OUTPUT | PipelineStage::EARLY_FRAGMENT_TESTS,
+                accesses: ImageAccess::empty()
+                    ..(ImageAccess::COLOR_ATTACHMENT_READ
+                    | ImageAccess::COLOR_ATTACHMENT_WRITE
+                    | ImageAccess::DEPTH_STENCIL_ATTACHMENT_READ
+                    | ImageAccess::DEPTH_STENCIL_ATTACHMENT_WRITE),
+            };
+            let out_dependency = SubpassDependency {
+                passes: SubpassRef::Pass(0)..SubpassRef::External,
+                stages: PipelineStage::COLOR_ATTACHMENT_OUTPUT | PipelineStage::EARLY_FRAGMENT_TESTS
+                    ..PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+                accesses: (ImageAccess::COLOR_ATTACHMENT_READ
+                    | ImageAccess::COLOR_ATTACHMENT_WRITE
+                    | ImageAccess::DEPTH_STENCIL_ATTACHMENT_READ
+                    | ImageAccess::DEPTH_STENCIL_ATTACHMENT_WRITE)..ImageAccess::empty(),
+            };
+
+
             unsafe {
                 hardware.device
-                    .create_render_pass(&[color_attachment], &[subpass], &[])
+                    .create_render_pass(&[color_attachment, depth_attachment], &[subpass], &[in_dependency, out_dependency])
                     .map_err(|_| "Couldn't create a render pass!")?
             }
         };
-        let image_views: Vec<_> = match backbuffer {
-            Backbuffer::Images(images) => images
-                .into_iter()
-                .map(|image| unsafe {
-                    hardware.device
-                        .create_image_view(
-                            &image,
-                            ViewKind::D2,
-                            format,
-                            Swizzle::NO,
-                            SubresourceRange {
-                                aspects: Aspects::COLOR,
-                                levels: 0..1,
-                                layers: 0..1,
-                            },
-                        )
-                        .map_err(|_| "Couldn't create the image_view for the image!")
-                })
-                .collect::<Result<Vec<_>, &str>>()?,
+
+        let (image_views, depth, framebuffers) = match backbuffer {
+            Backbuffer::Images(images) => {
+                let image_views = images
+                    .into_iter()
+                    .map(|image| unsafe {
+                        hardware.device
+                            .create_image_view(
+                                &image,
+                                ViewKind::D2,
+                                format,
+                                Swizzle::NO,
+                                SubresourceRange {
+                                    aspects: Aspects::COLOR,
+                                    levels: 0..1,
+                                    layers: 0..1,
+                                },
+                            )
+                            .map_err(|_| "Couldn't create the image_view for the image!")
+                    })
+                    .collect::<Result<Vec<_>, &str>>()?;
+                let depth_images = image_views
+                    .iter()
+                    .map(|_| DepthImage::new(&hardware.adapter, &*hardware.device, extent))
+                    .collect::<Result<Vec<_>, &str>>()?;
+                let image_extent = gfx_hal::image::Extent {
+                    width: extent.width as _,
+                    height: extent.height as _,
+                    depth: 1,
+                };
+                let framebuffers = image_views
+                    .iter()
+                    .zip(depth_images.iter())
+                    .map(|(view, depth_image)| unsafe {
+                        let attachments: ArrayVec<[_; 2]> = [view, &depth_image.image_view].into();
+                        hardware.device
+                            .create_framebuffer(&render_pass, attachments, image_extent)
+                            .map_err(|_| "Couldn't crate the framebuffer!")
+                    })
+                    .collect::<Result<Vec<_>, &str>>()?;
+                (image_views, depth_images, framebuffers)
+            }
             Backbuffer::Framebuffer(_) => unimplemented!("Can't handle framebuffer backbuffer!"),
         };
 
-        let framebuffers: Vec<<back::Backend as Backend>::Framebuffer> = {
-            image_views
-                .iter()
-                .map(|image_view| unsafe {
-                    hardware.device
-                        .create_framebuffer(
-                            &render_pass,
-                            vec![image_view],
-                            Extent {
-                                width: extent.width as u32,
-                                height: extent.height as u32,
-                                depth: 1,
-                            },
-                        )
-                        .map_err(|_| "Failed to create a framebuffer!")
-                })
-                .collect::<Result<Vec<_>, &str>>()?
-        };
         let mut command_pool = unsafe {
             hardware.device
                 .create_command_pool_typed(&hardware.queue_group, CommandPoolCreateFlags::RESET_INDIVIDUAL)
@@ -407,6 +449,7 @@ impl HalState {
         println!("init end");
 
         Ok(Self {
+            depth,
             render_pass: ManuallyDrop::new(render_pass),
             image_views,
             framebuffers,
@@ -442,6 +485,9 @@ impl HalState {
             }
             for framebuffer in self.framebuffers.drain(..) {
                 hardware.device.destroy_framebuffer(framebuffer);
+            }
+            for depth_image in self.depth.drain(..) {
+                depth_image.manually_drop(&hardware.device);
             }
             for image_view in self.image_views.drain(..) {
                 hardware.device.destroy_image_view(image_view);

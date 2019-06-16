@@ -128,7 +128,7 @@ impl HalState {
         device: &mut back::Device,
         extent: Extent2D,
         render_pass: &<back::Backend as Backend>::RenderPass,
-    ) -> Result<Pipeline, &'static str > {
+    ) -> Result<Pipeline, &'static str> {
         let f = include_str!("file.octo_bin");
 
         let module: OctoModule = serde_json::from_str(&f).unwrap();
@@ -195,9 +195,11 @@ impl HalState {
                 depth_bias: None,
                 conservative: false,
             };
-
             let depth_stencil = DepthStencilDesc {
-                depth: DepthTest::Off,
+                depth: DepthTest::On {
+                    fun: gfx_hal::pso::Comparison::LessEqual,
+                    write: true,
+                },
                 depth_bounds: false,
                 stencil: StencilTest::Off,
             };
@@ -335,7 +337,7 @@ impl HalState {
 }
 
 
-pub fn do_the_render(hal: &mut HalState,hardware: &mut hal::hardware::Hardware, local_state: &LocalState) -> Result<(), &'static str> {
+pub fn do_the_render(hal: &mut HalState, hardware: &mut hal::hardware::Hardware, local_state: &LocalState) -> Result<(), &'static str> {
     hal.draw_quad_frame(local_state, hardware)
 }
 
@@ -366,7 +368,6 @@ fn main() {
                 Ok(state) => state,
                 Err(e) => panic!(e),
             };
-
         }
         let inputs = UserInput::poll_events_loop(&mut winit_state.events_loop, &mut keyboard_state, &mut mouse_state);
         if inputs.end_requested {
