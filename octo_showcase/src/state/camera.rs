@@ -31,13 +31,22 @@ impl Camera {
         self.pitch = (self.pitch + d_pitch_deg).max(-89.0).min(89.0);
         self.yaw= (self.yaw + d_yaw_deg) % 360.0;
     }
-    fn make_front(&self) -> TVec3<f32> {
+    pub fn make_front(&self) -> TVec3<f32> {
         let pitch_rad = f32::to_radians(self.pitch);
         let yaw_rad = f32::to_radians(self.yaw);
         glm::make_vec3(&[
             yaw_rad.sin() * pitch_rad.cos(),
             pitch_rad.sin(),
             yaw_rad.cos() * pitch_rad.cos(),
+        ])
+    }
+
+    pub fn make_right(&self) -> TVec3<f32> {
+        let yaw_rad = f32::to_radians(self.yaw);
+        glm::make_vec3(&[
+            yaw_rad.cos(),
+            0.0f32,
+            -yaw_rad.sin(),
         ])
     }
     pub fn make_view_matrix(&self) -> TMat4<f32> {

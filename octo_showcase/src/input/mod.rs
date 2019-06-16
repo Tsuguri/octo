@@ -1,19 +1,21 @@
-use winit::{Event, EventsLoop, VirtualKeyCode, WindowEvent};
-use crate::input::keyboard_state::{KeyboardState, KeyCode};
+use winit::{Event, EventsLoop, VirtualKeyCode, WindowEvent, MouseButton, ElementState};
+use keyboard_state::{KeyboardState, KeyCode};
+use mouse_state::MouseState;
 
 pub mod keyboard_state;
+pub mod mouse_state;
 
 #[derive(Debug, Clone, Default)]
 pub struct UserInput {
     pub end_requested: bool,
     pub new_frame_size: Option<(f64, f64)>,
-    pub new_mouse_position: Option<(f64, f64)>,
 }
 
 impl UserInput {
-    pub fn poll_events_loop(events_loop: &mut EventsLoop, keyboard_state: &mut KeyboardState) -> Self {
+    pub fn poll_events_loop(events_loop: &mut EventsLoop, keyboard_state: &mut KeyboardState, mouse_state: &mut MouseState) -> Self {
         let mut output = UserInput::default();
         keyboard_state.next_frame();
+        mouse_state.next_frame();
         events_loop.poll_events(|event| match event {
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
@@ -29,7 +31,16 @@ impl UserInput {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                output.new_mouse_position = Some((position.x, position.y));
+                mouse_state.set_new_position([position.x as f32, position.y as f32]);
+            }
+            Event::WindowEvent { event: WindowEvent::MouseInput { state, button,..}, .. } => {
+                let id: usize = match button {
+                    MouseButton::Left => 0,
+                    MouseButton::Right => 1,
+                    MouseButton::Middle => 2,
+                    MouseButton::Other(oth) => oth as usize,
+                };
+                mouse_state.set_button_state(id, state==ElementState::Pressed);
             }
             Event::WindowEvent { event: WindowEvent::KeyboardInput { input, .. }, .. } => {
                 //println!("pressed {:?}", input);

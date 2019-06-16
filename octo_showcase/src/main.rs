@@ -345,6 +345,7 @@ fn main() {
 
     let mut winit_state = WinitState::default();
     let mut keyboard_state = input::keyboard_state::KeyboardState::default();
+    let mut mouse_state = input::mouse_state::MouseState::default();
     let mut hardware = hal::hardware::Hardware::new(&winit_state.window).unwrap();
     let mut hal_state = HalState::new(&winit_state.window, &mut hardware).unwrap();
 
@@ -367,7 +368,7 @@ fn main() {
             };
 
         }
-        let inputs = UserInput::poll_events_loop(&mut winit_state.events_loop, &mut keyboard_state);
+        let inputs = UserInput::poll_events_loop(&mut winit_state.events_loop, &mut keyboard_state, &mut mouse_state);
         if inputs.end_requested {
             break;
         }
@@ -382,7 +383,7 @@ fn main() {
         let dt = now - prev;
         let duration = dt.as_secs() as f32 + dt.subsec_nanos() as f32 / 1_000_000_000.0;
         prev = now;
-        local_state.update(inputs, &keyboard_state, duration);
+        local_state.update(inputs, &keyboard_state, &mouse_state, duration);
         if let Err(e) = do_the_render(&mut hal_state, &mut hardware, &local_state) {
             error!("Rendering error: {:?}", e);
             debug!("trying to restart hal");

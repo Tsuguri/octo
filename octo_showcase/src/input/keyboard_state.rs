@@ -63,7 +63,8 @@ pub enum KeyCode
     LShift = 57,
     RControl = 58,
     RShift = 59,
-    None = 60
+    Space = 60,
+    None = 61
 }
 
 impl KeyCode
@@ -132,7 +133,8 @@ impl KeyCode
                 KeyCode::LShift => 57,
                 KeyCode::RControl => 58,
                 KeyCode::RShift => 59,
-                KeyCode::None => 60
+                KeyCode::Space => 60,
+                KeyCode::None => 61
             }
     }
     pub fn from_kc_enum(value: KC) -> KeyCode
@@ -200,6 +202,7 @@ impl KeyCode
                 LShift => KeyCode::LShift,
                 RControl => KeyCode::RControl,
                 RShift => KeyCode::RShift,
+                Space => KeyCode::Space,
                 _ => KeyCode::None
             }
     }
