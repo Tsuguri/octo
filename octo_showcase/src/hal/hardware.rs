@@ -1,7 +1,10 @@
 use core::mem::{ManuallyDrop, size_of};
 use std::ops::Deref;
+use std::path::Path;
 
+use tobj;
 use crate::back;
+use crate::Vertex;
 use super::buffers::{BufferBundleS, BufferUsage};
 use super::prelude;
 use super::prelude::*;
@@ -14,10 +17,12 @@ use gfx_hal::device::Device;
 use nalgebra_glm as glm;
 
 use crate::Quad;
+use gfx_hal::pso::BlendOp::RevSub;
 
 pub struct Object {
     pub vertices: BufferBundleS,
     pub indices: BufferBundleS,
+    pub indices_len: u32,
     pub mat: glm::TMat4<f32>,
 }
 
@@ -41,10 +46,48 @@ impl Hardware {
 
         Result::Ok(())
     }
+    pub fn add_object(&mut self, filename: &str, position: glm::TVec3<f32>) -> Result<(), &'static str> {
+        let (models, materials) = tobj::load_obj(&Path::new(filename)).unwrap();
 
-    pub fn add_object(&mut self, position: glm::TVec3<f32>) -> Result<(), &'static str> {
+        if models.len() != 1 {
+            panic!("there should be exactly one mode");
+        }
+        let model = &models[0];
+        let mesh = &model.mesh;
+
+        let indices: Vec<_> = mesh.indices.iter().map(|x| *x as u16).collect();
+        let num = mesh.positions.len() / 3;
+
+        let vertices: Vec<_> = (0..num).map(|x| {
+            let xyz = [mesh.positions[x * 3], mesh.positions[x * 3 + 1], mesh.positions[x * 3 + 2]];
+
+            let normal = [mesh.normals[x * 3], mesh.normals[x * 3 + 1], mesh.normals[x * 3 + 2]];
+            let uv = [0.0f32,0.0f32];
+            //let uv = [mesh.texcoords[x * 2], mesh.texcoords[x * 2 + 1]];
+            Vertex {
+                xyz,
+                normal,
+                uv,
+            }
+        }).collect();
+        let (vertex_buffer, index_buffer) = {
+            let vertex_buffer = self.create_buffer_bundle(vertices.len() * size_of::<f32>() * (2 + 3 + 3), BufferUsage::VERTEX)?;
+
+            let index_buffer = self.create_buffer_bundle(indices.len() * size_of::<u16>(), BufferUsage::INDEX)?;
+            (vertex_buffer, index_buffer)
+        };
+        self.write_data(&vertex_buffer, &vertices);
+        self.write_data(&index_buffer, &indices);
+
+        let obj = Object {indices_len: indices.len() as u32, vertices: vertex_buffer, indices: index_buffer, mat: glm::translation(&position) };
+        self.objects.push(obj);
+
+        Result::Ok(())
+    }
+
+    pub fn add_quad(&mut self, position: glm::TVec3<f32>) -> Result<(), &'static str> {
         let (vertices, indices) = {
-            const F32_XY_RGB_UV_QUAD: usize = size_of::<f32>() * (2 + 3) * 4;
+            const F32_XY_RGB_UV_QUAD: usize = size_of::<f32>() * (2 + 3 + 3) * 4;
             let vertices = self.create_buffer_bundle(F32_XY_RGB_UV_QUAD, BufferUsage::VERTEX)?;
 
             const U16_QUAD_INDICES: usize = size_of::<u16>() * 2 * 3;
@@ -57,7 +100,7 @@ impl Hardware {
             w: 2.0,
             h: 2.0,
         };
-        let mut obj = Object { vertices, indices, mat: glm::translation(&position) };
+        let mut obj = Object {indices_len: 6, vertices, indices, mat: glm::translation(&position) };
         self.upload_quad(&mut obj, quad)?;
         self.objects.push(obj);
 

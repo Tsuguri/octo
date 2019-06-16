@@ -44,6 +44,7 @@ pub struct Triangle {
 #[repr(C)]
 pub struct Vertex {
     xyz: [f32; 3],
+    normal: [f32;3],
     uv: [f32; 2],
 }
 
@@ -57,15 +58,24 @@ impl Vertex {
                 offset: 0,
             },
         };
-        let uv_attribute = AttributeDesc {
+        let normal_attribute = AttributeDesc {
             location: 1,
             binding: 0,
             element: Element {
+                format: Format::Rgb32Float,
+                offset: size_of::<[f32;3]>() as ElemOffset,
+
+            }
+        };
+        let uv_attribute = AttributeDesc {
+            location: 2,
+            binding: 0,
+            element: Element {
                 format: Format::Rg32Float,
-                offset: size_of::<[f32; 3]>() as ElemOffset,
+                offset: (size_of::<[f32; 3]>() *2) as ElemOffset,
             },
         };
-        vec![position_attribute, uv_attribute]
+        vec![position_attribute, normal_attribute, uv_attribute]
     }
 }
 
@@ -80,7 +90,7 @@ pub struct Quad {
 }
 
 impl Quad {
-    pub fn vertex_attributes(self) -> [f32; 4 * (3 + 2)] {
+    pub fn vertex_attributes(self) -> [f32; 4 * (3+3 + 2)] {
         let x = self.x;
         let y = self.y;
         let w = self.w;
@@ -90,21 +100,25 @@ impl Quad {
             x,
             y + h,
             0.0,
+            0.0,0.0,0.0,
             0.0,
             1.0,
             x,
             y,
             0.0,
+            0.0,0.0,0.0,
             0.0,
             0.0,
             x + w,
             y,
             0.0,
+            0.0,0.0,0.0,
             1.0,
             0.0,
             x + w,
             y + h,
             0.0,
+            0.0,0.0,0.0,
             1.0,
             1.0,
         ]
@@ -182,7 +196,7 @@ impl HalState {
 
             let vertex_buffers: Vec<VertexBufferDesc> = vec![VertexBufferDesc {
                 binding: 0,
-                stride: (size_of::<f32>() * 5) as ElemStride,
+                stride: (size_of::<f32>() * 8) as ElemStride,
                 rate: 0,
             }];
             let attributes = Vertex::attributes();
@@ -351,9 +365,10 @@ fn main() {
     let mut hardware = hal::hardware::Hardware::new(&winit_state.window).unwrap();
     let mut hal_state = HalState::new(&winit_state.window, &mut hardware).unwrap();
 
-    hardware.add_object(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
-    hardware.add_object(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
-    hardware.add_object(glm::vec3(0.0f32, 0.0f32, 1.0f32)).unwrap();
+    hardware.add_quad(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
+    hardware.add_quad(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
+    hardware.add_quad(glm::vec3(0.0f32, 0.0f32, 1.0f32)).unwrap();
+    hardware.add_object("monkey.obj", glm::vec3(0.0f32,0.0f32,0.0f32,)).unwrap();
     let mut local_state = LocalState::default();
 
     local_state.camera.position = glm::vec3(0f32, 0.1f32, -3.0f32);

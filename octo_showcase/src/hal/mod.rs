@@ -161,7 +161,7 @@ impl HalState {
                         index_type: IndexType::U16,
                     });
 
-                    encoder.draw_indexed(0..6, 0, 0..1);
+                    encoder.draw_indexed(0..obj.indices_len, 0, 0..1);
                 }
             }
             buffer.finish();
