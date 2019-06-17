@@ -13,15 +13,17 @@ pub struct Camera {
     pub fov: f32,
     pub near: f32,
     pub far: f32,
+    pub ratio: f32,
 
 }
 
 impl Camera {
-    pub fn new(fov: f32, near: f32, far: f32) -> Camera {
+    pub fn new(ratio: f32,fov: f32, near: f32, far: f32) -> Camera {
         Camera {
             fov,
             near,
             far,
+            ratio,
             position: glm::vec3(0f32, 0f32, 0f32),
             pitch: 0f32,
             yaw: 0f32,
@@ -58,7 +60,7 @@ impl Camera {
     }
 
     pub fn make_projection_matrix(&self) -> TMat4<f32> {
-        let mut temp = glm::perspective_lh_zo(800.0 / 600.0, f32::to_radians(self.fov), self.near, self.far);
+        let mut temp = glm::perspective_lh_zo(self.ratio, f32::to_radians(self.fov), self.near, self.far);
         temp[(1, 1)] *= -1.0;
         temp
     }

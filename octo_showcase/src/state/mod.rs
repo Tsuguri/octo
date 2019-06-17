@@ -20,7 +20,7 @@ impl Default for LocalState {
         LocalState {
             frame_height: 0.0f64,
             frame_width: 0.0f64,
-            camera: camera::Camera::new(50.0, 0.1, 100.0),
+            camera: camera::Camera::new(800.0/600.0,50.0, 0.1, 100.0),
         }
     }
 }
@@ -30,6 +30,8 @@ impl LocalState {
         if let Some(frame_size) = input.new_frame_size {
             self.frame_width = frame_size.0;
             self.frame_height = frame_size.1;
+            self.camera.ratio = (frame_size.0/frame_size.1) as f32;
+            println!("new ratio: {}", self.camera.ratio);
         }
 
         let dm = mouse.get_mouse_move();

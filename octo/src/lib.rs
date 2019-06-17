@@ -10,6 +10,30 @@ use parser::codespan_reporting;
 use parser::codespan::CodeMap;
 use codespan_reporting::Diagnostic;
 
+pub use shaderc::ShaderKind as Shader;
+
+
+fn process_glsl_debug(path: &str, shader_type: Shader) {
+
+    let code = std::fs::read_to_string(path).unwrap();
+
+    let mut compiler = shaderc::Compiler::new().ok_or("shaderc not found!").unwrap();
+    let compilation_result = compiler
+        .compile_into_spirv(
+            &code,
+            shader_type,
+            &path,
+            "main",
+            None,
+        )
+        .map_err(|e| {
+            println!("{}", e);
+            "Couldn't compile fragment shader!"
+        }).unwrap();
+
+
+}
+
 fn create_module(ast: ast::Program, module: &mut OctoModule) {
     let mut compiler = shaderc::Compiler::new().ok_or("shaderc not found!").unwrap();
     for func in ast.items {

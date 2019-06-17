@@ -356,7 +356,7 @@ pub fn do_the_render(hal: &mut HalState, hardware: &mut hal::hardware::Hardware,
 }
 
 fn main() {
-    simple_logger::init().unwrap();
+    //simple_logger::init().unwrap();
 
 
     let mut winit_state = WinitState::default();
@@ -365,10 +365,8 @@ fn main() {
     let mut hardware = hal::hardware::Hardware::new(&winit_state.window).unwrap();
     let mut hal_state = HalState::new(&winit_state.window, &mut hardware).unwrap();
 
-    hardware.add_quad(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
-    hardware.add_quad(glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
-    hardware.add_quad(glm::vec3(0.0f32, 0.0f32, 1.0f32)).unwrap();
     hardware.add_object("monkey.obj", glm::vec3(0.0f32,0.0f32,0.0f32,)).unwrap();
+    hardware.add_object("teapot3.obj", glm::vec3(5.0f32,0.0f32,0.0f32,)).unwrap();
     let mut local_state = LocalState::default();
 
     local_state.camera.position = glm::vec3(0f32, 0.1f32, -3.0f32);
@@ -392,7 +390,6 @@ fn main() {
         if inputs.new_frame_size.is_some() {
             debug!("Window changed size, restarting HalState");
             reinitialize = true;
-            continue;
         }
         let now = Instant::now();
 

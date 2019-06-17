@@ -59,7 +59,7 @@ mat4 mvp = push.projection * push.view * push.model;
 void main()
 {
   gl_Position = mvp * vec4(position, 1.0);
-  frag_uv = uv;
+  frag_uv = (normal.xy/2.0 + 0.5);
 }".to_owned(),
             fragment_shaders: HashMap::new(),
             basic_vertex_spirv: vec![],
