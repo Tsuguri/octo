@@ -44,7 +44,7 @@ pub struct Triangle {
 #[repr(C)]
 pub struct Vertex {
     xyz: [f32; 3],
-    normal: [f32;3],
+    normal: [f32; 3],
     uv: [f32; 2],
 }
 
@@ -63,16 +63,16 @@ impl Vertex {
             binding: 0,
             element: Element {
                 format: Format::Rgb32Float,
-                offset: size_of::<[f32;3]>() as ElemOffset,
+                offset: size_of::<[f32; 3]>() as ElemOffset,
 
-            }
+            },
         };
         let uv_attribute = AttributeDesc {
             location: 2,
             binding: 0,
             element: Element {
                 format: Format::Rg32Float,
-                offset: (size_of::<[f32; 3]>() *2) as ElemOffset,
+                offset: (size_of::<[f32; 3]>() * 2) as ElemOffset,
             },
         };
         vec![position_attribute, normal_attribute, uv_attribute]
@@ -90,7 +90,7 @@ pub struct Quad {
 }
 
 impl Quad {
-    pub fn vertex_attributes(self) -> [f32; 4 * (3+3 + 2)] {
+    pub fn vertex_attributes(self) -> [f32; 4 * (3 + 3 + 2)] {
         let x = self.x;
         let y = self.y;
         let w = self.w;
@@ -100,25 +100,25 @@ impl Quad {
             x,
             y + h,
             0.0,
-            0.0,0.0,0.0,
+            0.0, 0.0, 0.0,
             0.0,
             1.0,
             x,
             y,
             0.0,
-            0.0,0.0,0.0,
+            0.0, 0.0, 0.0,
             0.0,
             0.0,
             x + w,
             y,
             0.0,
-            0.0,0.0,0.0,
+            0.0, 0.0, 0.0,
             1.0,
             0.0,
             x + w,
             y + h,
             0.0,
-            0.0,0.0,0.0,
+            0.0, 0.0, 0.0,
             1.0,
             1.0,
         ]
@@ -149,14 +149,17 @@ impl HalState {
         drop(f);
         println!("Loading octo module: {}", module.name);
 
+        let vert = include_bytes!("vert.glsl.spirv");
+        let frag = include_bytes!("frag.glsl.spirv");
+
         let vertex_shader_module = unsafe {
             device
-                .create_shader_module(&module.basic_vertex_spirv)
+                .create_shader_module(vert)
                 .map_err(|_| "Couldn't make the vertex module")?
         };
         let fragment_shader_module = unsafe {
             device
-                .create_shader_module(&module.fragment_shaders["firstGPU"].1)
+                .create_shader_module(frag)
                 .map_err(|_| "Couldn't make the fragment module")?
         };
         let (
@@ -365,8 +368,8 @@ fn main() {
     let mut hardware = hal::hardware::Hardware::new(&winit_state.window).unwrap();
     let mut hal_state = HalState::new(&winit_state.window, &mut hardware).unwrap();
 
-    hardware.add_object("monkey.obj", glm::vec3(0.0f32,0.0f32,0.0f32,)).unwrap();
-    hardware.add_object("teapot3.obj", glm::vec3(5.0f32,0.0f32,0.0f32,)).unwrap();
+    hardware.add_object("monkey.obj", glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
+    hardware.add_object("teapot3.obj", glm::vec3(5.0f32, 0.0f32, 0.0f32)).unwrap();
     let mut local_state = LocalState::default();
 
     local_state.camera.position = glm::vec3(0f32, 0.1f32, -3.0f32);

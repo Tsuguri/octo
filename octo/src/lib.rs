@@ -13,7 +13,7 @@ use codespan_reporting::Diagnostic;
 pub use shaderc::ShaderKind as Shader;
 
 
-fn process_glsl_debug(path: &str, shader_type: Shader) {
+pub fn process_glsl_debug(path: &str, shader_type: Shader) {
 
     let code = std::fs::read_to_string(path).unwrap();
 
@@ -30,6 +30,10 @@ fn process_glsl_debug(path: &str, shader_type: Shader) {
             println!("{}", e);
             "Couldn't compile fragment shader!"
         }).unwrap();
+
+    let new_name = path.to_owned() + ".spirv";
+    let mut file = std::fs::File::create(new_name).unwrap();
+    file.write_all(compilation_result.as_binary_u8());
 
 
 }

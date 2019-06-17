@@ -183,11 +183,7 @@ impl core::ops::Drop for Hardware {
             println!("dropping hardware");
             ManuallyDrop::drop(&mut self.queue_group);
             ManuallyDrop::drop(&mut self.device);
-            println!("heh");
-            //ManuallyDrop::drop(&mut self.surface);
-            println!("heh2");
             ManuallyDrop::drop(&mut self.instance);
-            println!("heh3");
         }
     }
 }
