@@ -29,7 +29,6 @@ use octo_runtime::OctoModule;
 use state::LocalState;
 use window::WinitState;
 
-mod images;
 mod window;
 mod input;
 mod state;
@@ -49,6 +48,9 @@ pub struct Vertex {
 }
 
 impl Vertex {
+    pub fn size() -> usize {
+        size_of::<f32>() * 8
+    }
     pub fn attributes() -> Vec<AttributeDesc> {
         let position_attribute = AttributeDesc {
             location: 0,
@@ -199,7 +201,7 @@ impl HalState {
 
             let vertex_buffers: Vec<VertexBufferDesc> = vec![VertexBufferDesc {
                 binding: 0,
-                stride: (size_of::<f32>() * 8) as ElemStride,
+                stride: (Vertex::size()) as ElemStride,
                 rate: 0,
             }];
             let attributes = Vertex::attributes();
@@ -207,7 +209,7 @@ impl HalState {
             let rasterizer = Rasterizer {
                 depth_clamping: false,
                 polygon_mode: PolygonMode::Fill,
-                cull_face: Face::NONE,
+                cull_face: Face::BACK,
                 front_face: FrontFace::Clockwise,
                 depth_bias: None,
                 conservative: false,
@@ -264,11 +266,11 @@ impl HalState {
                     immutable_samplers: false,
                 },
             ];
-            let immutable_samplers = Vec::<<back::Backend as Backend>::Sampler>::new();
+
             let descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout> =
                 vec![unsafe {
                     device
-                        .create_descriptor_set_layout(bindings, immutable_samplers)
+                        .create_descriptor_set_layout(bindings, std::iter::empty::<<back::Backend as Backend>::Sampler>())
                         .map_err(|_| "Couldn't make a DescriptorSetLayout")?
                 }];
 

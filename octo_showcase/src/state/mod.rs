@@ -1,7 +1,5 @@
 use crate::input::UserInput;
 
-use nalgebra_glm as glm;
-use glm::TMat4;
 use crate::input::keyboard_state::{KeyboardState, KeyCode};
 use crate::input::mouse_state::MouseState;
 

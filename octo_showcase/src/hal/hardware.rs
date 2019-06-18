@@ -1,5 +1,4 @@
 use core::mem::{ManuallyDrop, size_of};
-use std::ops::Deref;
 use std::path::Path;
 
 use tobj;
@@ -10,14 +9,13 @@ use super::prelude;
 use super::prelude::*;
 use gfx_hal::Instance;
 use gfx_hal::queue::family::QueueFamily;
-use gfx_hal::window::{Surface, Extent2D};
+use gfx_hal::window::{Surface};
 use gfx_hal::adapter::PhysicalDevice;
 use gfx_hal::device::Device;
 
 use nalgebra_glm as glm;
 
 use crate::Quad;
-use gfx_hal::pso::BlendOp::RevSub;
 
 pub struct Object {
     pub vertices: BufferBundleS,
@@ -47,7 +45,7 @@ impl Hardware {
         Result::Ok(())
     }
     pub fn add_object(&mut self, filename: &str, position: glm::TVec3<f32>) -> Result<(), &'static str> {
-        let (models, materials) = tobj::load_obj(&Path::new(filename)).unwrap();
+        let (models, _materials) = tobj::load_obj(&Path::new(filename)).unwrap();
 
         if models.len() != 1 {
             panic!("there should be exactly one mode");
@@ -76,8 +74,8 @@ impl Hardware {
             let index_buffer = self.create_buffer_bundle(indices.len() * size_of::<u16>(), BufferUsage::INDEX)?;
             (vertex_buffer, index_buffer)
         };
-        self.write_data(&vertex_buffer, &vertices);
-        self.write_data(&index_buffer, &indices);
+        self.write_data(&vertex_buffer, &vertices)?;
+        self.write_data(&index_buffer, &indices)?;
 
         let obj = Object {indices_len: indices.len() as u32, vertices: vertex_buffer, indices: index_buffer, mat: glm::translation(&position) };
         self.objects.push(obj);
@@ -128,7 +126,7 @@ impl Hardware {
                     .any(|qf| qf.supports_graphics() && surface.supports_queue_family(qf))
             })
             .ok_or("Couldn't find a graphical Adapter!")?;
-        let (mut device, mut queue_group) = {
+        let (device, queue_group) = {
             let queue_family = adapter
                 .queue_families
                 .iter()
@@ -154,7 +152,7 @@ impl Hardware {
         Result::Ok((instance, surface, adapter, device, queue_group))
     }
     pub fn new(window: &winit::Window) -> Result<Hardware, &'static str> {
-        let (instance, mut surface, adapter, device, queue_group) = Self::initialize_hardware(window)?;
+        let (instance, surface, adapter, device, queue_group) = Self::initialize_hardware(window)?;
 
         Result::Ok(Hardware {
             objects: vec![],

@@ -1,51 +1,35 @@
 pub mod prelude;
 
-use prelude::*;
-
-use core::mem::{ManuallyDrop, size_of};
+use core::mem::{ManuallyDrop};
 use std::ops::Deref;
-use std::time::Instant;
 
-use arrayvec::{ArrayVec, Array};
+use arrayvec::{ArrayVec};
 use gfx_hal::{
-    adapter::{Adapter, /*MemoryTypeId,*/ PhysicalDevice},
     Backend,
-    buffer::{IndexBufferView, Usage as BufferUsage},
-    command::{ClearColor, ClearValue, CommandBuffer, MultiShot, Primary},
+    buffer::{IndexBufferView},
+    command::{ClearColor, ClearValue},
     device::Device,
-    //memory::{Properties, Requirements},
-    format::{Aspects, ChannelType, Format, Swizzle},
-    Gpu,
-    Graphics,
-    image::{Extent, Layout, SubresourceRange, Usage, ViewKind},
+    format::{ChannelType, Format},
+    image::{Layout, Usage},
     IndexType,
-    Instance,
     memory::cast_slice,
     pass::{Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp, SubpassDesc},
-    pool::{CommandPool, CommandPoolCreateFlags},
+    pool::{CommandPoolCreateFlags},
     pso::{
         PipelineStage,
         Rect, ShaderStageFlags,
     },
-    queue::{family::QueueGroup, Submission},
-    QueueFamily,
+    queue::{Submission},
     Surface,
     window::{Backbuffer, Extent2D, FrameSync, PresentMode, Swapchain, SwapchainConfig},
 };
 use log::info;
 use winit::Window;
 
-use buffers::BufferBundle;
-use hardware::Hardware;
 
 use crate::back;
-use crate::images::ImageData;
-use crate::images::DepthImage;
-use crate::Quad;
 use crate::LocalState;
 
-//use winit::Window;
-use nalgebra_glm as glm;
 use gfx_hal::pass::{SubpassDependency, SubpassRef};
 use gfx_hal::image::Access as ImageAccess;
 
@@ -54,8 +38,10 @@ pub mod hardware;
 pub mod pipeline;
 pub mod framebuffer_stuff;
 pub mod renderframe_stuff;
+pub mod images;
 
 
+use images::ImageData;
 use framebuffer_stuff::FramebufferStuff;
 use renderframe_stuff::RenderFrameStuff;
 
@@ -122,6 +108,8 @@ impl HalState {
                     TRIANGLE_CLEAR.iter(),
                 );
                 encoder.bind_graphics_pipeline(&self.pipeline.graphics_pipeline);
+
+                self.pipeline.write_descriptor_sets(&hardware, &self.texture);
                 encoder.bind_graphics_descriptor_sets(
                     &self.pipeline.pipeline_layout,
                     0,
@@ -361,11 +349,6 @@ impl HalState {
                 .to_rgba(),
         )?;
 
-        unsafe {
-            pipeline.write_descriptor_sets(&hardware, &texture);
-        }
-
-        println!("init end");
 
         Ok(Self {
             render_stuff,
@@ -384,7 +367,6 @@ impl HalState {
         let _ = hardware.device.wait_idle();
         unsafe {
             self.pipeline.manually_drop(&*hardware.device);
-
 
             for render_stuff in self.render_stuff.drain(..) {
                 render_stuff.drop_manually(hardware);
@@ -405,7 +387,6 @@ impl HalState {
                 .destroy_swapchain(ManuallyDrop::into_inner(read(&self.swapchain)));
             println!("dropped hal");
 
-            //ManuallyDrop::drop(&mut self.hardware);
         }
     }
 }

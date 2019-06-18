@@ -1,8 +1,10 @@
+#![allow(dead_code)]
 use crate::back;
 
 use gfx_hal::{
     Backend,
 };
+
 
 pub type Semaphore = <back::Backend as Backend>::Semaphore;
 pub type Fence = <back::Backend as Backend>::Fence;
@@ -26,5 +28,5 @@ pub type CommandPool = gfx_hal::CommandPool<back::Backend, gfx_hal::Graphics>;
 pub type RenderPass =<back::Backend as Backend>::RenderPass;
 pub type Image = <back::Backend as Backend>::Image;
 
-pub type DepthImage = crate::images::DepthImage<back::Backend, back::Device>;
-pub type ImageData = crate::images::ImageData<back::Backend, back::Device>;
+pub type DepthImage = super::images::DepthImage<back::Backend, back::Device>;
+pub type ImageData = super::images::ImageData<back::Backend, back::Device>;
