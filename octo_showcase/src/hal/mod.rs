@@ -6,7 +6,7 @@ use core::mem::{ManuallyDrop, size_of};
 use std::ops::Deref;
 use std::time::Instant;
 
-use arrayvec::ArrayVec;
+use arrayvec::{ArrayVec, Array};
 use gfx_hal::{
     adapter::{Adapter, /*MemoryTypeId,*/ PhysicalDevice},
     Backend,
@@ -52,26 +52,24 @@ use gfx_hal::image::Access as ImageAccess;
 pub mod buffers;
 pub mod hardware;
 pub mod pipeline;
+pub mod framebuffer_stuff;
+pub mod renderframe_stuff;
 
+
+use framebuffer_stuff::FramebufferStuff;
+use renderframe_stuff::RenderFrameStuff;
 
 pub struct HalState {
     pipeline: pipeline::Pipeline,
+    render_stuff: Vec<RenderFrameStuff>,
+    framebuffer_stuff: Vec<FramebufferStuff>,
 
     current_frame: usize,
-    in_flight_fences: Vec<<back::Backend as Backend>::Fence>,
-    render_finished_semaphores: Vec<Semaphore>,
-    image_available_semaphores: Vec<Semaphore>,
-    command_buffers: Vec<CommandBuffer<back::Backend, Graphics, MultiShot, Primary>>,
-    command_pool: ManuallyDrop<CommandPool<back::Backend, Graphics>>,
-    framebuffers: Vec<<back::Backend as Backend>::Framebuffer>,
-    image_views: Vec<(<back::Backend as Backend>::ImageView)>,
-    render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
+    command_pool: ManuallyDrop<prelude::CommandPool>,
+    render_pass: ManuallyDrop<prelude::RenderPass>,
     render_area: Rect,
     swapchain: ManuallyDrop<<back::Backend as Backend>::Swapchain>,
-    frames_in_flight: usize,
-    creation_instant: Instant,
     texture: ImageData<back::Backend, back::Device>,
-    depth: Vec<DepthImage<back::Backend, back::Device>>,
 }
 
 impl HalState {
@@ -83,20 +81,20 @@ impl HalState {
 
     pub fn draw_quad_frame(&mut self, state: &LocalState, hardware: &mut hardware::Hardware) -> Result<(), &'static str> {
         // SETUP FOR THIS FRAME
-        let image_available = &self.image_available_semaphores[self.current_frame];
-        let render_finished = &self.render_finished_semaphores[self.current_frame];
+        let render_stuff = &self.render_stuff[self.current_frame];
         // Advance the frame _before_ we start using the `?` operator
-        self.current_frame = (self.current_frame + 1) % self.frames_in_flight;
+        self.current_frame = (self.current_frame + 1) % self.render_stuff.len();
 
         let (i_u32, i_usize) = unsafe {
             let image_index = self
                 .swapchain
-                .acquire_image(core::u64::MAX, FrameSync::Semaphore(image_available))
+                .acquire_image(core::u64::MAX, FrameSync::Semaphore(&render_stuff.image_available))
                 .map_err(|_| "Couldn't acquire an image from the swapchain!")?;
             (image_index, image_index as usize)
         };
+        let fb_stuff = &mut self.framebuffer_stuff[i_usize];
 
-        let flight_fence = &self.in_flight_fences[i_usize];
+        let flight_fence = &render_stuff.in_flight;
         unsafe {
             hardware.device
                 .wait_for_fence(flight_fence, core::u64::MAX)
@@ -107,12 +105,10 @@ impl HalState {
         }
 
         unsafe {
-            let duration = Instant::now().duration_since(self.creation_instant);
-            let time_f32 = duration.as_secs() as f32 + duration.subsec_nanos() as f32 * 1e-9;
             let projection = state.camera.make_projection_matrix();
             let view = state.camera.make_view_matrix();
 
-            let buffer = &mut self.command_buffers[i_usize];
+            let buffer = &mut fb_stuff.command_buffer;
             const TRIANGLE_CLEAR: [ClearValue; 2] =
                 [
                     ClearValue::Color(ClearColor::Float([0.1, 0.2, 0.3, 1.0])),
@@ -121,7 +117,7 @@ impl HalState {
             {
                 let mut encoder = buffer.begin_render_pass_inline(
                     &self.render_pass,
-                    &self.framebuffers[i_usize],
+                    &fb_stuff.framebuffer,
                     self.render_area,
                     TRIANGLE_CLEAR.iter(),
                 );
@@ -166,12 +162,12 @@ impl HalState {
             }
             buffer.finish();
         }
-        let command_buffers = &self.command_buffers[i_usize..=i_usize];
+        let command_buffers: ArrayVec<_> = [&fb_stuff.command_buffer].into();
         let wait_semaphores: ArrayVec<[_; 1]> =
-            [(image_available, PipelineStage::COLOR_ATTACHMENT_OUTPUT)].into();
-        let signal_semaphores: ArrayVec<[_; 1]> = [render_finished].into();
+            [(&render_stuff.image_available, PipelineStage::COLOR_ATTACHMENT_OUTPUT)].into();
+        let signal_semaphores: ArrayVec<[_; 1]> = [&render_stuff.render_finished].into();
         // yes, you have to write it twice like this. yes, it's silly.
-        let present_wait_semaphores: ArrayVec<[_; 1]> = [render_finished].into();
+        let present_wait_semaphores: ArrayVec<[_; 1]> = [&render_stuff.render_finished].into();
         let submission = Submission {
             command_buffers,
             wait_semaphores,
@@ -272,32 +268,12 @@ impl HalState {
             (swapchain, extent, backbuffer, format, image_count as usize)
         };
 
-        let (image_available_semaphores, render_finished_semaphores, in_flight_fences) = {
-            let mut image_available_semaphores: Vec<Semaphore> = vec![];
-            let mut render_finished_semaphores: Vec<Semaphore> = vec![];
-            let mut in_flight_fences: Vec<<back::Backend as Backend>::Fence> = vec![];
+        let render_stuff = {
+            let mut render_stuff: Vec<RenderFrameStuff> = vec![];
             for _ in 0..frames_in_flight {
-                in_flight_fences.push(
-                    hardware.device
-                        .create_fence(true)
-                        .map_err(|_| "Could not create a fence!")?,
-                );
-                image_available_semaphores.push(
-                    hardware.device
-                        .create_semaphore()
-                        .map_err(|_| "Could not create a semaphore!")?,
-                );
-                render_finished_semaphores.push(
-                    hardware.device
-                        .create_semaphore()
-                        .map_err(|_| "Could not create a semaphore!")?,
-                );
+                render_stuff.push(RenderFrameStuff::new(&hardware)?);
             }
-            (
-                image_available_semaphores,
-                render_finished_semaphores,
-                in_flight_fences,
-            )
+            render_stuff
         };
 
         let render_pass = {
@@ -358,59 +334,20 @@ impl HalState {
             }
         };
 
-        let (image_views, depth, framebuffers) = match backbuffer {
-            Backbuffer::Images(images) => {
-                let image_views = images
-                    .into_iter()
-                    .map(|image| unsafe {
-                        hardware.device
-                            .create_image_view(
-                                &image,
-                                ViewKind::D2,
-                                format,
-                                Swizzle::NO,
-                                SubresourceRange {
-                                    aspects: Aspects::COLOR,
-                                    levels: 0..1,
-                                    layers: 0..1,
-                                },
-                            )
-                            .map_err(|_| "Couldn't create the image_view for the image!")
-                    })
-                    .collect::<Result<Vec<_>, &str>>()?;
-                let depth_images = image_views
-                    .iter()
-                    .map(|_| DepthImage::new(&hardware.adapter, &*hardware.device, extent))
-                    .collect::<Result<Vec<_>, &str>>()?;
-                let image_extent = gfx_hal::image::Extent {
-                    width: extent.width as _,
-                    height: extent.height as _,
-                    depth: 1,
-                };
-                let framebuffers = image_views
-                    .iter()
-                    .zip(depth_images.iter())
-                    .map(|(view, depth_image)| unsafe {
-                        let attachments: ArrayVec<[_; 2]> = [view, &depth_image.image_view].into();
-                        hardware.device
-                            .create_framebuffer(&render_pass, attachments, image_extent)
-                            .map_err(|_| "Couldn't crate the framebuffer!")
-                    })
-                    .collect::<Result<Vec<_>, &str>>()?;
-                (image_views, depth_images, framebuffers)
-            }
-            Backbuffer::Framebuffer(_) => unimplemented!("Can't handle framebuffer backbuffer!"),
-        };
-
         let mut command_pool = unsafe {
             hardware.device
                 .create_command_pool_typed(&hardware.queue_group, CommandPoolCreateFlags::RESET_INDIVIDUAL)
                 .map_err(|_| "Could not create the raw command pool!")?
         };
-        let command_buffers: Vec<_> = framebuffers
-            .iter()
-            .map(|_| command_pool.acquire_command_buffer())
-            .collect();
+        let framebuffer_stuff = match backbuffer {
+            Backbuffer::Images(images) => {
+                let framebuffer_stuff = images.into_iter().map(|image| -> Result<FramebufferStuff, &'static str> {
+                    FramebufferStuff::new(extent, hardware, format, &image, &mut command_pool, &render_pass)
+                }).collect::<Result<Vec<_>, &str>>()?;
+                framebuffer_stuff
+            }
+            Backbuffer::Framebuffer(_) => unimplemented!("Can't handle framebuffer backbuffer!"),
+        };
 
         let pipeline = Self::create_pipeline(&mut hardware.device, extent, &render_pass)?;
 
@@ -425,43 +362,18 @@ impl HalState {
         )?;
 
         unsafe {
-            hardware.device.write_descriptor_sets(vec![
-                gfx_hal::pso::DescriptorSetWrite {
-                    set: &*pipeline.descriptor_set,
-                    binding: 0,
-                    array_offset: 0,
-                    descriptors: Some(gfx_hal::pso::Descriptor::Image(
-                        texture.image_view.deref(),
-                        Layout::Undefined,
-                    )),
-                },
-                gfx_hal::pso::DescriptorSetWrite {
-                    set: &*pipeline.descriptor_set,
-                    binding: 1,
-                    array_offset: 0,
-                    descriptors: Some(gfx_hal::pso::Descriptor::Sampler(
-                        texture.sampler.samp.deref(),
-                    )),
-                },
-            ]);
+            pipeline.write_descriptor_sets(&hardware, &texture);
         }
 
         println!("init end");
 
         Ok(Self {
-            depth,
+            render_stuff,
+            framebuffer_stuff,
             render_pass: ManuallyDrop::new(render_pass),
-            image_views,
-            framebuffers,
             command_pool: ManuallyDrop::new(command_pool),
-            command_buffers,
-            image_available_semaphores,
-            render_finished_semaphores,
             pipeline,
-            in_flight_fences,
-            frames_in_flight,
             current_frame: 0,
-            creation_instant: Instant::now(),
             texture,
             render_area: extent.to_extent().rect(),
             swapchain: ManuallyDrop::new(swapchain),
@@ -474,23 +386,11 @@ impl HalState {
             self.pipeline.manually_drop(&*hardware.device);
 
 
-            for fence in self.in_flight_fences.drain(..) {
-                hardware.device.destroy_fence(fence)
+            for render_stuff in self.render_stuff.drain(..) {
+                render_stuff.drop_manually(hardware);
             }
-            for semaphore in self.render_finished_semaphores.drain(..) {
-                hardware.device.destroy_semaphore(semaphore)
-            }
-            for semaphore in self.image_available_semaphores.drain(..) {
-                hardware.device.destroy_semaphore(semaphore)
-            }
-            for framebuffer in self.framebuffers.drain(..) {
-                hardware.device.destroy_framebuffer(framebuffer);
-            }
-            for depth_image in self.depth.drain(..) {
-                depth_image.manually_drop(&hardware.device);
-            }
-            for image_view in self.image_views.drain(..) {
-                hardware.device.destroy_image_view(image_view);
+            for framebuffer_stuff in self.framebuffer_stuff.drain(..) {
+                framebuffer_stuff.drop_manually(hardware);
             }
             // LAST RESORT STYLE CODE, NOT TO BE IMITATED LIGHTLY
             use core::ptr::read;

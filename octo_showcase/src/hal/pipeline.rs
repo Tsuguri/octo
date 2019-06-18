@@ -1,8 +1,10 @@
 use super::prelude;
 use super::prelude::*;
 use std::mem::ManuallyDrop;
+use std::ops::Deref;
 
 use gfx_hal::Device;
+use crate::hal::hardware::Hardware;
 
 pub struct Pipeline {
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
@@ -13,6 +15,27 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
+    pub unsafe fn write_descriptor_sets(&self, hardware: &Hardware, texture: &ImageData){
+        hardware.device.write_descriptor_sets(vec![
+            gfx_hal::pso::DescriptorSetWrite {
+                set: &*self.descriptor_set,
+                binding: 0,
+                array_offset: 0,
+                descriptors: Some(gfx_hal::pso::Descriptor::Image(
+                    texture.image_view.deref(),
+                    gfx_hal::image::Layout::Undefined,
+                )),
+            },
+            gfx_hal::pso::DescriptorSetWrite {
+                set: &*self.descriptor_set,
+                binding: 1,
+                array_offset: 0,
+                descriptors: Some(gfx_hal::pso::Descriptor::Sampler(
+                    texture.sampler.samp.deref(),
+                )),
+            },
+        ]);
+    }
     pub unsafe fn manually_drop(&mut self, device: &prelude::Device) {
         use core::ptr::read;
         for descriptor_set_layout in self.descriptor_set_layouts.drain(..) {
