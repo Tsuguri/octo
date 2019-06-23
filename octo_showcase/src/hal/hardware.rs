@@ -12,20 +12,40 @@ use gfx_hal::queue::family::QueueFamily;
 use gfx_hal::window::{Surface};
 use gfx_hal::adapter::PhysicalDevice;
 use gfx_hal::device::Device;
+use arrayvec::ArrayVec;
 
 use nalgebra_glm as glm;
 
 use crate::Quad;
 
-pub struct Object {
-    pub vertices: BufferBundleS,
+#[derive(Debug, Copy, Clone)]
+pub struct ModelId(usize);
+
+pub struct Model {
+    vertices: BufferBundleS,
     pub indices: BufferBundleS,
     pub indices_len: u32,
-    pub mat: glm::TMat4<f32>,
+
+}
+
+impl ModelId {
+    pub fn id(&self) -> usize {
+        self.0
+    }
+
+}
+
+impl Model {
+    pub fn vertex(&self) -> ArrayVec<[(&<back::Backend as gfx_hal::Backend>::Buffer, u64); 1]> {
+        let buffer_ref: &<back::Backend as gfx_hal::Backend>::Buffer = &self.vertices.buffer;
+        let buffers: ArrayVec<[_; 1]> = [(buffer_ref, 0)].into();
+        buffers
+    }
+
 }
 
 pub struct Hardware {
-    pub objects: Vec<Object>,
+    pub models: Vec<Model>,
     instance: ManuallyDrop<prelude::Instance>,
     pub surface: prelude::Surface,
     pub adapter: Adapter,
@@ -34,17 +54,7 @@ pub struct Hardware {
 }
 
 impl Hardware {
-    fn upload_quad(&self, obj: &mut Object, quad: Quad) -> Result<(), &'static str> {
-        let points = quad.vertex_attributes();
-        self.write_data(&obj.vertices, &points)?;
-
-        const INDEX_DATA: &[u16] = &[0, 1, 2, 2, 3, 0];
-        self.write_data(&obj.indices, INDEX_DATA)?;
-
-
-        Result::Ok(())
-    }
-    pub fn add_object(&mut self, filename: &str, position: glm::TVec3<f32>) -> Result<(), &'static str> {
+    pub fn add_object(&mut self, filename: &str) -> Result<ModelId, &'static str> {
         let (models, _materials) = tobj::load_obj(&Path::new(filename)).unwrap();
 
         if models.len() != 1 {
@@ -77,32 +87,10 @@ impl Hardware {
         self.write_data(&vertex_buffer, &vertices)?;
         self.write_data(&index_buffer, &indices)?;
 
-        let obj = Object {indices_len: indices.len() as u32, vertices: vertex_buffer, indices: index_buffer, mat: glm::translation(&position) };
-        self.objects.push(obj);
+        let obj = Model{indices_len: indices.len() as u32, vertices: vertex_buffer, indices: index_buffer};
+        self.models.push(obj);
 
-        Result::Ok(())
-    }
-
-    pub fn add_quad(&mut self, position: glm::TVec3<f32>) -> Result<(), &'static str> {
-        let (vertices, indices) = {
-            const F32_XY_RGB_UV_QUAD: usize = size_of::<f32>() * (2 + 3 + 3) * 4;
-            let vertices = self.create_buffer_bundle(F32_XY_RGB_UV_QUAD, BufferUsage::VERTEX)?;
-
-            const U16_QUAD_INDICES: usize = size_of::<u16>() * 2 * 3;
-            let indexes = self.create_buffer_bundle(U16_QUAD_INDICES, BufferUsage::INDEX)?;
-            (vertices, indexes)
-        };
-        let quad = Quad {
-            x: -1.0,
-            y: -1.0,
-            w: 2.0,
-            h: 2.0,
-        };
-        let mut obj = Object {indices_len: 6, vertices, indices, mat: glm::translation(&position) };
-        self.upload_quad(&mut obj, quad)?;
-        self.objects.push(obj);
-
-        Result::Ok(())
+        Result::Ok(ModelId(self.models.len()-1))
     }
 
     pub fn write_data<T: Copy>(&self, buffer: &BufferBundleS, data: &[T]) -> Result<(), &'static str> {
@@ -155,7 +143,7 @@ impl Hardware {
         let (instance, surface, adapter, device, queue_group) = Self::initialize_hardware(window)?;
 
         Result::Ok(Hardware {
-            objects: vec![],
+            models: vec![],
             device: ManuallyDrop::new(device),
             instance: ManuallyDrop::new(instance),
             adapter,
@@ -174,7 +162,7 @@ impl Hardware {
 impl core::ops::Drop for Hardware {
     fn drop(&mut self) {
         unsafe {
-            for obj in &self.objects {
+            for obj in self.models.drain(..){
                 obj.vertices.manually_drop(&self.device);
                 obj.indices.manually_drop(&self.device);
             }

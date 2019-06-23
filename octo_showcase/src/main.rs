@@ -138,6 +138,7 @@ impl Triangle {
 
 use hal::pipeline::Pipeline;
 use std::time::Instant;
+use crate::state::Object;
 
 impl HalState {
     fn create_pipeline(
@@ -370,9 +371,16 @@ fn main() {
     let mut hardware = hal::hardware::Hardware::new(&winit_state.window).unwrap();
     let mut hal_state = HalState::new(&winit_state.window, &mut hardware).unwrap();
 
-    hardware.add_object("monkey.obj", glm::vec3(0.0f32, 0.0f32, 0.0f32)).unwrap();
-    hardware.add_object("teapot3.obj", glm::vec3(5.0f32, 0.0f32, 0.0f32)).unwrap();
+    let monkey_id = hardware.add_object("monkey.obj").unwrap();
+    let teapot_id = hardware.add_object("teapot3.obj").unwrap();
     let mut local_state = LocalState::default();
+
+    local_state.add_object(
+        Object::new(monkey_id)
+            .with_pos(glm::vec3(0.0f32, 0.0, 0.0))
+            .with_rotation(glm::quat_identity())
+    );
+    local_state.add_object(Object::new(teapot_id).with_pos(glm::vec3(2.0f32, 0.0, 0.0)));
 
     local_state.camera.position = glm::vec3(0f32, 0.1f32, -3.0f32);
     let mut reinitialize = false;

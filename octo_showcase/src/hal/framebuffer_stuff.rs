@@ -18,6 +18,8 @@ impl FramebufferStuff {
             hardware.device.destroy_framebuffer(self.framebuffer);
             self.depth.manually_drop(&hardware.device);
             hardware.device.destroy_image_view(self.image_view);
+
+
         }
     }
 

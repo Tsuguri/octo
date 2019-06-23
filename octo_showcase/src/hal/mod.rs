@@ -59,11 +59,6 @@ pub struct HalState {
 }
 
 impl HalState {
-    fn vertex(obj: &hardware::Object) -> ArrayVec<[(&<back::Backend as Backend>::Buffer, u64); 1]> {
-        let buffer_ref: &<back::Backend as Backend>::Buffer = &obj.vertices.buffer;
-        let buffers: ArrayVec<[_; 1]> = [(buffer_ref, 0)].into();
-        buffers
-    }
 
     pub fn draw_quad_frame(&mut self, state: &LocalState, hardware: &mut hardware::Hardware) -> Result<(), &'static str> {
         // SETUP FOR THIS FRAME
@@ -129,23 +124,24 @@ impl HalState {
                     cast_slice::<f32, u32>(&projection.data),
                 );
 
-                for obj in &hardware.objects {
+                for obj in &state.objects {
                     encoder.push_graphics_constants(
                         &self.pipeline.pipeline_layout,
                         ShaderStageFlags::VERTEX,
                         32,
-                        cast_slice::<f32, u32>(&obj.mat.data),
+                        cast_slice::<f32, u32>(&obj.mat().data),
                     );
+                    let model = &hardware.models[obj.model.id()];
 
-                    let buffers = Self::vertex(obj);
+                    let buffers = model.vertex();
                     encoder.bind_vertex_buffers(0, buffers);
                     encoder.bind_index_buffer(IndexBufferView {
-                        buffer: &obj.indices.buffer,
+                        buffer: &model.indices.buffer,
                         offset: 0,
                         index_type: IndexType::U16,
                     });
 
-                    encoder.draw_indexed(0..obj.indices_len, 0, 0..1);
+                    encoder.draw_indexed(0..model.indices_len, 0, 0..1);
                 }
             }
             buffer.finish();

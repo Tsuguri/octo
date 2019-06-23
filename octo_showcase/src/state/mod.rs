@@ -2,15 +2,49 @@ use crate::input::UserInput;
 
 use crate::input::keyboard_state::{KeyboardState, KeyCode};
 use crate::input::mouse_state::MouseState;
+use nalgebra_glm as glm;
+use crate::hal::hardware::ModelId;
 
 pub mod camera;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
+pub struct Object {
+    pub model: ModelId,
+    pub position: glm::TVec3<f32>,
+    pub rotation: glm::Qua<f32>,
+}
+
+impl Object {
+    pub fn new(model: ModelId) -> Object {
+        Object {
+            model,
+            position: glm::zero(),
+            rotation: glm::quat_identity()
+        }
+    }
+
+    pub fn with_pos(self, pos: glm::TVec3<f32>) -> Self {
+        let mut p = self;
+        p.position = pos;
+        p
+    }
+    pub fn with_rotation(self, rot: glm::Qua<f32>) -> Self {
+        let mut p = self;
+        p.rotation = rot;
+        p
+    }
+
+    pub fn mat(&self) -> glm::TMat4<f32> {
+        glm::translation(&self.position) * glm::quat_to_mat4(&self.rotation)
+    }
+}
+#[derive(Debug, Clone)]
 pub struct LocalState {
     pub frame_width: f64,
     pub frame_height: f64,
 
     pub camera: camera::Camera,
+    pub objects: Vec<Object>,
 }
 
 impl Default for LocalState {
@@ -19,11 +53,15 @@ impl Default for LocalState {
             frame_height: 0.0f64,
             frame_width: 0.0f64,
             camera: camera::Camera::new(800.0/600.0,50.0, 0.1, 100.0),
+            objects: vec![],
         }
     }
 }
 
 impl LocalState {
+    pub fn add_object(&mut self, obj: Object) {
+        self.objects.push(obj);
+    }
     pub fn update(&mut self, input: UserInput, keyboard: &KeyboardState, mouse: &MouseState, dt: f32) {
         if let Some(frame_size) = input.new_frame_size {
             self.frame_width = frame_size.0;
