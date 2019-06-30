@@ -51,11 +51,10 @@ pub struct HalState {
     framebuffer_stuff: Vec<FramebufferStuff>,
 
     current_frame: usize,
-    command_pool: ManuallyDrop<prelude::CommandPool>,
     render_pass: ManuallyDrop<prelude::RenderPass>,
     render_area: Rect,
     swapchain: ManuallyDrop<<back::Backend as Backend>::Swapchain>,
-    texture: ImageData<back::Backend, back::Device>,
+    texture: hardware::TextureId,
 }
 
 impl HalState {
@@ -104,7 +103,7 @@ impl HalState {
                 );
                 encoder.bind_graphics_pipeline(&self.pipeline.graphics_pipeline);
 
-                self.pipeline.write_descriptor_sets(&hardware, &self.texture);
+                self.pipeline.write_descriptor_sets(&hardware, &hardware.textures[self.texture.id()]);
                 encoder.bind_graphics_descriptor_sets(
                     &self.pipeline.pipeline_layout,
                     0,
@@ -318,15 +317,10 @@ impl HalState {
             }
         };
 
-        let mut command_pool = unsafe {
-            hardware.device
-                .create_command_pool_typed(&hardware.queue_group, CommandPoolCreateFlags::RESET_INDIVIDUAL)
-                .map_err(|_| "Could not create the raw command pool!")?
-        };
         let framebuffer_stuff = match backbuffer {
             Backbuffer::Images(images) => {
                 let framebuffer_stuff = images.into_iter().map(|image| -> Result<FramebufferStuff, &'static str> {
-                    FramebufferStuff::new(extent, hardware, format, &image, &mut command_pool, &render_pass)
+                    FramebufferStuff::new(extent, hardware, format, &image, &render_pass)
                 }).collect::<Result<Vec<_>, &str>>()?;
                 framebuffer_stuff
             }
@@ -335,22 +329,13 @@ impl HalState {
 
         let pipeline = Self::create_pipeline(&mut hardware.device, extent, &render_pass)?;
 
-        let texture = ImageData::new(
-            &hardware.adapter,
-            &*hardware.device,
-            &mut command_pool,
-            &mut hardware.queue_group.queues[0],
-            image::load_from_memory(crate::CREATURE_BYTES)
-                .expect("binary corrupted")
-                .to_rgba(),
-        )?;
+        let texture = hardware.add_texture_bytes(crate::CREATURE_BYTES)?;
 
 
         Ok(Self {
             render_stuff,
             framebuffer_stuff,
             render_pass: ManuallyDrop::new(render_pass),
-            command_pool: ManuallyDrop::new(command_pool),
             pipeline,
             current_frame: 0,
             texture,
@@ -373,10 +358,6 @@ impl HalState {
             // LAST RESORT STYLE CODE, NOT TO BE IMITATED LIGHTLY
             use core::ptr::read;
 
-            self.texture.manually_drop(&hardware.device);
-            hardware.device.destroy_command_pool(
-                ManuallyDrop::into_inner(read(&self.command_pool)).into_raw(),
-            );
             hardware.device
                 .destroy_render_pass(ManuallyDrop::into_inner(read(&self.render_pass)));
             hardware.device

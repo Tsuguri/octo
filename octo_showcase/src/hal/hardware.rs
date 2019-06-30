@@ -9,9 +9,10 @@ use super::prelude;
 use super::prelude::*;
 use gfx_hal::Instance;
 use gfx_hal::queue::family::QueueFamily;
-use gfx_hal::window::{Surface};
+use gfx_hal::window::Surface;
 use gfx_hal::adapter::PhysicalDevice;
 use gfx_hal::device::Device;
+use gfx_hal::pool::CommandPoolCreateFlags;
 use arrayvec::ArrayVec;
 
 use nalgebra_glm as glm;
@@ -20,6 +21,15 @@ use crate::Quad;
 
 #[derive(Debug, Copy, Clone)]
 pub struct ModelId(usize);
+
+impl TextureId {
+    pub fn id(&self) -> usize {
+        self.0
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct TextureId(usize);
 
 pub struct Model {
     vertices: BufferBundleS,
@@ -32,7 +42,6 @@ impl ModelId {
     pub fn id(&self) -> usize {
         self.0
     }
-
 }
 
 impl Model {
@@ -41,19 +50,46 @@ impl Model {
         let buffers: ArrayVec<[_; 1]> = [(buffer_ref, 0)].into();
         buffers
     }
-
 }
 
 pub struct Hardware {
     pub models: Vec<Model>,
+    pub textures: Vec<ImageData>,
     instance: ManuallyDrop<prelude::Instance>,
     pub surface: prelude::Surface,
     pub adapter: Adapter,
     pub device: ManuallyDrop<prelude::Device>,
     pub queue_group: ManuallyDrop<QueueGroup>,
+    pub command_pool: ManuallyDrop<CommandPool>,
 }
 
 impl Hardware {
+    pub fn add_texture_file(&mut self, filename: &str) -> Result<TextureId, &'static str> {
+        let f = std::fs::File::open(filename).unwrap();
+        let f = std::io::BufReader::new(f);
+        let img = image::load(f, image::ImageFormat::PNG).unwrap().to_rgba();
+        let tex = ImageData::new(
+            &self.adapter,
+            &*self.device,
+            &mut self.command_pool,
+            &mut self.queue_group.queues[0],
+            img
+        )?;
+        self.textures.push(tex);
+        Result::Ok(TextureId(self.textures.len()))
+    }
+    pub fn add_texture_bytes(&mut self, buffer: &[u8]) -> Result<TextureId, &'static str> {
+        let tex = ImageData::new(
+            &self.adapter,
+            &*self.device,
+            &mut self.command_pool,
+            &mut self.queue_group.queues[0],
+            image::load_from_memory(buffer).expect("binary not ok").to_rgba(),
+        )?;
+        self.textures.push(tex);
+
+        Result::Ok(TextureId(self.textures.len() - 1))
+    }
     pub fn add_object(&mut self, filename: &str) -> Result<ModelId, &'static str> {
         let (models, _materials) = tobj::load_obj(&Path::new(filename)).unwrap();
 
@@ -70,7 +106,7 @@ impl Hardware {
             let xyz = [mesh.positions[x * 3], mesh.positions[x * 3 + 1], mesh.positions[x * 3 + 2]];
 
             let normal = [mesh.normals[x * 3], mesh.normals[x * 3 + 1], mesh.normals[x * 3 + 2]];
-            let uv = [0.0f32,0.0f32];
+            let uv = [0.0f32, 0.0f32];
             //let uv = [mesh.texcoords[x * 2], mesh.texcoords[x * 2 + 1]];
             Vertex {
                 xyz,
@@ -87,10 +123,10 @@ impl Hardware {
         self.write_data(&vertex_buffer, &vertices)?;
         self.write_data(&index_buffer, &indices)?;
 
-        let obj = Model{indices_len: indices.len() as u32, vertices: vertex_buffer, indices: index_buffer};
+        let obj = Model { indices_len: indices.len() as u32, vertices: vertex_buffer, indices: index_buffer };
         self.models.push(obj);
 
-        Result::Ok(ModelId(self.models.len()-1))
+        Result::Ok(ModelId(self.models.len() - 1))
     }
 
     pub fn write_data<T: Copy>(&self, buffer: &BufferBundleS, data: &[T]) -> Result<(), &'static str> {
@@ -142,13 +178,22 @@ impl Hardware {
     pub fn new(window: &winit::Window) -> Result<Hardware, &'static str> {
         let (instance, surface, adapter, device, queue_group) = Self::initialize_hardware(window)?;
 
+
+        let mut command_pool = unsafe {
+            device
+                .create_command_pool_typed(&queue_group, CommandPoolCreateFlags::RESET_INDIVIDUAL)
+                .map_err(|_| "Could not create the raw command pool!")?
+        };
+
         Result::Ok(Hardware {
             models: vec![],
+            textures: vec![],
             device: ManuallyDrop::new(device),
             instance: ManuallyDrop::new(instance),
             adapter,
             surface,
             queue_group: ManuallyDrop::new(queue_group),
+            command_pool: ManuallyDrop::new(command_pool),
 
         })
     }
@@ -162,10 +207,17 @@ impl Hardware {
 impl core::ops::Drop for Hardware {
     fn drop(&mut self) {
         unsafe {
-            for obj in self.models.drain(..){
+            for obj in self.models.drain(..) {
                 obj.vertices.manually_drop(&self.device);
                 obj.indices.manually_drop(&self.device);
             }
+            for texture in self.textures.drain(..) {
+                texture.manually_drop(&self.device);
+            }
+            use core::ptr::read;
+            self.device.destroy_command_pool(
+                ManuallyDrop::into_inner(read(&self.command_pool)).into_raw(),
+            );
             println!("dropping hardware");
             ManuallyDrop::drop(&mut self.queue_group);
             ManuallyDrop::drop(&mut self.device);

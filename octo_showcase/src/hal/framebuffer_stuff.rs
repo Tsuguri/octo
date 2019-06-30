@@ -25,10 +25,9 @@ impl FramebufferStuff {
 
     pub fn new(
         extent_2d: gfx_hal::window::Extent2D,
-        hardware: &super::hardware::Hardware,
+        hardware: &mut super::hardware::Hardware,
         format: gfx_hal::format::Format,
         image: &prelude::Image,
-        command_pool: &mut CommandPool,
         render_pass: &RenderPass,
     ) -> Result<FramebufferStuff, &'static str>
     {
@@ -57,7 +56,7 @@ impl FramebufferStuff {
             let framebuffer = hardware.device
                 .create_framebuffer(&render_pass, attachments, extent)
                 .map_err(|_| "Couldn't crate the framebuffer!")?;
-            let command_buffer = command_pool.acquire_command_buffer();
+            let command_buffer = hardware.command_pool.acquire_command_buffer();
 
             Result::Ok(FramebufferStuff { image_view, depth, framebuffer, command_buffer })
         }
