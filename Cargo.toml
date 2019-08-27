@@ -3,6 +3,5 @@ members = [
         "octo",
         "parser",
         "octo_runtime",
-        "octo_showcase",
         "errors"
 ]
