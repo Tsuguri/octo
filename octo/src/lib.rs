@@ -4,18 +4,79 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
-use octo_runtime::OctoModule;
+use octo_runtime::*;
 use parser::ast;
 use parser::codespan_reporting;
 use parser::codespan::CodeMap;
 use codespan_reporting::Diagnostic;
 
 pub use shaderc::ShaderKind as Shader;
+use std::borrow::ToOwned;
+use std::collections::HashMap;
 
 
-pub fn process_glsl_debug(path: &str, shader_type: Shader) {
+pub fn emit_test_module(path: &Path) {
 
-    let code = std::fs::read_to_string(path).unwrap();
+    let basic_vertex = include_str!("basic_vertex.glsl");
+    let compiled_vertex = process_glsl(basic_vertex, "basic vertex",Shader::Vertex);
+
+    let mut fragment_shaders = HashMap::new();
+
+    let basic_fragment = include_str!("basic_fragment.glsl");
+    let compiled_fragment = process_glsl(basic_fragment, "basic fragment", Shader::Fragment);
+
+    fragment_shaders.insert(0, (basic_fragment.to_owned(), compiled_fragment));
+
+
+    let mut shader_passes = vec![];
+
+    shader_passes.push(
+        ShaderPass{
+            id: 0,
+            input: vec![
+                InputType::ProvidedTexture(0),
+                InputType::ProvidedTexture(1),
+                InputType::ProvidedTexture(2),
+            ],
+            output: OutputType::Result,
+            shader: 0,
+            dependencies: None,
+        }
+    );
+
+    let module = OctoModule{
+        name: "Debug module".to_owned(),
+        version: 0,
+        basic_vertex: basic_vertex.to_owned(),
+        basic_vertex_spirv: compiled_vertex,
+        fragment_shaders,
+        required_input: vec![
+            ("color".to_owned(), TextureType::Vec4),
+            ("normal".to_owned(), TextureType::Vec4),
+            ("albedo".to_owned(), TextureType::Vec4),
+        ],
+        textures: vec![],
+        passes: shader_passes,
+    };
+
+
+    // saving module to file
+    {
+        let
+            module_data =
+            serde_json::to_string_pretty(&module).
+                unwrap();
+
+        let
+            mut output_file =
+            File::create(&path).
+                unwrap();
+        output_file.
+            write_all(module_data.as_bytes()).unwrap();
+    }
+}
+
+pub fn process_glsl(code: &str,path: &str, shader_type: Shader) -> Vec<u32>{
 
     let mut compiler = shaderc::Compiler::new().ok_or("shaderc not found!").unwrap();
     let compilation_result = compiler
@@ -30,17 +91,26 @@ pub fn process_glsl_debug(path: &str, shader_type: Shader) {
             println!("{}", e);
             "Couldn't compile fragment shader!"
         }).unwrap();
-
-    let new_name = path.to_owned() + ".spirv";
-    let mut file = std::fs::File::create(new_name).unwrap();
-    file.write_all(compilation_result.as_binary_u8());
-
-
+    compilation_result.as_binary().to_vec()
 }
 
+//pub fn process_glsl_debug(path: &str, shader_type: Shader) {
+//
+//    let code = std::fs::read_to_string(path).unwrap();
+//    let result = process_glsl(&code, path, shader_type);
+//
+//    let new_name = path.to_owned() + ".spirv";
+//    let mut file = std::fs::File::create(new_name).unwrap();
+//    file.write_all(&result);
+//    file.
+//
+//
+//}
+
 fn create_module(ast: ast::Program, module: &mut OctoModule) {
+    let mut ast = ast;
     let mut compiler = shaderc::Compiler::new().ok_or("shaderc not found!").unwrap();
-    for func in ast.items {
+    for (id, func) in ast.items.iter_mut().enumerate() {
         let compilation_result = compiler
             .compile_into_spirv(
                 &func.code.val,
@@ -53,7 +123,7 @@ fn create_module(ast: ast::Program, module: &mut OctoModule) {
                 println!("{}", e);
                 "Couldn't compile fragment shader!"
             }).unwrap();
-        module.fragment_shaders.insert(func.name.val, (func.code.val, compilation_result.as_binary_u8().to_owned()));
+        module.fragment_shaders.insert(id, (func.code.val.clone(), compilation_result.as_binary().to_owned()));
 
     }
 
@@ -66,11 +136,12 @@ fn create_module(ast: ast::Program, module: &mut OctoModule) {
             None,
         )
         .map_err(|e| e.to_string() + "Couldn't compile vertex shader!").unwrap();
-    module.basic_vertex_spirv = vertex_compile_artifact.as_binary_u8().to_owned();
+    module.basic_vertex_spirv = vertex_compile_artifact.as_binary().to_owned();
 }
 
 pub fn process_file(path: &str) -> Result<(), ()> {
     println!("Processing file at: {}", path);
+    println!("rerun-if-changed={}",path);
     let p = Path::new(path);
 
     if !p.is_file() {
@@ -78,8 +149,10 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     }
     let result_path = p.with_extension("octo_bin");
 
-    let mut file = File::open(path).unwrap();
-    let mut data = String::new();
+    emit_test_module(&result_path);
+/*
+    //let mut file = File::open(path).unwrap();
+    //let mut data = String::new();
     file.read_to_string(&mut data).unwrap();
 
 
@@ -120,6 +193,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
         write_all(module_data.as_bytes()).unwrap();
 
     println!("processed as: {:?}", result_path);
+    */
     Result::Ok(())
 }
 

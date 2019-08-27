@@ -2,7 +2,11 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+pub type TextureId = usize;
+pub type PassId = usize;
+pub type ShaderId = usize;
+
+#[derive(Serialize, Deserialize, PartialEq)]
 pub enum TextureType {
     Float,
     Vec2,
@@ -10,12 +14,33 @@ pub enum TextureType {
     Vec4,
 }
 
+#[derive(Serialize, Deserialize, PartialEq)]
+pub enum OutputType {
+    Result,
+    Textures(Vec<TextureId>),
+}
+
+#[derive(Serialize, Deserialize, PartialEq)]
+pub enum InputType {
+    ProvidedTexture(TextureId),
+    PipelineTexture(TextureId),
+}
+
+
+#[derive(Serialize, Deserialize, PartialEq)]
+pub enum TextureSize {
+    Original,
+    Scaled(f32),
+    Custom(u32, u32),
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ShaderPass {
-    pub input: Vec<(String, TextureType)>,
-    pub output: Vec<(String, TextureType)>,
-    pub code: String,
-    pub spirv: Vec<u8>
+    pub id: PassId,
+    pub input: Vec<InputType>,
+    pub output: OutputType,
+    pub shader: ShaderId,
+    pub dependencies: Option<Vec<PassId>>,
 
 }
 
@@ -24,9 +49,12 @@ pub struct OctoModule {
     pub name: String,
     pub version: u32,
     pub basic_vertex: String,
-    pub basic_vertex_spirv: Vec<u8>,
-    pub fragment_shaders: HashMap<String, (String, Vec<u8>)>,
-    pub passes: HashMap<String, ShaderPass>,
+    pub basic_vertex_spirv: Vec<u32>,
+    pub fragment_shaders: HashMap<ShaderId, (String, Vec<u32>)>,
+    pub passes: Vec<ShaderPass>,
+
+    pub required_input: Vec<(String, TextureType)>,
+    pub textures: Vec<(TextureId, TextureType, TextureSize)>,
 }
 
 impl OctoModule {
@@ -34,27 +62,13 @@ impl OctoModule {
         OctoModule{
             name: "test_module".to_owned(),
             version: 0u32,
+            basic_vertex: "".to_owned(),
 
-
-
-            basic_vertex: "#version 450
-layout (push_constant) uniform PushConsts {
-    float time;
-
-} push;
-layout (location = 0) in vec2 position;
-
-layout (location = 0) out gl_PerVertex {
-  vec4 gl_Position;
-};
-
-void main()
-{
-  gl_Position = vec4(position, 0.0, 1.0);
-}".to_owned(),
             fragment_shaders: HashMap::new(),
             basic_vertex_spirv: vec![],
-            passes: HashMap::new(),
+            passes: vec![],
+            required_input: vec![],
+            textures: vec![],
         }
     }
 }
