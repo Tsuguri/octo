@@ -48,9 +48,8 @@ pub struct ShaderPass {
 pub struct OctoModule {
     pub name: String,
     pub version: u32,
-    pub basic_vertex: String,
     pub basic_vertex_spirv: Vec<u32>,
-    pub fragment_shaders: HashMap<ShaderId, (String, Vec<u32>)>,
+    pub fragment_shaders: HashMap<ShaderId, Vec<u32>>,
     pub passes: Vec<ShaderPass>,
 
     pub required_input: Vec<(String, TextureType)>,
@@ -62,8 +61,6 @@ impl OctoModule {
         OctoModule{
             name: "test_module".to_owned(),
             version: 0u32,
-            basic_vertex: "".to_owned(),
-
             fragment_shaders: HashMap::new(),
             basic_vertex_spirv: vec![],
             passes: vec![],

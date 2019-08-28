@@ -25,6 +25,9 @@ pub struct Program {
 #[derive(Debug, Clone)]
 pub enum Type {
     Float,
+    Vec2,
+    Vec3,
+    Vec4,
     Int,
     Bool,
     String,
@@ -40,6 +43,9 @@ impl PartialEq for Type {
             (Type::Int, Type::Int) => true,
             (Type::Bool, Type::Bool) => true,
             (Type::String, Type::String) => true,
+            (Type::Vec2, Type::Vec2) => true,
+            (Type::Vec3, Type::Vec3) => true,
+            (Type::Vec4, Type::Vec4) => true,
             (Type::UserDefined(x), Type::UserDefined(y)) if x == y => true,
             (_, _) => false,
         }
@@ -53,6 +59,9 @@ impl Type {
             "int" => return Type::Int,
             "string" => return Type::String,
             "bool" => return Type::Bool,
+            "vec2" => return Type::Vec2,
+            "vec3" => return Type::Vec3,
+            "vec4" => return Type::Vec4,
             _ => (),
         };
         Type::UserDefined(src)

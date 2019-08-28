@@ -13,3 +13,4 @@ parser = { path = "../parser", version = "0.0.1"}
 octo_runtime = { path = "../octo_runtime", version = "0.0.1"}
 errors = { path = "../errors", version = "0.0.1"}
 shaderc = "0.6"
+askama = "0.8"
