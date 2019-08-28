@@ -60,7 +60,7 @@ fn construct_function(function: &GpuFunction) -> String {
     template.render().unwrap()
 }
 
-pub fn emit_module(name: &str, program: ast::Program, path: &Path) {
+pub fn emit_module(program: ast::Program, path: &Path) {
     use ast::Type;
 
     let mut fragments_map = HashMap::new();
@@ -84,6 +84,13 @@ pub fn emit_module(name: &str, program: ast::Program, path: &Path) {
     let basic_vertex = VERTEX;
     let compiled_vertex = process_glsl(basic_vertex, "basic vertex", Shader::Vertex);
 
+    let pipeline = &program.pipeline;
+
+    println!("{:#?}", pipeline);
+    // generate shader passes based on pipeline ast
+    // generate needed textures from pipeline ast
+
+
     let mut shader_passes = vec![];
 
     let shader_id = fragments_map["test_name"].1;
@@ -102,16 +109,23 @@ pub fn emit_module(name: &str, program: ast::Program, path: &Path) {
         }
     );
 
+    let required_input : Vec<_> = pipeline.arguments.iter().map(|x|{
+        let t = match x.typ {
+            ast::Type::Float => TextureType::Float,
+            ast::Type::Vec2 => TextureType::Vec2,
+            ast::Type::Vec3 => TextureType::Vec3,
+            ast::Type::Vec4 => TextureType::Vec4,
+            _=> unreachable!(),
+        };
+        (x.identifier.val.clone(), t)
+    }).collect();
+
     let module = OctoModule {
-        name: name.to_owned(),
+        name: pipeline.name.val.clone(),
         version: 0,
         basic_vertex_spirv: compiled_vertex,
         fragment_shaders,
-        required_input: vec![
-            ("color".to_owned(), TextureType::Vec4),
-            ("normal".to_owned(), TextureType::Vec4),
-            ("albedo".to_owned(), TextureType::Vec4),
-        ],
+        required_input,
         textures: vec![],
         passes: shader_passes,
     };
@@ -190,7 +204,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
         Ok(ast) => ast,
     };
 
-    emit_module(&module_name, ast, &result_path);
+    emit_module(ast, &result_path);
     // semantic analysis
     /*
         match semantics::analyze(&mut ast) {

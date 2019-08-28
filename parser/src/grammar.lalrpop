@@ -25,6 +25,7 @@ extern {
         "false" => lexer::Token::False,
         "let" => lexer::Token::Let,
         "gpu_fun" => lexer::Token::GpuFun,
+        "pipeline" => lexer::Token::Pipeline,
         
 	    "(" => lexer::Token::ParOpen,
         ")" => lexer::Token::ParClose,
@@ -67,11 +68,36 @@ Comma<T>: Vec<T> = {
 };
 
 pub Program: ast::Program = {
-    <items: (GpuFunction)*> => ast::Program{items}
+    <items: (GpuFunction)*> <pipeline: Pipeline>=> ast::Program{items, pipeline}
+}
+
+pub Pipeline: ast::Pipeline = {
+    "pipeline" <l:@L> <i:"ident"> <r:@R> "(" <args:Comma<Definition>> ")"
+        "->" "(" <results:Comma<Definition>> ")" <b: Block> =>
+            ast::Pipeline{
+                name: Sp::from_loc(i, l,r),
+                arguments: args,
+                results,
+                block: b
+            }
 }
 
 pub GpuFunction: ast::GpuFunction = {
     "gpu_fun" <l:@L> <i:"ident"> <r:@R> "(" <args:Comma<Definition>> ")" "->" "(" <results:Comma<Definition>> ")" "{" <l2:@L> <s:"string"> <r2:@R> "}" => ast::GpuFunction{ name: Sp::from_loc(i, l,r), code: Sp::from_loc(s, l2, r2), arguments: args, results}
+}
+
+pub Block: ast::Block = {
+    "{" <statements: (<Statement> ";")*> "}" => ast::Block{statements: statements },
+}
+
+pub Statement: ast::Statement = {
+    <lr:"let"?> <l:@L> <id:"ident"> <r:@R> "=" <e:Expression> => ast::Statement::Assignment(Box::new(ast::Variable::new(Sp::from_loc(id, l, r))), e, match lr {Some(_)=> true, None =>false,}),
+    "return" <l:@L> <e:Expression> <r:@R> => ast::Statement::Return(e),
+}
+pub Expression: Box<ast::Expression> = {
+    <l:@L> <id:"ident"> <r:@R> => Box::new(ast::Expression::Variable(ast::Variable::new(Sp::from_loc(id, l, r)))),
+    "(" <e:Expression> ")" => e,
+    <i:"ident"> "("<args: Comma<Expression>> ")" => Box::new(ast::Expression::Invocation(i, args)),
 }
 
 Definition: ast::Variable = {

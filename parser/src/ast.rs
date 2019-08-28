@@ -20,6 +20,7 @@ impl<T> Spanned<T> {
 #[derive(Debug)]
 pub struct Program {
     pub items: Vec<GpuFunction>,
+    pub pipeline: Pipeline,
 }
 
 #[derive(Debug, Clone)]
@@ -74,6 +75,16 @@ impl Type {
 //    GpuFunction(Box<GpuFunction>),
 //}
 
+
+#[derive(Debug)]
+pub struct Pipeline {
+    pub name: Spanned<String>,
+    pub arguments: Vec<Variable>,
+    pub results: Vec<Variable>,
+    pub block: Block,
+
+}
+
 //#[derive(Debug)]
 //pub struct Function {
 //    pub arguments: Vec<(Variable, Type)>,
@@ -100,22 +111,22 @@ pub struct GpuFunction {
     pub arguments: Vec<Variable>,
     pub results: Vec<Variable>,
 }
-//
-//#[derive(Debug)]
-//pub struct Block {
-//    pub statements: Vec<Statement>,
-//}
-//
-//#[derive(Debug)]
-//pub enum Statement {
+
+#[derive(Debug)]
+pub struct Block {
+    pub statements: Vec<Statement>,
+}
+
+#[derive(Debug)]
+pub enum Statement {
 //    Expression(Box<Expression>),
-//    Assignment(Box<Variable>, Box<Expression>, bool),
-//    Return(Box<Expression>),
-//}
-//
-//#[derive(Debug)]
-//pub enum Expression {
-//    Variable(Variable),
+    Assignment(Box<Variable>, Box<Expression>, bool),
+    Return(Box<Expression>),
+}
+
+#[derive(Debug)]
+pub enum Expression {
+    Variable(Variable),
 //    Literal(Literal),
 //    Negation(Box<Expression>),
 //    Mul(Box<Expression>, Box<Expression>),
@@ -130,8 +141,8 @@ pub struct GpuFunction {
 //    NotEquals(Box<Expression>, Box<Expression>),
 //    And(Box<Expression>, Box<Expression>),
 //    Or(Box<Expression>, Box<Expression>),
-//    Invocation(String, Vec<Box<Expression>>),
-//}
+    Invocation(String, Vec<Box<Expression>>),
+}
 
 #[derive(Debug)]
 pub enum Literal {
