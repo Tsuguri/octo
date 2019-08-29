@@ -1,9 +1,16 @@
 use parser::ast::*;
+use std::clone::Clone as _;
+
+#[derive(Debug)]
+pub struct Function {
+    name: String,
+    arguments: Vec<Variable>,
+    results: Vec<Type>,
+}
 
 #[derive(Debug)]
 pub struct Scope<'a> {
-    pub types: Vec<Type>,
-    pub functions: Vec<(String, Vec<Type>)>,
+    pub functions: Vec<Function>,
     pub variables: Vec<(String, Type)>,
     parent: Option<&'a Scope<'a>>,
 }
@@ -11,26 +18,25 @@ pub struct Scope<'a> {
 impl<'a> Scope<'a> {
     pub fn global<'b>() -> Scope<'b> {
         Scope {
-            types: vec![Type::Float, Type::Int, Type::Bool, Type::String],
             functions: vec![],
             variables: vec![],
             parent: None,
         }
     }
 
-    pub fn child_scope<'b>(parent: &'b Scope) -> Scope<'b> {
+    pub fn child_scope(&self) -> Scope {
         Scope {
-            types: vec![],
             functions: vec![],
             variables: vec![],
-            parent: Some(parent),
+            parent: Some(self),
         }
     }
 
     pub fn add_function(&mut self, func: &GpuFunction) {
-        self.functions.push((
-            func.name.val.to_owned(),
-            func.arguments.iter().map(|x| x.typ.clone()).collect(),
-        ));
+        self.functions.push(Function{
+            name: func.name.val.to_owned(),
+            arguments: func.arguments.clone(),
+            results: func.results.iter().map(|x| x.typ.clone()).collect(),
+        });
     }
 }

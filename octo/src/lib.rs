@@ -1,4 +1,7 @@
-extern crate lalrpop_util;
+//extern crate lalrpop_util;
+
+mod shader_generation;
+
 
 use std::fs::File;
 use std::io::{Read, Write};
@@ -14,79 +17,40 @@ pub use shaderc::ShaderKind as Shader;
 use std::borrow::ToOwned;
 use std::collections::HashMap;
 
-use askama::Template;
 use parser::ast::GpuFunction;
 
-static VERTEX: &str = include_str!("basic_vertex.glsl");
+use log::{info, trace, error};
 
-#[derive(Template)] // this will generate the code...
-#[template(path = "shader.glsl", escape = "none")] // using the template in this path, relative
-// to the templates dir in the crate root
-struct ShaderTemplate<'a> {
-    code: &'a str,
-    input: Vec<(String, String)>,
-    output: Vec<(String, String)>,
-}
+fn generate_fragment_shaders(program: &mut ast::Program) -> (HashMap<usize, Vec<u32>>, HashMap<String, (ast::GpuFunction, usize)>) {
 
-
-fn type_string(x: &ast::Type) -> &'static str {
-    use ast::Type::*;
-    let t = match x {
-        Float => "float",
-        Vec2 => "vec2",
-        Vec3 => "vec3",
-        Vec4 => "vec4",
-        _ => panic!("shouldn't ever happen"),
-    };
-    t
-}
-
-fn construct_function(function: &GpuFunction) -> String {
-    let input = function.arguments.iter().map(|x| {
-        (type_string(&x.typ).to_owned(), x.identifier.val.clone())
-    }).collect();
-
-    let output = function.results.iter().map(|x| {
-        (type_string(&x.typ).to_owned(), x.identifier.val.clone())
-    }).collect();
-
-
-    let template = ShaderTemplate {
-        input,
-        output,
-        code: &function.code.val,
-    };
-
-    template.render().unwrap()
-}
-
-pub fn emit_module(program: ast::Program, path: &Path) {
-    use ast::Type;
-
-    let mut fragments_map = HashMap::new();
     let mut fragment_shaders = HashMap::new();
+    let mut fragments_map = HashMap::new();
 
     let mut current_id = 0;
-    for function in program.items {
-        let name = function.name.val.clone();
-        let fragment_code = construct_function(&function);
+    for function in program.items.drain(0..program.items.len()) {
         let id = current_id;
         current_id = current_id + 1;
 
-        println!("{}", fragment_code);
+        let compiled_fragment = shader_generation::construct_function(&function);
 
-        let compiled_fragment = process_glsl(&fragment_code, &name, Shader::Fragment);
-        fragments_map.insert(name, (function, id));
-
+        fragments_map.insert(function.name.val.clone(), (function, id));
         fragment_shaders.insert(id, compiled_fragment);
     }
+    (fragment_shaders, fragments_map)
+}
 
-    let basic_vertex = VERTEX;
-    let compiled_vertex = process_glsl(basic_vertex, "basic vertex", Shader::Vertex);
+fn emit_module(program: ast::Program, path: &Path) {
+    use ast::Type;
+    let mut program = program;
+
+
+    let (fragment_shaders, fragments_map) = generate_fragment_shaders(&mut program);
+
+    let compiled_vertex = shader_generation::basic_vertex();
 
     let pipeline = &program.pipeline;
 
-    println!("{:#?}", pipeline);
+    trace!("{:#?}", pipeline);
     // generate shader passes based on pipeline ast
     // generate needed textures from pipeline ast
 
@@ -109,13 +73,13 @@ pub fn emit_module(program: ast::Program, path: &Path) {
         }
     );
 
-    let required_input : Vec<_> = pipeline.arguments.iter().map(|x|{
+    let required_input: Vec<_> = pipeline.arguments.iter().map(|x| {
         let t = match x.typ {
             ast::Type::Float => TextureType::Float,
             ast::Type::Vec2 => TextureType::Vec2,
             ast::Type::Vec3 => TextureType::Vec3,
             ast::Type::Vec4 => TextureType::Vec4,
-            _=> unreachable!(),
+            _ => unreachable!(),
         };
         (x.identifier.val.clone(), t)
     }).collect();
@@ -147,48 +111,17 @@ pub fn emit_module(program: ast::Program, path: &Path) {
     }
 }
 
-pub fn process_glsl(code: &str, path: &str, shader_type: Shader) -> Vec<u32> {
-    let mut compiler = shaderc::Compiler::new().ok_or("shaderc not found!").unwrap();
-    let compilation_result = compiler
-        .compile_into_spirv(
-            &code,
-            shader_type,
-            &path,
-            "main",
-            None,
-        )
-        .map_err(|e| {
-            println!("{}", e);
-            "Couldn't compile fragment shader!"
-        }).unwrap();
-    compilation_result.as_binary().to_vec()
-}
-
-
-//pub fn process_glsl_debug(path: &str, shader_type: Shader) {
-//
-//    let code = std::fs::read_to_string(path).unwrap();
-//    let result = process_glsl(&code, path, shader_type);
-//
-//    let new_name = path.to_owned() + ".spirv";
-//    let mut file = std::fs::File::create(new_name).unwrap();
-//    file.write_all(&result);
-//    file.
-//
-//
-//}
 
 pub fn process_file(path: &str) -> Result<(), ()> {
-    println!("Processing file at: {}", path);
-    println!("rerun-if-changed={}", path);
+    info!("Processing file at: {}", path);
+    info!("rerun-if-changed={}", path);
     let p = Path::new(path);
 
     if !p.is_file() {
         panic!("given path is not a file: {}", path);
     }
     let result_path = p.with_extension("octo_bin");
-    let module_name =p.file_stem().unwrap().to_str().unwrap();
-    println!("{}", module_name);
+    let module_name = p.file_stem().unwrap().to_str().unwrap();
 
     let mut file = File::open(path).unwrap();
     let mut data = String::new();
@@ -204,44 +137,30 @@ pub fn process_file(path: &str) -> Result<(), ()> {
         Ok(ast) => ast,
     };
 
-    emit_module(ast, &result_path);
     // semantic analysis
-    /*
-        match semantics::analyze(&mut ast) {
-            Result::Err(errs) => {
-                let (mut errs, warnings) = errs;
-                let diagnostics: Vec<Diagnostic> = warnings.into_iter().map(|x| semantics::WarningWrap::new(x).into()).collect();
-                report_errors(&data, path, &diagnostics);
-                panic!();
+    match semantics::analyze(&mut ast) {
+        Result::Err(errs) => {
+            let (mut errs, warnings) = errs;
+            let error_happened = errs.len()>0;
+            let mut diagnostics: Vec<Diagnostic> = warnings.into_iter().map(|x| semantics::WarningWrap::new(x).into()).collect();
+            diagnostics.extend(errs.into_iter().map(|x| semantics::ErrorWrap::new(x).into()));
+            report_errors(&data, path, &diagnostics);
+            if error_happened {
+                return Result::Err(());
             }
-            Result::Ok(()) => (),
-        };
-        let
-            mut module =
-            OctoModule::new();
-        create_module(ast, &mut module);
+        }
+        Result::Ok(()) => (),
+    };
 
-        let
-            module_data =
-            serde_json::to_string_pretty(&module).
-                unwrap();
+    emit_module(ast, &result_path);
 
-        let
-            mut output_file =
-            File::create(&result_path).
-                unwrap();
-        output_file.
-            write_all(module_data.as_bytes()).unwrap();
-
-        println!("processed as: {:?}", result_path);
-        */
     Result::Ok(())
 }
 
 fn report_errors(src: &str, location: &str, messages: &[codespan_reporting::Diagnostic]) {
     let mut map = CodeMap::new();
-    let src2 = src.to_string();
-    map.add_filemap(location.to_string().into(), src2);
+    let src2 = src.to_owned();
+    map.add_filemap(location.to_owned().into(), src2);
     use codespan_reporting::termcolor::StandardStream;
     let writer = StandardStream::stderr(codespan_reporting::termcolor::ColorChoice::Auto);
     for message in messages {

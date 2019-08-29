@@ -7,12 +7,12 @@ layout(location = 1) in vec2 uv;
 
 // iter output data
 {% for item in output %}
-layout(location = {{loop.index-1}}) out {{ item.0 }} {{ item.1 }};
+layout(location = {{loop.index-1}}) out {{ item.typ }} {{ item.identifier }};
 {% endfor %}
 void main() {
     // iter input reads
     {% for item in input %}
-    {{ item.0 }} {{ item.1 }} = texture(sampler2D(colormaps[{{loop.index-1}}], colorsampler), uv);
+    {{ item.typ }} {{ item.identifier }} = texture(sampler2D(colormaps[{{loop.index-1}}], colorsampler), uv);
     {% endfor %}
 
     {{code}}

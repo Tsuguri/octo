@@ -17,6 +17,13 @@ impl<T> Spanned<T> {
     }
 }
 
+impl<T: std::fmt::Display> std::fmt::Display for Spanned<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.val)?;
+        Result::Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub struct Program {
     pub items: Vec<GpuFunction>,
@@ -31,10 +38,8 @@ pub enum Type {
     Vec4,
     Int,
     Bool,
-    String,
     Void,
     Unknown,
-    UserDefined(String),
 }
 
 impl PartialEq for Type {
@@ -43,11 +48,9 @@ impl PartialEq for Type {
             (Type::Float, Type::Float) => true,
             (Type::Int, Type::Int) => true,
             (Type::Bool, Type::Bool) => true,
-            (Type::String, Type::String) => true,
             (Type::Vec2, Type::Vec2) => true,
             (Type::Vec3, Type::Vec3) => true,
             (Type::Vec4, Type::Vec4) => true,
-            (Type::UserDefined(x), Type::UserDefined(y)) if x == y => true,
             (_, _) => false,
         }
     }
@@ -56,16 +59,32 @@ impl PartialEq for Type {
 impl Type {
     pub fn new(src: String) -> Type {
         match src.as_ref() {
-            "float" => return Type::Float,
-            "int" => return Type::Int,
-            "string" => return Type::String,
-            "bool" => return Type::Bool,
-            "vec2" => return Type::Vec2,
-            "vec3" => return Type::Vec3,
-            "vec4" => return Type::Vec4,
-            _ => (),
-        };
-        Type::UserDefined(src)
+            "float" => Type::Float,
+            "int" => Type::Int,
+            "bool" => Type::Bool,
+            "vec2" => Type::Vec2,
+            "vec3" => Type::Vec3,
+            "vec4" => Type::Vec4,
+            _ => Type::Unknown,
+        }
+    }
+}
+
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use Type::*;
+        write!(f, "{}", match self{
+            Float => "float",
+            Int => "int",
+            Bool => "bool",
+            Vec2 => "vec2",
+            Vec3 => "vec3",
+            Vec4 => "vec4",
+            Void => "void",
+            Unknown => "invalid_type",
+
+        })?;
+        Result::Ok(())
     }
 }
 
