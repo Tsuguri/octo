@@ -27,6 +27,7 @@ pub fn analyze(program: &mut Program) -> Result<(), (Vec<SemanticError>, Vec<Sem
         let (mut errs, mut warn) = analyze_gpu_function(item, &program_scope);
         errors.append(&mut errs);
         warnings.append(&mut warn);
+        program_scope.add_function(item);
     }
 
     {
@@ -64,6 +65,17 @@ fn analyze_gpu_function(function: &GpuFunction, _env: &Scope) -> (Vec<SemanticEr
 fn analyze_pipeline(pipeline: &Pipeline, _env: &Scope) -> (Vec<SemanticError>, Vec<SemanticWarning>) {
     let mut errors = vec![];
     let mut warnings = vec![];
+
+
+    for statement in &pipeline.block.statements{
+//        match statement {
+//            Statement::Assignment(var, exp, isCreation)=>{
+//
+//
+//            }
+//        }
+    }
+
 
 
     (errors, warnings)

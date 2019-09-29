@@ -2,7 +2,7 @@ pub use codespan::ByteIndex;
 pub use codespan::Span;
 use crate::lexer::span;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Spanned<T> {
     pub span: Span<ByteIndex>,
     pub val: T,
@@ -99,9 +99,8 @@ impl std::fmt::Display for Type {
 pub struct Pipeline {
     pub name: Spanned<String>,
     pub arguments: Vec<Variable>,
-    pub results: Vec<Variable>,
+    pub results: Vec<Spanned<Type>>,
     pub block: Block,
-
 }
 
 //#[derive(Debug)]
@@ -173,7 +172,7 @@ pub enum Literal {
 //#[derive(Debug)]
 //pub struct Negated(Expression);
 //
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Variable {
     pub identifier: Spanned<String>,
     pub typ: Type,

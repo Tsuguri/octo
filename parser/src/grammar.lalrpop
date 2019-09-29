@@ -73,7 +73,7 @@ pub Program: ast::Program = {
 
 pub Pipeline: ast::Pipeline = {
     "pipeline" <l:@L> <i:"ident"> <r:@R> "(" <args:Comma<Definition>> ")"
-        "->" "(" <results:Comma<Definition>> ")" <b: Block> =>
+        "->" "(" <results:Comma<Type>> ")" <b: Block> =>
             ast::Pipeline{
                 name: Sp::from_loc(i, l,r),
                 arguments: args,
@@ -98,6 +98,10 @@ pub Expression: Box<ast::Expression> = {
     <l:@L> <id:"ident"> <r:@R> => Box::new(ast::Expression::Variable(ast::Variable::new(Sp::from_loc(id, l, r)))),
     "(" <e:Expression> ")" => e,
     <i:"ident"> "("<args: Comma<Expression>> ")" => Box::new(ast::Expression::Invocation(i, args)),
+}
+
+Type: ast::Spanned<ast::Type> = {
+    <l:@L> <il:"ident"> <r:@R> => Sp::from_loc(ast::Type::new(il), l, r)
 }
 
 Definition: ast::Variable = {

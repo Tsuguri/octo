@@ -1,6 +1,7 @@
 //extern crate lalrpop_util;
 
 mod shader_generation;
+pub mod experimental_ir;
 
 
 use std::fs::File;
@@ -17,9 +18,8 @@ pub use shaderc::ShaderKind as Shader;
 use std::borrow::ToOwned;
 use std::collections::HashMap;
 
-use parser::ast::GpuFunction;
 
-use log::{info, trace, error};
+use log::{info, trace};
 
 fn generate_fragment_shaders(program: &mut ast::Program) -> (HashMap<usize, Vec<u32>>, HashMap<String, (ast::GpuFunction, usize)>) {
 
@@ -40,7 +40,6 @@ fn generate_fragment_shaders(program: &mut ast::Program) -> (HashMap<usize, Vec<
 }
 
 fn emit_module(program: ast::Program, path: &Path) {
-    use ast::Type;
     let mut program = program;
 
 
@@ -121,7 +120,6 @@ pub fn process_file(path: &str) -> Result<(), ()> {
         panic!("given path is not a file: {}", path);
     }
     let result_path = p.with_extension("octo_bin");
-    let module_name = p.file_stem().unwrap().to_str().unwrap();
 
     let mut file = File::open(path).unwrap();
     let mut data = String::new();
@@ -140,7 +138,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     // semantic analysis
     match semantics::analyze(&mut ast) {
         Result::Err(errs) => {
-            let (mut errs, warnings) = errs;
+            let (errs, warnings) = errs;
             let error_happened = errs.len()>0;
             let mut diagnostics: Vec<Diagnostic> = warnings.into_iter().map(|x| semantics::WarningWrap::new(x).into()).collect();
             diagnostics.extend(errs.into_iter().map(|x| semantics::ErrorWrap::new(x).into()));
