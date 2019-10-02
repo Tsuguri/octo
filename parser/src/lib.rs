@@ -21,7 +21,8 @@ pub struct FailedParsing {
     pub errors: Vec<ParseErr>,
 }
 
-pub fn parse(location: &str, src: &str, lex: bool) -> Result<ast::Program, FailedParsing> {
+
+pub fn parse(src: &str, lex: bool) -> Result<ast::Program, FailedParsing> {
     if lex {
         for lexeme in lexer::Lexer::new(src) {
             print!("{:?}, ", lexeme);
@@ -33,13 +34,6 @@ pub fn parse(location: &str, src: &str, lex: bool) -> Result<ast::Program, Faile
     match result {
         Result::Ok(ast) => Result::Ok(ast),
         Result::Err(error) => {
-//            let mut map = CodeMap::new();
-//            let src2 = src.to_string();
-//            map.add_filemap(location.to_string().into(), src2);
-//            use codespan_reporting::termcolor::StandardStream;
-//            let writer = StandardStream::stderr(codespan_reporting::termcolor::ColorChoice::Auto);
-//            codespan_reporting::emit(&mut writer.lock(), &map, &ErrWrap(error).into()).unwrap();
-            //show_error(location, &lines, error, &map);
             Result::Err(FailedParsing{program: Option::None, errors: vec![error]})
         }
     }
@@ -125,6 +119,29 @@ fn remove_extra_quotes(tokens: &mut [String]) {
             token.remove(0);
             token.pop();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_literal_1() {
+        // to be done later once I know how to extract parsers for single non-terminals
+
+
+//        let lexer = lexer::Lexer::new("2");
+//        let result = grammar::ProgramParser::new().parse(lexer);
+//
+//        assert!(result.is_ok());
+//        let result = result.unwrap();
+//        match result {
+//            ast::Literal::Int(val) =>{
+//                assert!(val.val == 2);
+//            },
+//            _ => assert!(false),
+//        }
+
     }
 }
 

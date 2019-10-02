@@ -137,7 +137,7 @@ pub struct Block {
 
 #[derive(Debug)]
 pub enum Statement {
-//    Expression(Box<Expression>),
+    Expression(Box<Expression>),
     Assignment(Box<Variable>, Box<Expression>, bool),
     Return(Box<Expression>),
 }
@@ -145,33 +145,71 @@ pub enum Statement {
 #[derive(Debug)]
 pub enum Expression {
     Variable(Variable),
-//    Literal(Literal),
-//    Negation(Box<Expression>),
-//    Mul(Box<Expression>, Box<Expression>),
-//    Div(Box<Expression>, Box<Expression>),
-//    Add(Box<Expression>, Box<Expression>),
-//    Sub(Box<Expression>, Box<Expression>),
-//    Less(Box<Expression>, Box<Expression>),
-//    LessEqual(Box<Expression>, Box<Expression>),
-//    More(Box<Expression>, Box<Expression>),
-//    MoreEqual(Box<Expression>, Box<Expression>),
-//    Equals(Box<Expression>, Box<Expression>),
-//    NotEquals(Box<Expression>, Box<Expression>),
-//    And(Box<Expression>, Box<Expression>),
-//    Or(Box<Expression>, Box<Expression>),
-    Invocation(String, Vec<Box<Expression>>),
+    Literal(Literal),
+    Negation(Box<Expression>),
+    Mul(Box<Expression>, Box<Expression>),
+    Div(Box<Expression>, Box<Expression>),
+    Add(Box<Expression>, Box<Expression>),
+    Sub(Box<Expression>, Box<Expression>),
+    Less(Box<Expression>, Box<Expression>),
+    LessEqual(Box<Expression>, Box<Expression>),
+    More(Box<Expression>, Box<Expression>),
+    MoreEqual(Box<Expression>, Box<Expression>),
+    Equals(Box<Expression>, Box<Expression>),
+    NotEquals(Box<Expression>, Box<Expression>),
+    And(Box<Expression>, Box<Expression>),
+    Or(Box<Expression>, Box<Expression>),
+    Shift(Box<Expression>, Box<Expression>),
+    Scale(Box<Expression>, Box<Expression>),
+    //Invocation(String, Vec<Box<Expression>>),
+}
+
+fn concat_spans(span1: Span<ByteIndex>, span2: Span<ByteIndex>) -> Span<ByteIndex> {
+    Span::new(span1.start().into(), span2.end().into())
+}
+impl Expression {
+    pub fn span(&self) -> Span<ByteIndex> {
+        use Expression::*;
+        match self {
+            Expression::Variable(var) => var.identifier.span,
+            Expression::Literal(lit) => lit.span(),
+            Negation(left) => left.span(),
+            Mul(left, right) => concat_spans(left.span(), right.span()),
+            Div(left, right) => concat_spans(left.span(), right.span()),
+            Add(left, right) => concat_spans(left.span(), right.span()),
+            Sub(left, right) => concat_spans(left.span(), right.span()),
+            Less(left, right) => concat_spans(left.span(), right.span()),
+            LessEqual(left, right) => concat_spans(left.span(), right.span()),
+            More(left, right) => concat_spans(left.span(), right.span()),
+            MoreEqual(left, right) => concat_spans(left.span(), right.span()),
+            Equals(left, right) => concat_spans(left.span(), right.span()),
+            NotEquals(left, right) => concat_spans(left.span(), right.span()),
+            And(left, right) => concat_spans(left.span(), right.span()),
+            Or(left, right) => concat_spans(left.span(), right.span()),
+            // TODO: fix shift and scale. These are not including parentheses and Shift/Scale keyword
+            Shift(left, right) => concat_spans(left.span(), right.span()),
+            Scale(left, right) => concat_spans(left.span(), right.span()),
+            _ => span(0,1),
+        }
+
+    }
 }
 
 #[derive(Debug)]
 pub enum Literal {
     Int(Spanned<i64>),
     Float(Spanned<f64>),
-    String(Spanned<String>),
 }
 
-//#[derive(Debug)]
-//pub struct Negated(Expression);
-//
+impl Literal {
+    pub fn span(&self) -> Span<ByteIndex> {
+        match self {
+            Literal::Int(x) => x.span,
+            Literal::Float(x) => x.span,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Variable {
     pub identifier: Spanned<String>,

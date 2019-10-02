@@ -1,6 +1,7 @@
 //extern crate lalrpop_util;
 
 mod shader_generation;
+mod static_analysis;
 pub mod experimental_ir;
 
 
@@ -20,9 +21,9 @@ use std::collections::HashMap;
 
 
 use log::{info, trace};
+use crate::static_analysis::Diagnostics;
 
 fn generate_fragment_shaders(program: &mut ast::Program) -> (HashMap<usize, Vec<u32>>, HashMap<String, (ast::GpuFunction, usize)>) {
-
     let mut fragment_shaders = HashMap::new();
     let mut fragments_map = HashMap::new();
 
@@ -127,7 +128,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
 
 
     // syntax analysis
-    let mut ast = match parser::parse(path, &data, false) {
+    let mut ast = match parser::parse(&data, false) {
         Err(failure_info) => {
             report_errors(&data, path, &[parser::ErrWrap { err: &failure_info.errors[0] }.into()]);
             return Result::Err(());
@@ -135,22 +136,25 @@ pub fn process_file(path: &str) -> Result<(), ()> {
         Ok(ast) => ast,
     };
 
-    // semantic analysis
-    match semantics::analyze(&mut ast) {
-        Result::Err(errs) => {
-            let (errs, warnings) = errs;
-            let error_happened = errs.len()>0;
-            let mut diagnostics: Vec<Diagnostic> = warnings.into_iter().map(|x| semantics::WarningWrap::new(x).into()).collect();
-            diagnostics.extend(errs.into_iter().map(|x| semantics::ErrorWrap::new(x).into()));
-            report_errors(&data, path, &diagnostics);
-            if error_happened {
-                return Result::Err(());
-            }
-        }
-        Result::Ok(()) => (),
+    println!("{:#?}", ast);
+
+    let static_analysis_res = static_analysis::analyze(ast);
+    let Diagnostics{errors, warnings} = static_analysis_res.1;
+    let error_happened = errors.len() > 0;
+    let mut diagnostics: Vec<Diagnostic> = warnings.into_iter().map(|x| semantics::WarningWrap::new(x).into()).collect();
+    diagnostics.extend(errors.into_iter().map(|x| semantics::ErrorWrap::new(x).into()));
+    report_errors(&data, path, &diagnostics);
+    if error_happened {
+        return Result::Err(());
+    }
+    let valid_ast = match static_analysis_res.0 {
+        None => unreachable!(),
+        Some(x) => x,
     };
 
-    emit_module(ast, &result_path);
+    // do next things
+
+    //emit_module(ast, &result_path);
 
     Result::Ok(())
 }

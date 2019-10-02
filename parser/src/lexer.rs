@@ -46,6 +46,8 @@ pub enum Token {
     GpuFun,
     Pipeline,
     Import,
+    Shift,
+    Scale,
     FunResultsArrow,
 }
 
@@ -91,6 +93,8 @@ impl fmt::Display for Token {
             GpuFun => "fun".to_owned(),
             Pipeline => "pipeline".to_owned(),
             Import => "import".to_owned(),
+            Shift=> "shift".to_owned(),
+            Scale=> "scale".to_owned(),
             Return => "return".to_owned(),
             FunResultsArrow => "->".to_owned(),
         };
@@ -379,6 +383,8 @@ impl<'input> Iterator for Lexer<'input> {
                             "gpu_fun" => return ok_m!(GpuFun, i, i + 7),
                             "pipeline" => return ok_m!(Pipeline, i, i + 8),
                             "import" => return ok_m!(Import, i, i + 6),
+                            "shift" => return ok_m!(Import, i, i + 5),
+                            "scale" => return ok_m!(Import, i, i + 5),
                             "return" => return ok_m!(Return, i, i + 6),
                             x => {
                                 return Some(Result::Ok((

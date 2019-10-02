@@ -4,7 +4,7 @@ use self::env::Scope;
 use errors::SemanticError;
 use errors::SemanticWarning;
 
-mod env;
+pub mod env;
 
 use parser::codespan_reporting;
 use parser::codespan_reporting::Diagnostic;
@@ -27,7 +27,7 @@ pub fn analyze(program: &mut Program) -> Result<(), (Vec<SemanticError>, Vec<Sem
         let (mut errs, mut warn) = analyze_gpu_function(item, &program_scope);
         errors.append(&mut errs);
         warnings.append(&mut warn);
-        program_scope.add_function(item);
+        //program_scope.add_function(item);
     }
 
     {
@@ -44,6 +44,7 @@ pub fn analyze(program: &mut Program) -> Result<(), (Vec<SemanticError>, Vec<Sem
 }
 
 fn analyze_gpu_function(function: &GpuFunction, _env: &Scope) -> (Vec<SemanticError>, Vec<SemanticWarning>) {
+    // very simple analyze as it's just temporary.
     let mut errors = vec![];
     let mut warnings = vec![];
 
@@ -106,11 +107,33 @@ impl From<WarningWrap> for Diagnostic {
 impl From<ErrorWrap> for Diagnostic {
     fn from(w: ErrorWrap) -> Diagnostic {
         match w.0 {
+            SemanticError::UndefinedIdentifier(span, name) => {
+                Diagnostic::new_error(format!("Unknown variable \"{}\"", name)).with_label(
+                    codespan_reporting::Label::new_primary(span).with_message("Unknown identifier used here")
+                )
+            },
+            SemanticError::TypeMismatch(span, type1, type2) => {
+                Diagnostic::new_error(format!("Type mismatch. Type \"{}\" was expected, but \"{}\" was found", type1, type2)).with_label(
+                    codespan_reporting::Label::new_primary(span)
+                )
+            }
+            SemanticError::OperationTypeMismatch(type1, span1, type2, span2) => {
+                Diagnostic::new_error(format!("Type mismatch. Type \"{}\" was expected, but \"{}\" was found", type1, type2)).with_label(
+                    codespan_reporting::Label::new_primary(span1).with_message(format!("Of typ \"{}\"", type1))
+                ).with_label(
+                    codespan_reporting::Label::new_primary(span2).with_message(format!("Cannot be used with type \"{}\"", type2))
+                )
+            }
             SemanticError::NotAssignedReturnVariable(span, name)=>{
                 Diagnostic::new_error(format!("Return variable \"{}\" is not assigned", name)).with_label(
                     codespan_reporting::Label::new_primary(span).with_message("Result defined here")
                 )
             },
+            SemanticError::VariableRedefinition(name, sp_old, sp_new)=>{
+                Diagnostic::new_error(format!("Variable redefinition: \"{}\"", name)).with_label(
+                    codespan_reporting::Label::new_primary(sp_old).with_message("Previously defined here")
+                )
+            }
             _=>{
                 Diagnostic::new_error(format!("Return variable is not assigned"))
 
@@ -119,3 +142,7 @@ impl From<ErrorWrap> for Diagnostic {
         }
     }
 }
+//UnusedArgument,
+//// span of conflict, first is expected, second is provided
+//TypeMismatch(Sp, String, String),
+//ArgumentsNumberMismatch,

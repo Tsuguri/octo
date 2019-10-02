@@ -4,9 +4,6 @@ use codespan::Span;
 
 pub type Sp = Span<codespan::ByteIndex>;
 
-pub fn helpo() {
-    println!("heh");
-}
 #[derive(Debug)]
 pub enum LexicalError {
     IsVeryBad,
@@ -33,11 +30,14 @@ impl fmt::Display for LexicalError {
 
 #[derive(Debug)]
 pub enum SemanticError {
-    UndefinedIdentifier,
+    UndefinedIdentifier(Sp, String),
     UnusedArgument,
-    TypeMismatch,
+    // span of conflict, first is expected, second is provided
+    TypeMismatch(Sp, String, String),
+    OperationTypeMismatch(String, Sp, String, Sp),
     ArgumentsNumberMismatch,
     NotAssignedReturnVariable(Sp, String),
+    VariableRedefinition(String, Sp, Sp),
 }
 
 #[derive(Debug)]

@@ -11,14 +11,15 @@ struct Parameters {
 
 fn main() {
     stderrlog::new().verbosity(4).init().unwrap();
+    println!("lol");
 
 
     let opt = Parameters::from_args();
 
-    if !opt.no_test {
-        let fun = oei::def_user_fun();
-        println!("{:#?}", fun);
-    }
+//    if !opt.no_test {
+//        let fun = oei::def_user_fun();
+//        println!("{:#?}", fun);
+//    }
 
     let mut err = false;
     for file in opt.path {
