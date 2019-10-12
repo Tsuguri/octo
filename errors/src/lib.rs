@@ -38,9 +38,11 @@ pub enum SemanticError {
     ArgumentsNumberMismatch,
     NotAssignedReturnVariable(Sp, String),
     VariableRedefinition(String, Sp, Sp),
+    LogicTypeMismatch(String, String, Sp),
 }
 
 #[derive(Debug)]
 pub enum SemanticWarning {
     NotUsedArgument(Sp, String),
+    UnusedVariable(Sp, String),
 }

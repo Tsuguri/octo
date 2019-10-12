@@ -9,7 +9,7 @@
 pipeline main(one: vec4) -> (Vec4){
     let g = 2 + 3;
 
-    let f = g + 2;
+    let f = gie + 2;
     g = f / 2 + 3.10 + 13;// lolz("heh", wut);
     return one;
 

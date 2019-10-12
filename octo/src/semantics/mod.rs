@@ -8,7 +8,7 @@ pub mod env;
 
 use parser::codespan_reporting;
 use parser::codespan_reporting::Diagnostic;
-use log::{info};
+use log::info;
 
 pub fn analyze(program: &mut Program) -> Result<(), (Vec<SemanticError>, Vec<SemanticWarning>)> {
     info!("Analyzing program semantics");
@@ -55,7 +55,7 @@ fn analyze_gpu_function(function: &GpuFunction, _env: &Scope) -> (Vec<SemanticEr
     }
 
     for name in &function.results {
-        if ! function.code.val.contains(&name.identifier.val) {
+        if !function.code.val.contains(&name.identifier.val) {
             errors.push(SemanticError::NotAssignedReturnVariable(name.identifier.span, name.identifier.val.clone()));
         }
     }
@@ -68,7 +68,7 @@ fn analyze_pipeline(pipeline: &Pipeline, _env: &Scope) -> (Vec<SemanticError>, V
     let mut warnings = vec![];
 
 
-    for statement in &pipeline.block.statements{
+    for statement in &pipeline.block.statements {
 //        match statement {
 //            Statement::Assignment(var, exp, isCreation)=>{
 //
@@ -78,16 +78,17 @@ fn analyze_pipeline(pipeline: &Pipeline, _env: &Scope) -> (Vec<SemanticError>, V
     }
 
 
-
     (errors, warnings)
 }
 
 pub struct WarningWrap(pub SemanticWarning);
+
 pub struct ErrorWrap(pub SemanticError);
 
 impl WarningWrap {
     pub fn new(w: SemanticWarning) -> WarningWrap { WarningWrap(w) }
 }
+
 impl ErrorWrap {
     pub fn new(w: SemanticError) -> ErrorWrap { ErrorWrap(w) }
 }
@@ -98,6 +99,11 @@ impl From<WarningWrap> for Diagnostic {
             SemanticWarning::NotUsedArgument(span, name) => {
                 Diagnostic::new_warning(format!("Argument \"{}\" is not used.", name)).with_label(
                     codespan_reporting::Label::new_primary(span).with_message("Argument defined here")
+                )
+            }
+            SemanticWarning::UnusedVariable(span, name) => {
+                Diagnostic::new_warning(format!("Variable \"{}\" is not used.", name)).with_label(
+                    codespan_reporting::Label::new_primary(span).with_message("variable defined here")
                 )
             }
         }
@@ -111,7 +117,7 @@ impl From<ErrorWrap> for Diagnostic {
                 Diagnostic::new_error(format!("Unknown variable \"{}\"", name)).with_label(
                     codespan_reporting::Label::new_primary(span).with_message("Unknown identifier used here")
                 )
-            },
+            }
             SemanticError::TypeMismatch(span, type1, type2) => {
                 Diagnostic::new_error(format!("Type mismatch. Type \"{}\" was expected, but \"{}\" was found", type1, type2)).with_label(
                     codespan_reporting::Label::new_primary(span)
@@ -124,21 +130,24 @@ impl From<ErrorWrap> for Diagnostic {
                     codespan_reporting::Label::new_primary(span2).with_message(format!("Cannot be used with type \"{}\"", type2))
                 )
             }
-            SemanticError::NotAssignedReturnVariable(span, name)=>{
+            SemanticError::NotAssignedReturnVariable(span, name) => {
                 Diagnostic::new_error(format!("Return variable \"{}\" is not assigned", name)).with_label(
                     codespan_reporting::Label::new_primary(span).with_message("Result defined here")
                 )
-            },
-            SemanticError::VariableRedefinition(name, sp_old, sp_new)=>{
+            }
+            SemanticError::VariableRedefinition(name, sp_old, sp_new) => {
                 Diagnostic::new_error(format!("Variable redefinition: \"{}\"", name)).with_label(
                     codespan_reporting::Label::new_primary(sp_old).with_message("Previously defined here")
                 )
             }
-            _=>{
-                Diagnostic::new_error(format!("Return variable is not assigned"))
-
+            SemanticError::LogicTypeMismatch(typ, operator, span) => {
+                Diagnostic::new_error(format!("Operator {} expects operands of type bool but found {}", operator, typ)).with_label(
+                    codespan_reporting::Label::new_primary(span).with_message(format!("This expression evaluates to {} instead of bool", typ))
+                )
             }
-
+            _ => {
+                Diagnostic::new_error(format!("Return variable is not assigned"))
+            }
         }
     }
 }
