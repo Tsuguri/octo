@@ -12,6 +12,17 @@ pub struct Diagnostics {
     pub warnings: Vec<SemanticWarning>,
 }
 
+impl Diagnostics {
+    pub fn err(&mut self, err: SemanticError) -> &mut Self {
+        self.errors.push(err);
+        self
+    }
+    pub fn warning(&mut self, warning: SemanticWarning) -> &mut Self {
+        self.warnings.push(warning);
+        self
+    }
+}
+
 struct FunctionState {
     returned: bool,
 }
@@ -35,7 +46,7 @@ pub fn analyze(program: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
     }
 
     for var in program_scope.unused_variables() {
-        errs.warnings.push(SemanticWarning::UnusedVariable(var.span, var.name));
+        errs.warning(SemanticWarning::UnusedVariable(var.span, var.name));
     }
 
     if errs.errors.len() > 0 {
@@ -64,7 +75,7 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
                 match scope.create_variable(&name, typ, var.identifier.span) {
                     Result::Ok(()) => {}
                     Err(err) => {
-                        diagnostics.errors.push(SemanticError::VariableRedefinition(name, err, var.identifier.span));
+                        diagnostics.err(SemanticError::VariableRedefinition(name, err, var.identifier.span));
                     }
                 }
                 return;
@@ -79,11 +90,11 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
             match variable {
                 Some(x) => {
                     if x != typ {
-                        diagnostics.errors.push(SemanticError::TypeMismatch(exp.span(), x.to_string(), typ.to_string()));
+                        diagnostics.err(SemanticError::TypeMismatch(exp.span(), x.to_string(), typ.to_string()));
                     }
                 }
                 None => {
-                    diagnostics.errors.push(SemanticError::UndefinedIdentifier(var.identifier.span, name));
+                    diagnostics.err(SemanticError::UndefinedIdentifier(var.identifier.span, name));
                     return;
                 }
             }
@@ -106,7 +117,7 @@ fn analyze_binary_operation(left: &mut Expression, right: &mut Expression, scope
             (_, Type::Unknown) => false,
             (_, _) => true,
         } {
-            diagnostics.errors.push(SemanticError::OperationTypeMismatch(left_type.to_string(), left.span(), right_type.to_string(), right.span()));
+            diagnostics.err(SemanticError::OperationTypeMismatch(left_type.to_string(), left.span(), right_type.to_string(), right.span()));
         }
         Type::Unknown
     }
@@ -120,7 +131,7 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
             let var = scope.use_variable(&variable.identifier.val);
             match var {
                 None => {
-                    diagnostics.errors.push(SemanticError::UndefinedIdentifier(variable.identifier.span, variable.identifier.val.clone()));
+                    diagnostics.err(SemanticError::UndefinedIdentifier(variable.identifier.span, variable.identifier.val.clone()));
                     Type::Unknown
                 }
                 Some(t) => t,
@@ -132,7 +143,9 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
                 super::ast::Literal::Int(_) => Type::Int,
             }
         }
-//        Negation(Box < Expression >)=> {},
+        Negation(exp) => {
+            analyze_expression(exp, diagnostics, scope)
+        }
         Mul(left, right) => {
             analyze_binary_operation(left, right, scope, diagnostics)
         }
@@ -174,10 +187,10 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
             let left_type = analyze_expression(left, diagnostics, scope);
             let right_type = analyze_expression(right, diagnostics, scope);
             if left_type != Type::Bool {
-                diagnostics.errors.push(SemanticError::LogicTypeMismatch(left_type.to_string(), "&&".to_string(), left.span()));
+                diagnostics.err(SemanticError::LogicTypeMismatch(left_type.to_string(), "&&".to_string(), left.span()));
             }
             if right_type != Type::Bool {
-                diagnostics.errors.push(SemanticError::LogicTypeMismatch(right_type.to_string(), "&&".to_string(), right.span()));
+                diagnostics.err(SemanticError::LogicTypeMismatch(right_type.to_string(), "&&".to_string(), right.span()));
             }
             Type::Bool
         }
@@ -185,14 +198,26 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
             let left_type = analyze_expression(left, diagnostics, scope);
             let right_type = analyze_expression(right, diagnostics, scope);
             if left_type != Type::Bool {
-                diagnostics.errors.push(SemanticError::LogicTypeMismatch(left_type.to_string(), "||".to_string(), left.span()));
+                diagnostics.err(SemanticError::LogicTypeMismatch(left_type.to_string(), "||".to_string(), left.span()));
             }
             if right_type != Type::Bool {
-                diagnostics.errors.push(SemanticError::LogicTypeMismatch(right_type.to_string(), "||".to_string(), right.span()));
+                diagnostics.err(SemanticError::LogicTypeMismatch(right_type.to_string(), "||".to_string(), right.span()));
             }
             Type::Bool
         }
-//        Shift(left, right)=> {},
+        Shift(val, vec) => {
+            let value_type = analyze_expression(val, diagnostics, scope);
+            let vec_type = analyze_expression(vec, diagnostics, scope);
+            if vec_type != Type::Vec2 {
+                match vec_type {
+                    Type::Unknown => {}
+                    _ => {
+                        diagnostics.err(SemanticError::TypeMismatch(vec.span(), "Vec2".to_owned(), vec_type.to_string()));
+                    }
+                };
+            }
+            vec_type
+        }
 //        Scale(left, right)=> {},
         _ => Type::Unknown,
     }

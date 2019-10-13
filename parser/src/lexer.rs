@@ -383,8 +383,8 @@ impl<'input> Iterator for Lexer<'input> {
                             "gpu_fun" => return ok_m!(GpuFun, i, i + 7),
                             "pipeline" => return ok_m!(Pipeline, i, i + 8),
                             "import" => return ok_m!(Import, i, i + 6),
-                            "shift" => return ok_m!(Import, i, i + 5),
-                            "scale" => return ok_m!(Import, i, i + 5),
+                            "shift" => return ok_m!(Shift, i, i + 5),
+                            "scale" => return ok_m!(Scale, i, i + 5),
                             "return" => return ok_m!(Return, i, i + 6),
                             x => {
                                 return Some(Result::Ok((

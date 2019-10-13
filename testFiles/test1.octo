@@ -7,10 +7,15 @@
 
 
 pipeline main(one: vec4) -> (Vec4){
-    let g = 2 + 3;
+    let g = 2.0 + 3.0;
+    let le = 2.0 - 3.0;
+    //let w = shift(g, 3);
+    let rum = g - le;
+    let z = g / 1.5;
+    z = z * 2.0;
 
-    let f = gie + 2;
-    g = f / 2 + 3.10 + 13;// lolz("heh", wut);
-    return one;
+    //let f = 2.0;
+    //g = f / 2.0 + 3.10 + 13.0;// lolz("heh", wut);
+    return z;
 
 }

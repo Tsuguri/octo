@@ -2,6 +2,7 @@
 
 mod shader_generation;
 mod static_analysis;
+mod tac_ir;
 pub mod experimental_ir;
 
 
@@ -130,13 +131,14 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     // syntax analysis
     let mut ast = match parser::parse(&data, false) {
         Err(failure_info) => {
+            println!("{:#?}", failure_info.errors);
             report_errors(&data, path, &[parser::ErrWrap { err: &failure_info.errors[0] }.into()]);
             return Result::Err(());
         }
         Ok(ast) => ast,
     };
 
-    println!("{:#?}", ast);
+    //println!("{:#?}", ast);
 
     let static_analysis_res = static_analysis::analyze(ast);
     let Diagnostics{errors, warnings} = static_analysis_res.1;
@@ -152,6 +154,29 @@ pub fn process_file(path: &str) -> Result<(), ()> {
         Some(x) => x,
     };
 
+    let tac = tac_ir::emit_ir(valid_ast);
+
+    println!("before constant propagation");
+    for op in &tac {
+        println!("{} = {:?}",op.0, op.1);
+
+    }
+
+    let tac = tac_ir::propagate_constants(tac);
+
+    println!("after constant propagation");
+    for op in tac {
+        println!("{} = {:?}",op.0, op.1);
+
+    }
+
+    let tac = tac_ir::remove_unused_operations(tac);
+
+    println!("after unused operation removal");
+    for op in tac {
+        println!("{} = {:?}",op.0, op.1);
+
+    }
     // do next things
 
     //emit_module(ast, &result_path);
