@@ -3,7 +3,7 @@ pub mod optimalizations;
 // tac with SSA
 use std::collections::HashMap;
 use super::ast;
-use ast::Program as IncomingIR;
+use ast::Pipeline as IncomingIR;
 
 pub type Address = usize;
 
@@ -130,12 +130,12 @@ impl Code {
 pub fn emit_ir(ast: IncomingIR) -> Vec<Op> {
     let mut code = Code::new();
 
-    for arg in ast.pipeline.arguments.iter().enumerate() {
+    for arg in ast.arguments.iter().enumerate() {
         let addr = code.push(Operation::Arg(arg.0));
         code.store(&arg.1.identifier.val, addr);
     }
 
-    for statement in ast.pipeline.block.statements {
+    for statement in ast.block.statements {
         emit_statement(statement, &mut code);
     }
 
@@ -157,6 +157,12 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
         ast::Statement::Assignment(var, exp, create) => {
             let addr = emit_expression(*exp, code);
             code.store(&var.identifier.val, addr);
+        }
+        ast::Statement::For(stat, exp1, exp2, block) => {
+
+        }
+        ast::Statement::IfElse(condition, true_block, false_block) => {
+
         }
     }
 }

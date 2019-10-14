@@ -138,7 +138,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
         Ok(ast) => ast,
     };
 
-    //println!("{:#?}", ast);
+    println!("{:#?}", ast);
 
     let static_analysis_res = static_analysis::analyze(ast);
     let Diagnostics{errors, warnings} = static_analysis_res.1;
@@ -165,7 +165,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     let tac = tac_ir::propagate_constants(tac);
 
     println!("after constant propagation");
-    for op in tac {
+    for op in &tac {
         println!("{} = {:?}",op.0, op.1);
 
     }

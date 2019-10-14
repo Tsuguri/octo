@@ -1,5 +1,5 @@
-use super::ast::Program as IncomingIR;
-use super::ast::Program as OutgoingIR;
+use super::ast::Pipeline as IncomingIR;
+use super::ast::Pipeline as OutgoingIR;
 use errors::{SemanticError, SemanticWarning};
 use parser::ast::{Expression, Statement};
 
@@ -27,15 +27,14 @@ struct FunctionState {
     returned: bool,
 }
 
-pub fn analyze(program: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
-    let mut program = program;
+pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
+    let mut pip = pip;
     let global_scope = Scope::global();
 
     let mut program_scope = Scope::child_scope(&global_scope);
 
     let mut errs = Diagnostics { errors: vec![], warnings: vec![] };
 
-    let pip = &mut program.pipeline;
     for arg in &pip.arguments {
         program_scope.create_variable(&arg.identifier.val, arg.typ.clone(), arg.identifier.span);
     }
@@ -52,7 +51,7 @@ pub fn analyze(program: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
     if errs.errors.len() > 0 {
         (Option::None, errs)
     } else {
-        (Option::Some(program), errs)
+        (Option::Some(pip), errs)
     }
 
     // check names of variables
@@ -102,6 +101,54 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
         Statement::Return(val) => {
             // TODO: do something here to check returned type
             let typ = analyze_expression(val, diagnostics, scope);
+        }
+        Statement::For(stat, exp1, exp2, block) => {
+
+            let mut block_scope = Scope::child_scope(&scope);
+
+            analyze_statement(&mut *stat, diagnostics, &mut block_scope);
+
+            let cond_type = analyze_expression(&mut *exp1, diagnostics, &mut block_scope);
+            match cond_type {
+                Type::Bool => {},
+                Type::Unknown => {},
+                _ => {
+                    diagnostics.err(SemanticError::TypeMismatch(exp1.span(), "Bool".to_owned(), cond_type.to_string()));
+                }
+            }
+
+            analyze_statement(&mut *exp2, diagnostics, &mut block_scope);
+
+            for statement in block.statements.iter_mut() {
+                analyze_statement(statement, diagnostics, &mut block_scope);
+            }
+            // todo
+            // analyze shiftness of block. If there is one we must be able to compute const number of loops
+
+        }
+        Statement::IfElse(exp, block1, block2) => {
+            let exp_type = analyze_expression(&mut *exp, diagnostics, scope);
+            match exp_type {
+                Type::Bool | Type::Unknown => {},
+                _ => {
+                    diagnostics.err(SemanticError::TypeMismatch(exp.span(), "Bool".to_owned(), exp_type.to_string()));
+                }
+            }
+
+            let mut block_scope = Scope::child_scope(&scope);
+
+            for statement in block1.statements.iter_mut() {
+                analyze_statement(statement, diagnostics, &mut block_scope);
+            }
+
+            drop(block_scope);
+
+            if let Some(else_block) = block2 {
+                let mut else_scope = Scope::child_scope(&scope);
+                for statement in else_block.statements.iter_mut() {
+                    analyze_statement(statement, diagnostics, &mut else_scope);
+                }
+            }
         }
     }
 }
@@ -187,10 +234,10 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
             let left_type = analyze_expression(left, diagnostics, scope);
             let right_type = analyze_expression(right, diagnostics, scope);
             if left_type != Type::Bool {
-                diagnostics.err(SemanticError::LogicTypeMismatch(left_type.to_string(), "&&".to_string(), left.span()));
+                diagnostics.err(SemanticError::LogicTypeMismatch(left_type.to_string(), "and".to_string(), left.span()));
             }
             if right_type != Type::Bool {
-                diagnostics.err(SemanticError::LogicTypeMismatch(right_type.to_string(), "&&".to_string(), right.span()));
+                diagnostics.err(SemanticError::LogicTypeMismatch(right_type.to_string(), "and".to_string(), right.span()));
             }
             Type::Bool
         }
@@ -198,10 +245,10 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
             let left_type = analyze_expression(left, diagnostics, scope);
             let right_type = analyze_expression(right, diagnostics, scope);
             if left_type != Type::Bool {
-                diagnostics.err(SemanticError::LogicTypeMismatch(left_type.to_string(), "||".to_string(), left.span()));
+                diagnostics.err(SemanticError::LogicTypeMismatch(left_type.to_string(), "or".to_string(), left.span()));
             }
             if right_type != Type::Bool {
-                diagnostics.err(SemanticError::LogicTypeMismatch(right_type.to_string(), "||".to_string(), right.span()));
+                diagnostics.err(SemanticError::LogicTypeMismatch(right_type.to_string(), "or".to_string(), right.span()));
             }
             Type::Bool
         }

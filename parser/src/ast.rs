@@ -140,6 +140,8 @@ pub enum Statement {
     Expression(Box<Expression>),
     Assignment(Box<Variable>, Box<Expression>, bool),
     Return(Box<Expression>),
+    For(Box<Statement>, Box<Expression>, Box<Statement>, Block),
+    IfElse(Box<Expression>, Block, Option<Block>),
 }
 
 #[derive(Debug)]

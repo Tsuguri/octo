@@ -69,10 +69,6 @@ Comma<T>: Vec<T> = {
     }
 };
 
-pub Program: ast::Program = {
-    <items: (GpuFunction)*> <pipeline: Pipeline>=> ast::Program{items, pipeline}
-}
-
 pub Pipeline: ast::Pipeline = {
     "pipeline" <l:@L> <i:"ident"> <r:@R> "(" <args:Comma<Definition>> ")"
         "->" "(" <results:Comma<Type>> ")" <b: Block> =>
@@ -84,54 +80,63 @@ pub Pipeline: ast::Pipeline = {
             }
 }
 
-pub GpuFunction: ast::GpuFunction = {
-    "gpu_fun" <l:@L> <i:"ident"> <r:@R> "(" <args:Comma<Definition>> ")"
-        "->" "(" <results:Comma<Definition>> ")" "{" <l2:@L> <s:"string"> <r2:@R> "}" =>
-            ast::GpuFunction{
-                name: Sp::from_loc(i, l,r),
-                code: Sp::from_loc(s, l2, r2),
-                arguments: args,
-                results
-            }
+pub Block: ast::Block = {
+    "{" <statements: (<BlockProxy>)*> "}" => ast::Block{statements: statements },
 }
 
-pub Block: ast::Block = {
-    "{" <statements: (<Statement> ";")*> "}" => ast::Block{statements: statements },
+BlockProxy: ast::Statement = {
+    <o:Op> => o,
+    <s:Statement> ";" => s,
+}
+
+
+pub Op: ast::Statement = {
+    "for" "(" <stat:Statement> ";" <e1:Expression> ";" <e2:Statement> ")"  <block:Block> => ast::Statement::For(Box::new(stat), e1, Box::new(e2), block),
+    "if" "(" <e:Expression> ")" <b:Block> <el:("else" <Block>)?> => ast::Statement::IfElse(e, b, el),
 }
 
 pub Statement: ast::Statement = {
     <lr:"let"?> <l:@L> <id:"ident"> <r:@R> "=" <e:Expression> => ast::Statement::Assignment(Box::new(ast::Variable::new(Sp::from_loc(id, l, r))), e, match lr {Some(_)=> true, None =>false,}),
-    <e:Expression> ";" => ast::Statement::Expression(e),
+    <e:Expression> => ast::Statement::Expression(e),
     "return" <l:@L> <e:Expression> <r:@R> => ast::Statement::Return(e),
 }
+
 pub Expression: Box<ast::Expression> = {
-    //"(" <e:Expression> ")" => e,
     Equaled => <>,
+    <a:Equaled> "and" <b:Equaled> => Box::new(ast::Expression::And(a,b)),
+    <a:Equaled> "or" <b:Equaled> => Box::new(ast::Expression::Or(a,b)),
 }
 
 // no equal operator yet
-pub Equaled: Box<ast::Expression> = {
+Equaled: Box<ast::Expression> = {
     Related => <>,
+    <a:Related> "==" <b:Related> => Box::new(ast::Expression::Equals(a, b)),
+    <a:Related> "!=" <b:Related> => Box::new(ast::Expression::NotEquals(a, b)),
+
 }
 
 // no equal operator yet
-pub Related: Box<ast::Expression> = {
+Related: Box<ast::Expression> = {
     Added => <>,
+    <a:Added> "<" <b:Added> => Box::new(ast::Expression::Less(a, b)),
+    <a:Added> "<=" <b:Added> => Box::new(ast::Expression::LessEqual(a, b)),
+    <a:Added> ">" <b:Added> => Box::new(ast::Expression::More(a, b)),
+    <a:Added> ">=" <b:Added> => Box::new(ast::Expression::MoreEqual(a, b)),
 }
 
-pub Added: Box< ast::Expression> = {
+Added: Box< ast::Expression> = {
     Multiplied => <>,
     <a: Added> "+" <b:Multiplied> => Box::new(ast::Expression::Add(a,b)),
     <a: Added> "-" <b:Multiplied> => Box::new(ast::Expression::Sub(a,b)),
 }
 
-pub Multiplied: Box<ast::Expression> = {
+Multiplied: Box<ast::Expression> = {
     Negated => <>,
     <a: Multiplied> "*" <b:Negated> => Box::new(ast::Expression::Mul(a,b)),
     <a: Multiplied> "/" <b:Negated> => Box::new(ast::Expression::Div(a,b)),
 }
 
-pub Negated: Box<ast::Expression> = {
+Negated: Box<ast::Expression> = {
     "!" <p: Primitive> => Box::new(ast::Expression::Negation(p)),
     "-" <p: Primitive> => Box::new(ast::Expression::Negation(p)),
     Primitive => <>,
@@ -145,7 +150,7 @@ Definition: ast::Variable = {
     <l:@L> <i1:"ident"> <r:@R> ":" <i2:"ident"> => ast::Variable::typed(Sp::from_loc(i1, l,r), ast::Type::new(i2))
 }
 
-pub Primitive: Box<ast::Expression> = {
+Primitive: Box<ast::Expression> = {
     Literal => Box::new(ast::Expression::Literal(<>)),
     "shift" "(" <e1:Expression> "," <e2:Expression> ")" => Box::new(ast::Expression::Shift(e1, e2)),
     "scale" "(" <e1:Expression> "," <e2:Expression> ")" => Box::new(ast::Expression::Scale(e1, e2)),

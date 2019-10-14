@@ -120,7 +120,7 @@ impl From<ErrorWrap> for Diagnostic {
             }
             SemanticError::TypeMismatch(span, type1, type2) => {
                 Diagnostic::new_error(format!("Type mismatch. Type \"{}\" was expected, but \"{}\" was found", type1, type2)).with_label(
-                    codespan_reporting::Label::new_primary(span)
+                    codespan_reporting::Label::new_primary(span).with_message(format!("Problem occured here"))
                 )
             }
             SemanticError::OperationTypeMismatch(type1, span1, type2, span2) => {

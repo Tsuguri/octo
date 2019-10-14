@@ -5,7 +5,7 @@ use std::convert::Into;
 
 pub use codespan;
 pub use codespan_reporting;
-use codespan::{CodeMap};
+use codespan::CodeMap;
 use codespan_reporting::Diagnostic;
 use lalrpop_util::ParseError;
 
@@ -22,7 +22,7 @@ pub struct FailedParsing {
 }
 
 
-pub fn parse(src: &str, lex: bool) -> Result<ast::Program, FailedParsing> {
+pub fn parse(src: &str, lex: bool) -> Result<ast::Pipeline, FailedParsing> {
     if lex {
         for lexeme in lexer::Lexer::new(src) {
             print!("{:?}, ", lexeme);
@@ -30,11 +30,11 @@ pub fn parse(src: &str, lex: bool) -> Result<ast::Program, FailedParsing> {
         println!();
     }
     let lexer = lexer::Lexer::new(src);
-    let result = grammar::ProgramParser::new().parse(lexer);
+    let result = grammar::PipelineParser::new().parse(lexer);
     match result {
         Result::Ok(ast) => Result::Ok(ast),
         Result::Err(error) => {
-            Result::Err(FailedParsing{program: Option::None, errors: vec![error]})
+            Result::Err(FailedParsing { program: Option::None, errors: vec![error] })
         }
     }
 }
@@ -60,7 +60,7 @@ macro_rules! error {
 
 impl<'a> From<ErrWrap<'a>> for Diagnostic {
     fn from(w: ErrWrap) -> Diagnostic {
-        match &w.err{
+        match &w.err {
             ParseError::UnrecognizedToken {
                 token,
                 expected: exp,
@@ -125,13 +125,56 @@ fn remove_extra_quotes(tokens: &mut [String]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn fast_expression(code: &str) -> bool {
+        let lexer = lexer::Lexer::new(code);
+        let result = grammar::ExpressionParser::new().parse(lexer);
+        result.is_ok()
+    }
+
+    fn fast_statement(code: &str) -> bool {
+        let lexer = lexer::Lexer::new(code);
+        let result = grammar::StatementParser::new().parse(lexer);
+        result.is_ok()
+    }
+
+    fn fast_block(code: &str) -> bool {
+        let lexer = lexer::Lexer::new(code);
+        let result = grammar::BlockParser::new().parse(lexer);
+        result.is_ok()
+    }
+
+    fn fast_op(code: &str) -> bool {
+        let lexer = lexer::Lexer::new(code);
+        let result = grammar::OpParser::new().parse(lexer);
+        result.is_ok()
+    }
+
     #[test]
-    fn test_literal_1() {
+    fn acceptance_test() {
         // to be done later once I know how to extract parsers for single non-terminals
 
+        assert!(fast_expression("2"));
+        assert!(fast_expression("2+2"));
+        assert!(fast_expression("2-2"));
+        assert!(fast_expression("2*3"));
+        assert!(fast_expression("2/3"));
 
-//        let lexer = lexer::Lexer::new("2");
-//        let result = grammar::ProgramParser::new().parse(lexer);
+        assert!(fast_statement("let p = 2+2"));
+        assert!(fast_statement("dwa = 2 + 2"));
+        assert!(fast_statement("return 3.0"));
+        assert!(fast_statement("dwa = 2 + 2"));
+
+        // well, it might be valid expression
+        assert!(fast_op("for(i;i;i){}"));
+        assert!(fast_op("if(1){}"));
+
+        assert!(fast_block("{for(i;i;i){}}"));
+        assert!(fast_block("{if(i){}}"));
+        assert!(fast_block("{if(i){}else {}}"));
+
+
+
 //
 //        assert!(result.is_ok());
 //        let result = result.unwrap();
@@ -141,7 +184,6 @@ mod tests {
 //            },
 //            _ => assert!(false),
 //        }
-
     }
 }
 
