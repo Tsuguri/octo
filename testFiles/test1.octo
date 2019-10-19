@@ -12,6 +12,16 @@ pipeline main(one: vec4) -> (Vec4){
     let dwa = one;
     let trzy = dwa + one;
 
+    if(trzy == dwa) {
+        let tmp = z - rum;
+        let test = trzy > dwa;
+        z2 = 4.0;
+    } else {
+        let dumb = g;
+        z2 = 13.0;
+
+    }
+
     //let f = 2.0;
     //g = f / 2.0 + 3.10 + 13.0;// lolz("heh", wut);
     return trzy;

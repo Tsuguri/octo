@@ -15,8 +15,8 @@ pub use optimalizations::*;
 enum ConstantValue {
     Int(i64),
     Float(f64),
-    Vec2([f64;2]),
-    Vec3([f64;3]),
+    Vec2([f64; 2]),
+    Vec3([f64; 3]),
     Bool(bool),
 }
 
@@ -25,8 +25,8 @@ pub enum Operation {
     Arg(usize),
     StoreInt(i64),
     StoreFloat(f64),
-    StoreVec2([f64;2]),
-    StoreVec3([f64;3]),
+    StoreVec2([f64; 2]),
+    StoreVec3([f64; 3]),
     StoreBool(bool),
     Add(Address, Address),
     Sub(Address, Address),
@@ -34,9 +34,16 @@ pub enum Operation {
     Div(Address, Address),
     Less(Address, Address),
     LessEq(Address, Address),
+    Eq(Address, Address),
+    Neq(Address, Address),
     Neg(Address),
     Shift(Address, Address),
     Exit(Address),
+
+    Phi(Address, Address),
+    JumpIfElse(Address, Address, Address),
+    Jump(Address),
+    Label,
 }
 
 
@@ -44,6 +51,8 @@ struct Code {
     pub code: Vec<Op>,
     variables: HashMap<String, Address>,
     constants: HashMap<Address, ConstantValue>,
+
+    phi_assignments: Option<HashMap<String, (Address, Address)>>,
 
     counter: usize,
 }
@@ -55,19 +64,41 @@ impl Code {
             code: vec![],
             variables: HashMap::new(),
             constants: HashMap::new(),
-            counter:0,
+            counter: 0,
+            phi_assignments: None,
         }
     }
+
+    pub fn observe_assignments(&mut self) {
+        self.phi_assignments = Some(HashMap::new());
+    }
+
+    pub fn finish_observing(&mut self) -> Option<HashMap<String, (Address, Address)>> {
+        self.phi_assignments.take()
+    }
+
     pub fn new_label(&mut self) -> Address {
         self.counter += 1;
         self.counter
     }
-    pub fn push(&mut self, op: Operation) -> Address{
+    pub fn push(&mut self, op: Operation) -> Address {
         let lab = self.new_label();
         self.code.push((lab, op));
         lab
     }
-    pub fn store(&mut self, name: &str, add: Address) {
+    pub fn push_with_label(&mut self, op: Operation, label: Address) {
+        self.code.push((label, op));
+    }
+
+    pub fn store(&mut self, name: &str, add: Address, create: bool) {
+        if let Some(assignments) = &mut self.phi_assignments {
+            // if we create new variable then it doesn't go into phi assignemts (local variable).
+
+            if !create {
+                let old = self.variables[name];
+                assignments.insert(name.to_owned(), (add, old));
+            }
+        }
         self.variables.insert(name.to_owned(), add);
     }
     pub fn get(&self, name: &str) -> Address {
@@ -76,7 +107,6 @@ impl Code {
 
     pub fn get_const_address(&self, value: &ConstantValue) -> Option<Address> {
         self.constants.iter().find(|x| *x.1 == *value).map(|x| *x.0)
-
     }
 
     pub fn store_constant(&mut self, val: ConstantValue) -> Address {
@@ -86,28 +116,26 @@ impl Code {
             _ => {}
         }
         use ConstantValue::*;
-        let address =match val {
+        let address = match val {
             Float(val) => {
                 self.push(Operation::StoreFloat(val))
-
-            },
+            }
             Int(val) => {
                 self.push(Operation::StoreInt(val))
-            },
+            }
             Vec2(val) => {
                 self.push(Operation::StoreVec2(val))
-            },
+            }
             Vec3(val) => {
                 self.push(Operation::StoreVec3(val))
-            },
+            }
             Bool(val) => {
                 self.push(Operation::StoreBool(val))
-            },
+            }
         };
         self.make_const(address, val);
         //println!("Storing {} as const", address);
         address
-
     }
 
     pub fn get_const(&self, addr: Address) -> ConstantValue {
@@ -118,7 +146,7 @@ impl Code {
     }
 
     pub fn is_const(&self, addr: Address) -> bool {
-        let res =self.constants.contains_key(&addr);
+        let res = self.constants.contains_key(&addr);
         //println!("{} is {}", addr, if res {"const"} else {"mut"});
 
 
@@ -132,17 +160,21 @@ pub fn emit_ir(ast: IncomingIR) -> Vec<Op> {
 
     for arg in ast.arguments.iter().enumerate() {
         let addr = code.push(Operation::Arg(arg.0));
-        code.store(&arg.1.identifier.val, addr);
+        code.store(&arg.1.identifier.val, addr, false);
     }
 
-    for statement in ast.block.statements {
-        emit_statement(statement, &mut code);
-    }
+    emit_block(ast.block, &mut code);
 
 
     // analyze statements
 
     code.code
+}
+
+fn emit_block(block: ast::Block, code: &mut Code) {
+    for statement in block.statements {
+        emit_statement(statement, code);
+    }
 }
 
 fn emit_statement(statement: ast::Statement, code: &mut Code) {
@@ -156,15 +188,71 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
         }
         ast::Statement::Assignment(var, exp, create) => {
             let addr = emit_expression(*exp, code);
-            code.store(&var.identifier.val, addr);
+            code.store(&var.identifier.val, addr, create);
         }
-        ast::Statement::For(stat, exp1, exp2, block) => {
-
-        }
+        ast::Statement::For(stat, exp1, exp2, block) => {}
         ast::Statement::IfElse(condition, true_block, false_block) => {
+            let cond = emit_expression(*condition, code);
+
+            let if_label = code.new_label();
+            let else_label = code.new_label();
+            let end_label = code.new_label();
+
+
+            let label2 = if false_block.is_some() { else_label } else { end_label };
+            // jump to first block
+            code.push(Operation::JumpIfElse(cond, if_label, label2));
+
+            code.push_with_label(Operation::Label, if_label);
+            code.observe_assignments();
+            emit_block(true_block, code);
+            let true_assignments = code.finish_observing().unwrap();
+            code.push(Operation::Jump(end_label));
+
+
+            let mut false_assignments = None;
+            if let Some(bl) = false_block {
+                code.push_with_label(Operation::Label, else_label);
+                code.observe_assignments();
+                emit_block(bl, code);
+                false_assignments = code.finish_observing();
+                code.push(Operation::Jump(end_label));
+            }
+
+            code.push_with_label(Operation::Label, end_label);
+
+            // emit phi instructions
+            for phi in select_phi_operations(true_assignments, false_assignments) {
+                let address = code.push(Operation::Phi((phi.1).0, (phi.1).1));
+
+            }
 
         }
     }
+}
+
+fn select_phi_operations(
+    true_block: HashMap<String, (Address, Address)>,
+    false_block: Option<HashMap<String, (Address, Address)>>,
+) -> HashMap<String, (Address, Address)> {
+    let mut results = true_block;
+
+    match false_block {
+        None => {}
+        Some(x) => {
+            for (key, (new, old)) in x {
+                match results.get(&key) {
+                    None => {
+                        results.insert(key, (new, old));
+                    }
+                    Some(true_phi) => {
+                        results.insert(key, (new, true_phi.0));
+                    }
+                }
+            }
+        }
+    }
+    results
 }
 
 fn emit_expression(exp: ast::Expression, code: &mut Code) -> Address {
@@ -226,6 +314,16 @@ fn emit_expression(exp: ast::Expression, code: &mut Code) -> Address {
             let left_address = emit_expression(*exp_left, code);
             let right_address = emit_expression(*exp_right, code);
             code.push(Operation::LessEq(right_address, left_address))
+        }
+        Equals(exp_left, exp_right) => {
+            let left_address = emit_expression(*exp_left, code);
+            let right_address = emit_expression(*exp_right, code);
+            code.push(Operation::Eq(left_address, right_address))
+        }
+        NotEquals(exp_left, exp_right) => {
+            let left_address = emit_expression(*exp_left, code);
+            let right_address = emit_expression(*exp_right, code);
+            code.push(Operation::Neq(left_address, right_address))
         }
         _ => { 0 }
     }
