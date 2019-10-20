@@ -1,5 +1,4 @@
 use super::*;
-use super::super::ast;
 
 mod remove_unused;
 mod constants_propagation;

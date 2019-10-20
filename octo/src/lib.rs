@@ -121,7 +121,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     if !p.is_file() {
         panic!("given path is not a file: {}", path);
     }
-    let result_path = p.with_extension("octo_bin");
+    let _result_path = p.with_extension("octo_bin");
 
     let mut file = File::open(path).unwrap();
     let mut data = String::new();
@@ -129,7 +129,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
 
 
     // syntax analysis
-    let mut ast = match parser::parse(&data, false) {
+    let ast = match parser::parse(&data, false) {
         Err(failure_info) => {
             println!("{:#?}", failure_info.errors);
             report_errors(&data, path, &[parser::ErrWrap { err: &failure_info.errors[0] }.into()]);
@@ -138,7 +138,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
         Ok(ast) => ast,
     };
 
-    println!("{:#?}", ast);
+    //println!("{:#?}", ast);
 
     let static_analysis_res = static_analysis::analyze(ast);
     let Diagnostics{errors, warnings} = static_analysis_res.1;
@@ -170,7 +170,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
 
     }
 
-    let tac = tac_ir::remove_unused_operations(tac);
+//    let tac = tac_ir::remove_unused_operations(tac);
 
     println!("after unused operation removal");
     for op in tac {

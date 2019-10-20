@@ -1,25 +1,14 @@
 pipeline main(one: vec4) -> (Vec4){
     let z2 = 2.0;
-    for(let p =0; p < 10 == z2 <2.0; p= p+1) {
-        let g = 12;
-    }
-    let g = 2.0 + 3.0;
-    let le = 2.0 - 3.0;
-    //let w = shift(g, 3);
-    let rum = g - le;
-    let z = g / 1.5;
-    z = z * 2.0;
-    let dwa = one;
-    let trzy = dwa + one;
+    let trzy = one;
+    let dwa = one+trzy;
+    let g = 12.0;
 
     if(trzy == dwa) {
-        let tmp = z - rum;
-        let test = trzy > dwa;
-        z2 = 4.0;
-    } else {
-        let dumb = g;
-        z2 = 13.0;
-
+        if ( z2 == g) {
+            z2 = 24.0;
+        }
+        z2 =  z2 + 3.0;
     }
 
     //let f = 2.0;

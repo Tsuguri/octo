@@ -23,9 +23,6 @@ impl Diagnostics {
     }
 }
 
-struct FunctionState {
-    returned: bool,
-}
 
 pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
     let mut pip = pip;
@@ -36,10 +33,9 @@ pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
     let mut errs = Diagnostics { errors: vec![], warnings: vec![] };
 
     for arg in &pip.arguments {
-        program_scope.create_variable(&arg.identifier.val, arg.typ.clone(), arg.identifier.span);
+        program_scope.create_variable(&arg.identifier.val, arg.typ.clone(), arg.identifier.span).unwrap();
     }
 
-    let state = FunctionState { returned: false };
     for statement in &mut pip.block.statements {
         analyze_statement(statement, &mut errs, &mut program_scope);
     }
@@ -100,7 +96,7 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
         }
         Statement::Return(val) => {
             // TODO: do something here to check returned type
-            let typ = analyze_expression(val, diagnostics, scope);
+            let _typ = analyze_expression(val, diagnostics, scope);
         }
         Statement::For(stat, exp1, exp2, block) => {
 
@@ -206,19 +202,22 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
             analyze_binary_operation(left, right, scope, diagnostics)
         }
         Less(left, right) => {
-            // make sure that both sides are of the same type.
+            // TODO add check that types can be ordered (float/int, not vecs)
             analyze_binary_operation(left, right, scope, diagnostics);
             Type::Bool
         }
         LessEqual(left, right) => {
+            // TODO add check that types can be ordered (float/int, not vecs)
             analyze_binary_operation(left, right, scope, diagnostics);
             Type::Bool
         }
         More(left, right) => {
+            // TODO add check that types can be ordered (float/int, not vecs)
             analyze_binary_operation(left, right, scope, diagnostics);
             Type::Bool
         }
         MoreEqual(left, right) => {
+            // TODO add check that types can be ordered (float/int, not vecs)
             analyze_binary_operation(left, right, scope, diagnostics);
             Type::Bool
         }
@@ -263,7 +262,7 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
                     }
                 };
             }
-            vec_type
+            value_type
         }
 //        Scale(left, right)=> {},
         _ => Type::Unknown,

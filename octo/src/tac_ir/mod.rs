@@ -36,6 +36,8 @@ pub enum Operation {
     LessEq(Address, Address),
     Eq(Address, Address),
     Neq(Address, Address),
+    And(Address, Address),
+    Or(Address, Address),
     Neg(Address),
     Shift(Address, Address),
     Exit(Address),
@@ -47,12 +49,14 @@ pub enum Operation {
 }
 
 
+type PhiCollection = HashMap<String, (Address, Address)>;
+
 struct Code {
     pub code: Vec<Op>,
     variables: HashMap<String, Address>,
     constants: HashMap<Address, ConstantValue>,
 
-    phi_assignments: Option<HashMap<String, (Address, Address)>>,
+    phi_assignments: Option<PhiCollection>,
 
     counter: usize,
 }
@@ -69,12 +73,16 @@ impl Code {
         }
     }
 
-    pub fn observe_assignments(&mut self) {
+    pub fn observe_assignments(&mut self) -> Option<PhiCollection> {
+        let tmp = self.phi_assignments.take();
         self.phi_assignments = Some(HashMap::new());
+        tmp
     }
 
-    pub fn finish_observing(&mut self) -> Option<HashMap<String, (Address, Address)>> {
-        self.phi_assignments.take()
+    pub fn finish_observing(&mut self, old: Option<PhiCollection>) -> Option<PhiCollection> {
+        let ret = self.phi_assignments.take();
+        self.phi_assignments = old;
+        ret
     }
 
     pub fn new_label(&mut self) -> Address {
@@ -91,17 +99,31 @@ impl Code {
     }
 
     pub fn store(&mut self, name: &str, add: Address, create: bool) {
+        print!("storing {} to {}: ", name, add);
         if let Some(assignments) = &mut self.phi_assignments {
+            print!("phi store");
             // if we create new variable then it doesn't go into phi assignemts (local variable).
 
             if !create {
                 let old = self.variables[name];
                 assignments.insert(name.to_owned(), (add, old));
             }
+        } else {
+            self.variables.insert(name.to_owned(), add);
+            print!("normal  store");
         }
-        self.variables.insert(name.to_owned(), add);
+        println!();
     }
     pub fn get(&self, name: &str) -> Address {
+        if let Some(assignments) = &self.phi_assignments {
+            println!("Getting phi val for {}", name);
+            match assignments.get(name) {
+                None => {},
+                Some(x) => {
+                    return x.0;
+                },
+            }
+        };
         *self.variables.get(name).unwrap()
     }
 
@@ -190,7 +212,7 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             let addr = emit_expression(*exp, code);
             code.store(&var.identifier.val, addr, create);
         }
-        ast::Statement::For(stat, exp1, exp2, block) => {}
+        ast::Statement::For(_stat, _exp1, _exp2, _block) => {}
         ast::Statement::IfElse(condition, true_block, false_block) => {
             let cond = emit_expression(*condition, code);
 
@@ -204,18 +226,18 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             code.push(Operation::JumpIfElse(cond, if_label, label2));
 
             code.push_with_label(Operation::Label, if_label);
-            code.observe_assignments();
+            let old_phi = code.observe_assignments();
             emit_block(true_block, code);
-            let true_assignments = code.finish_observing().unwrap();
+            let true_assignments = code.finish_observing(old_phi).unwrap();
             code.push(Operation::Jump(end_label));
 
 
             let mut false_assignments = None;
             if let Some(bl) = false_block {
                 code.push_with_label(Operation::Label, else_label);
-                code.observe_assignments();
+                let old_phi = code.observe_assignments();
                 emit_block(bl, code);
-                false_assignments = code.finish_observing();
+                false_assignments = code.finish_observing(old_phi);
                 code.push(Operation::Jump(end_label));
             }
 
@@ -224,9 +246,8 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             // emit phi instructions
             for phi in select_phi_operations(true_assignments, false_assignments) {
                 let address = code.push(Operation::Phi((phi.1).0, (phi.1).1));
-
+                code.store(&phi.0, address, false);
             }
-
         }
     }
 }
@@ -245,7 +266,7 @@ fn select_phi_operations(
                     None => {
                         results.insert(key, (new, old));
                     }
-                    Some(true_phi) => {
+                    Some(&true_phi) => {
                         results.insert(key, (new, true_phi.0));
                     }
                 }
@@ -325,6 +346,24 @@ fn emit_expression(exp: ast::Expression, code: &mut Code) -> Address {
             let right_address = emit_expression(*exp_right, code);
             code.push(Operation::Neq(left_address, right_address))
         }
-        _ => { 0 }
+        And(exp_left, exp_right) => {
+            let left_address = emit_expression(*exp_left, code);
+            let right_address = emit_expression(*exp_right, code);
+            code.push(Operation::And(left_address, right_address))
+        }
+        Or(exp_left, exp_right) => {
+            let left_address = emit_expression(*exp_left, code);
+            let right_address = emit_expression(*exp_right, code);
+            code.push(Operation::Or(left_address, right_address))
+        }
+        Shift(shifted, shift_by)=> {
+            let left_address = emit_expression(*shifted, code);
+            let right_address = emit_expression(*shift_by, code);
+            code.push(Operation::Shift(left_address, right_address))
+
+        }
+        Scale(_scaled, _scale_by) => {
+            0
+        }
     }
 }
