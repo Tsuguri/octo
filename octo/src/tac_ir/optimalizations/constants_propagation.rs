@@ -15,7 +15,11 @@ impl ConstantsContext {
     }
 
     pub fn map(&self, old: Address) -> Address {
-        self.id_map[&old]
+        match self.try_map(old) {
+            None => 0,
+            Some(x)=>x,
+
+        }
     }
 
     pub fn try_map(&self, old: Address) -> Option<Address> {

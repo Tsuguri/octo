@@ -10,6 +10,7 @@ pub type Address = usize;
 pub type Op = (Address, Operation);
 
 pub use optimalizations::*;
+use std::ops::Range;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum ConstantValue {
@@ -20,7 +21,7 @@ enum ConstantValue {
     Bool(bool),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Operation {
     Arg(usize),
     StoreInt(i64),
@@ -62,6 +63,18 @@ struct Code {
 }
 
 
+macro_rules! replace {
+    ($i1:ident, $i2:ident, $i3:ident) => {if $i1==$i2 {$i3}else{$i1}};
+}
+
+macro_rules! replace_two {
+    ($id1:path, $left:ident, $right:ident, $old:ident, $new:ident) => {
+
+            $id1(replace!($left, $old, $new), replace!($right, $old, $new))
+
+    };
+}
+
 impl Code {
     pub fn new() -> Self {
         Code {
@@ -71,6 +84,41 @@ impl Code {
             counter: 0,
             phi_assignments: None,
         }
+    }
+
+    pub fn code_size(&self) -> usize {
+        self.code.len()
+    }
+
+    pub fn replace_label(&mut self, range: Range<usize>, old: Address, new: Address) {
+
+        for index in range {
+            let operation = self.code[index].1;
+            let op = match operation {
+                Operation::Add(l, r)=>replace_two!(Operation::Add, l, r, old, new),
+                Operation::Sub(l, r)=>replace_two!(Operation::Sub, l, r, old, new),
+                Operation::Mul(l, r)=>replace_two!(Operation::Mul, l, r, old, new),
+                Operation::Div(l, r)=>replace_two!(Operation::Div, l, r, old, new),
+                Operation::Less(l, r)=>replace_two!(Operation::Less, l, r, old, new),
+                Operation::LessEq(l, r)=>replace_two!(Operation::LessEq, l, r, old, new),
+                Operation::Eq(l, r)=>replace_two!(Operation::Eq, l, r, old, new),
+                Operation::Neq(l, r)=>replace_two!(Operation::Neq, l, r, old, new),
+                Operation::And(l, r)=>replace_two!(Operation::And, l, r, old, new),
+                Operation::Or(l, r)=>replace_two!(Operation::Or, l, r, old, new),
+                Operation::Shift(l, r)=>replace_two!(Operation::Shift, l, r, old, new),
+                Operation::Phi(l, r)=>replace_two!(Operation::Phi, l, r, old, new),
+                Operation::Jump(a) => Operation::Jump(replace!(a, old, new)),
+                Operation::Neg(a) => Operation::Neg(replace!(a, old, new)),
+                Operation::Exit(a) => Operation::Exit(replace!(a, old, new)),
+                Operation::JumpIfElse(a,b,c)=>{
+                    Operation::JumpIfElse(replace!(a,old,new),replace!(b,old,new),replace!(c,old,new))
+                }
+                x => x,
+
+            };
+            self.code[index].1 = op;
+        }
+
     }
 
     pub fn observe_assignments(&mut self) -> Option<PhiCollection> {
@@ -203,8 +251,9 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             let addr = emit_expression(*exp, code);
             code.store(&var.identifier.val, addr, create);
         }
-        ast::Statement::For(stat, exp1, _exp2, _block) => {
+        ast::Statement::For(stat, exp1, exp2, block) => {
 
+            // initialization statement
             let initialization = emit_statement(*stat, code);
 
 
@@ -216,18 +265,33 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
 
             code.push_with_label(Operation::Label, content_label);
             let old_phi = code.observe_assignments();
-            // phi iterator value
+            let before_code_size = code.code_size();
 
             // do loop stuff
 
+            emit_block(block, code);
+
             // increment
 
+            let increment = emit_statement(*exp2, code);
+
             let phi_assignments = code.finish_observing(old_phi);
+            assert!(phi_assignments.is_some());
+
+            let after_code_size = code.code_size();
 
             code.push(Operation::Jump(condition_label));
 
-
             code.push_with_label(Operation::Label, condition_label);
+            // phi all assigned values
+            // and replace uses in for block to phi'd values
+            for phi in phi_assignments.unwrap() {
+                let address = code.push(Operation::Phi((phi.1).0, (phi.1).1));
+                code.store(&phi.0, address, false);
+                code.replace_label((before_code_size..after_code_size), (phi.1).1,address);
+            }
+
+
             // eval condition
             let cond = emit_expression(*exp1, code);
             code.push(Operation::JumpIfElse(cond, content_label, end_label));
