@@ -1,18 +1,21 @@
 pipeline main(one: vec4) -> (Vec4){
     let z2 = 2.0;
-    let trzy = one;
-    let dwa = one+trzy;
-    let g = 12.0;
+    //let trzy = one;
+    //let dwa = one+trzy;
+    let g = 12;
 
-    if(trzy == dwa) {
-        if ( z2 == g) {
-            z2 = 24.0;
-        }
-        z2 =  z2 + 3.0;
+    //if(trzy == dwa) {
+        //if ( z2 == g) {
+            //z2 = 24.0;
+        //}
+        //z2 =  z2 + 3.0;
+    //}
+    for( let i =0; i<10; i=i+1) {
+        g = i;
     }
 
     //let f = 2.0;
     //g = f / 2.0 + 3.10 + 13.0;// lolz("heh", wut);
-    return trzy;
+    return one;
 
 }

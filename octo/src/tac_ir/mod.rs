@@ -99,29 +99,24 @@ impl Code {
     }
 
     pub fn store(&mut self, name: &str, add: Address, create: bool) {
-        print!("storing {} to {}: ", name, add);
         if let Some(assignments) = &mut self.phi_assignments {
-            print!("phi store");
             // if we create new variable then it doesn't go into phi assignemts (local variable).
-
             if !create {
                 let old = self.variables[name];
                 assignments.insert(name.to_owned(), (add, old));
+                return;
             }
-        } else {
-            self.variables.insert(name.to_owned(), add);
-            print!("normal  store");
         }
-        println!();
+        self.variables.insert(name.to_owned(), add);
     }
     pub fn get(&self, name: &str) -> Address {
         if let Some(assignments) = &self.phi_assignments {
             println!("Getting phi val for {}", name);
             match assignments.get(name) {
-                None => {},
+                None => {}
                 Some(x) => {
                     return x.0;
-                },
+                }
             }
         };
         *self.variables.get(name).unwrap()
@@ -156,7 +151,6 @@ impl Code {
             }
         };
         self.make_const(address, val);
-        //println!("Storing {} as const", address);
         address
     }
 
@@ -169,9 +163,6 @@ impl Code {
 
     pub fn is_const(&self, addr: Address) -> bool {
         let res = self.constants.contains_key(&addr);
-        //println!("{} is {}", addr, if res {"const"} else {"mut"});
-
-
         res
     }
 }
@@ -212,7 +203,39 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             let addr = emit_expression(*exp, code);
             code.store(&var.identifier.val, addr, create);
         }
-        ast::Statement::For(_stat, _exp1, _exp2, _block) => {}
+        ast::Statement::For(stat, exp1, _exp2, _block) => {
+
+            let initialization = emit_statement(*stat, code);
+
+
+            let condition_label = code.new_label();
+            let content_label = code.new_label();
+            let end_label = code.new_label();
+
+            code.push(Operation::Jump(condition_label));
+
+            code.push_with_label(Operation::Label, content_label);
+            let old_phi = code.observe_assignments();
+            // phi iterator value
+
+            // do loop stuff
+
+            // increment
+
+            let phi_assignments = code.finish_observing(old_phi);
+
+            code.push(Operation::Jump(condition_label));
+
+
+            code.push_with_label(Operation::Label, condition_label);
+            // eval condition
+            let cond = emit_expression(*exp1, code);
+            code.push(Operation::JumpIfElse(cond, content_label, end_label));
+
+            code.push_with_label(Operation::Label, end_label);
+            // phi variables?
+
+        }
         ast::Statement::IfElse(condition, true_block, false_block) => {
             let cond = emit_expression(*condition, code);
 
@@ -356,11 +379,10 @@ fn emit_expression(exp: ast::Expression, code: &mut Code) -> Address {
             let right_address = emit_expression(*exp_right, code);
             code.push(Operation::Or(left_address, right_address))
         }
-        Shift(shifted, shift_by)=> {
+        Shift(shifted, shift_by) => {
             let left_address = emit_expression(*shifted, code);
             let right_address = emit_expression(*shift_by, code);
             code.push(Operation::Shift(left_address, right_address))
-
         }
         Scale(_scaled, _scale_by) => {
             0

@@ -49,11 +49,6 @@ pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
     } else {
         (Option::Some(pip), errs)
     }
-
-    // check names of variables
-    // check types of variables
-
-    //analyze types
 }
 
 fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope: &mut Scope) {
