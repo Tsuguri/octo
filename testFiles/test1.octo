@@ -1,10 +1,12 @@
-pipeline main(one: vec4) -> (Vec4){
-    let z2 = 2.0;
+pipeline main(one: vec4, two: vec2) -> (Vec4){
+    let z2 = 2;
+    let z5 = 3;
     let g = 12;
+    let res = one;
 
     for(let i = 0; i < 10; i = i+1) {
-        g = g + i;
+        res = res+one;
     }
 
-    return one;
+    return res;
 }

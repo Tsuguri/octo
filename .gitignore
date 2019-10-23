@@ -4,3 +4,4 @@
 parser/src/grammar.rs
 **/*.octo_bin
 octo_showcase/src/*.spirv
+testFiles/*.png

@@ -17,8 +17,7 @@ impl ConstantsContext {
     pub fn map(&self, old: Address) -> Address {
         match self.try_map(old) {
             None => 0,
-            Some(x)=>x,
-
+            Some(x) => x,
         }
     }
 
@@ -178,10 +177,18 @@ pub fn propagate_constants(code: Vec<Op>) -> Vec<Op> {
                 let new_addr = cons.map(addr);
                 new_code.push(Operation::Exit(new_addr));
             }
-            Phi(left, right) => {
-                let left = cons.map(left);
-                let right = cons.map(right);
-                let addr = new_code.push(Operation::Phi(left, right));
+            Phi(record) => {
+                let new = cons.map(record.new);
+                let label = cons.map(record.label);
+                let old = cons.map(record.old);
+                let old_label = cons.map(record.old_label);
+                let record = PhiRecord{
+                    new,
+                    label,
+                    old,
+                    old_label
+                };
+                let addr = new_code.push(Operation::Phi(record));
                 cons.insert(res, addr);
             }
             JumpIfElse(cond, true_address, false_address) => {
@@ -196,6 +203,17 @@ pub fn propagate_constants(code: Vec<Op>) -> Vec<Op> {
                 let x = map_label(&mut cons, &mut new_code, addr);
                 let addr = new_code.push(Operation::Jump(x));
                 cons.insert(res, addr);
+            }
+            Sync(addr) => {
+                let new_addr = cons.map(addr);
+                if new_code.is_const(new_addr) {
+                    // no need to sync constant value as it's the same in all threads.
+                    // TODO: think about warning for that
+                    cons.insert(res, new_addr);
+                } else {
+                    let addr = new_code.push(Operation::Sync(new_addr));
+                    cons.insert(res, addr);
+                }
             }
             Shift(shifted, shift_by) => (|| {
                 let shifted = cons.map(shifted);
