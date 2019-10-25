@@ -39,6 +39,7 @@ pub enum Operation {
     StoreVec2([f64; 2]),
     StoreVec3([f64; 3]),
     StoreBool(bool),
+    Store(Address),
     Add(Address, Address),
     Sub(Address, Address),
     Mul(Address, Address),
@@ -51,7 +52,7 @@ pub enum Operation {
     Or(Address, Address),
     Neg(Address),
     Shift(Address, Address),
-    Exit(Address),
+    Exit(Address, Address),
     Sync(Address),
 
     Phi(PhiRecord),
@@ -71,6 +72,7 @@ impl std::string::ToString for Operation {
             StoreBool(i) => format!("Bool({})", i),
             StoreVec2(i) => format!("Vec2({}, {})", i[0], i[1]),
             StoreVec3(i) => format!("Vec3({}, {}, {})", i[0], i[1], i[2]),
+            Store(..)=> "Store".to_string(),
             Add(..) => "Add".to_string(),
             Sub(..) => "Sub".to_string(),
             Mul(..) => "Mul".to_string(),
@@ -105,6 +107,7 @@ struct PhiObserver{
 
 impl PhiObserver {
     pub fn store(&mut self, name: &str, new: Address, new_label: Address, old: Address) {
+        println!("storing assignment in label: {}", new_label);
         let record = PhiRecord{
             new,
             label: new_label,
@@ -146,26 +149,47 @@ macro_rules! replace_two {
 
 impl Code {
     pub fn new() -> Self {
+        let mut code = Self::empty();
+        let label = code.new_label();
+        code.push_with_label( Operation::Label, label);
+        code
+    }
+    pub fn empty() -> Self {
         Code {
-            code: vec![(1,Operation::Label)],
+            code: vec![],
             variables: HashMap::new(),
             constants: HashMap::new(),
-            counter: 1,
+            counter: 0,
             phi_observer: None,
             synchronized_nodes: HashMap::new(),
-            last_label: 1,
+            last_label: 0,
         }
+
     }
 
     pub fn code_size(&self) -> usize {
         self.code.len()
     }
 
+    pub fn exit(&mut self, value: Address) {
+        self.push(Operation::Exit(value, self.last_label));
+    }
+
     pub fn replace_label(&mut self, range: Range<usize>, old: Address, new: Address) {
+        println!("replacing in {:#?}, from {} to {}", range, old, new);
+        //return;
         for index in range {
             let operation = self.code[index].1;
             let op = match operation {
-                Operation::Add(l, r) => replace_two!(Operation::Add, l, r, old, new),
+                Operation::Add(l, r) => {
+                    let nl = replace!(l, old, new);
+                    let nr = replace!(r,old,new);
+                    println!("Add, replaced left {}->{}, right: {}->{}", l,nl, r, nr);
+
+                    Operation::Add(nl, nr)
+
+                    //replace_two!(Operation::Add, l, r, old, new),
+                }
                 Operation::Sub(l, r) => replace_two!(Operation::Sub, l, r, old, new),
                 Operation::Mul(l, r) => replace_two!(Operation::Mul, l, r, old, new),
                 Operation::Div(l, r) => replace_two!(Operation::Div, l, r, old, new),
@@ -192,7 +216,8 @@ impl Code {
                 }
                 Operation::Jump(a) => Operation::Jump(replace!(a, old, new)),
                 Operation::Neg(a) => Operation::Neg(replace!(a, old, new)),
-                Operation::Exit(a) => Operation::Exit(replace!(a, old, new)),
+                Operation::Exit(a, b) => replace_two!(Operation::Exit, a, b, old, new),
+                Operation::Store(a) =>Operation::Store(replace!(a, old, new)),
                 Operation::Sync(a) => Operation::Sync(replace!(a, old, new)),
                 Operation::JumpIfElse(a, b, c) => {
                     Operation::JumpIfElse(replace!(a,old,new), replace!(b,old,new), replace!(c,old,new))
@@ -207,6 +232,7 @@ impl Code {
         //let tmp = self.phi_assignments.take();
         let tmp2 = self.phi_observer.take();
         //self.phi_assignments = Some(HashMap::new());
+        println!("observing in label: {}", self.last_label);
         self.phi_observer = Some(
             PhiObserver{
                 outer_label: self.last_label,
@@ -353,10 +379,11 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
         }
         ast::Statement::Return(exp) => {
             let ret_add = emit_expression(*exp, code);
-            code.push(Operation::Exit(ret_add));
+            code.exit(ret_add);
         }
         ast::Statement::Assignment(var, exp, create) => {
             let addr = emit_expression(*exp, code);
+            let addr = code.push(Operation::Store(addr));
             code.store(&var.identifier.val, addr, create);
         }
         ast::Statement::For(stat, exp1, exp2, block) => {
@@ -397,7 +424,8 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
 
                 let address = code.push(Operation::Phi(phi.1));
                 code.store(&phi.0, address, false);
-                code.replace_label((before_code_size..after_code_size), phi.1.new, address);
+                //old, new
+                code.replace_label((before_code_size..after_code_size), phi.1.old, address);
             }
 
 
@@ -583,6 +611,10 @@ pub fn emit_graph(code: &Vec<(Address, Operation)>, path: &str) {
         let node_idx = nodes[&node.0];
         use Operation::*;
         match &node.1 {
+            Store(a)=>{
+                let l = nodes[a];
+                graph.add_edge(l, node_idx, "");
+            }
             Add(l, r) => {
                 let l = nodes[l];
                 let r = nodes[r];
@@ -675,9 +707,11 @@ pub fn emit_graph(code: &Vec<(Address, Operation)>, path: &str) {
                 let l = nodes[l];
                 graph.add_edge(l, node_idx, "");
             }
-            Exit(l) => {
+            Exit(l, r) => {
                 let l = nodes[l];
+                let r = nodes[r];
                 graph.add_edge(l, node_idx, "");
+                graph.add_edge(r, node_idx, "");
             }
             Sync(l) => {
                 let l = nodes[l];
