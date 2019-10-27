@@ -6,7 +6,7 @@ pub use super::ast::Type as ValueType;
 
 pub struct PipelineIR {
     code: Vec<Op>,
-    pub inputs: Vec<ValueType>,
+    pub inputs: Vec<(ValueType, String)>,
     pub outputs: Vec<ValueType>,
 }
 
@@ -19,11 +19,19 @@ impl PipelineIR {
         }
     }
 
+    pub fn with(code: Vec<Op>, prev: &Self)-> Self{
+        PipelineIR {
+            code,
+            inputs: prev.inputs.clone(),
+            outputs: prev.outputs.clone(),
+        }
+    }
+
     pub fn operations(&self) -> std::slice::Iter<Op> {
         self.code.iter()
     }
 
-    pub fn take(self)-> (Vec<Op>, Vec<ValueType>, Vec<ValueType>) {
+    pub fn take(self)-> (Vec<Op>, Vec<(ValueType, String)>, Vec<ValueType>) {
         (self.code, self.inputs, self.outputs)
     }
 }

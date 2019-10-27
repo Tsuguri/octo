@@ -68,6 +68,8 @@ pub fn process_file(path: &str) -> Result<(), ()> {
 
     let pipeline_definition = tac_ir::split_passes(tac);
 
+    let module = tac_ir::emit_spirv(path, pipeline_definition);
+
     //let shaders: Vec<_> = pipeline_definition.shaders.iter().map(|x| tac_ir::emit_spirv(x)).collect();
 
     //tac_ir::emit_spirv(tac);

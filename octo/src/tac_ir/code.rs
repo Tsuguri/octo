@@ -82,6 +82,10 @@ impl Code {
             PipelineIR::new(self.code)
     }
 
+    pub fn finish_with(self, previous: &PipelineIR) -> PipelineIR {
+        PipelineIR::with(self.code, previous)
+    }
+
     pub fn code_size(&self) -> usize {
         self.code.len()
     }

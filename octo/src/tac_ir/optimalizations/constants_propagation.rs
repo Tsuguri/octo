@@ -264,7 +264,7 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
             }
         }
     }
-    cons.finish().finish()
+    cons.finish().finish_with(&code)
 }
 
 fn fold<

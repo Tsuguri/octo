@@ -19,14 +19,18 @@ pub fn emit(ast: ast::Pipeline) -> PipelineIR {
     for arg in ast.arguments.iter().enumerate() {
         let addr = code.push(Operation::Arg(arg.0));
         code.store(&arg.1.identifier.val, addr, false);
-        arguments.push(arg.1.typ);
+        arguments.push((arg.1.typ, arg.1.identifier.val.clone()));
     }
+    println!("inputs: {}", ast.arguments.len());
+    println!("inputs2: {}", arguments.len());
+    println!("outputs: {}", ast.results.len());
 
     emit_block(ast.block, &mut code);
 
     let mut output = code.finish();
     output.inputs = arguments;
     output.outputs = ast.results.iter().map(|x| x.val).collect();
+    println!("outputs2: {}", output.outputs.len());
     output
 }
 
