@@ -1,4 +1,6 @@
-use super::*;
+
+use super::ir as ir;
+use super::code as code;
 
 mod remove_unused;
 mod constants_propagation;

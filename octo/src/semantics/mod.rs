@@ -73,7 +73,7 @@ impl From<ErrorWrap> for Diagnostic {
                 )
             }
             _ => {
-                Diagnostic::new_error(format!("Return variable is not assigned"))
+                Diagnostic::new_error(format!("error is not implemented..."))
             }
         }
     }

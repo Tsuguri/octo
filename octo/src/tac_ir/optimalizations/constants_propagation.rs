@@ -1,7 +1,15 @@
 use std::collections::HashMap;
 
+use super::ir::{
+    Address,
+    Operation,
+    ConstantValue,
+    PhiRecord,
+    PipelineIR,
+};
 
-use super::super::*;
+use super::code::Code;
+
 
 struct ConstantsContext {
     id_map: HashMap<Address, Address>,
@@ -59,12 +67,14 @@ impl ConstantsContext {
     }
 }
 
-pub fn propagate_constants(code: Vec<Op>) -> Vec<Op> {
+pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
     //let mut cons = Code::new();
     let mut cons = ConstantsContext::new();
 
-    for (res, op) in code {
-        use super::Operation::*;
+    for (res, op) in code.operations() {
+        let res = *res;
+        let op = *op;
+        use Operation::*;
         match op {
             Arg(_) => {
                 //let addr = cons.push(op);
@@ -142,7 +152,7 @@ pub fn propagate_constants(code: Vec<Op>) -> Vec<Op> {
                 let right_const = cons.is_const(right);
                 match (left_const, right_const) {
                     (false, false) => {
-                        let new_addr = cons.push((res,Operation::And(left, right)));
+                        cons.push((res,Operation::And(left, right)));
                     }
                     (true, false) => {
                         if let ConstantValue::Bool(false) = cons.get_const(left) {
@@ -254,7 +264,7 @@ pub fn propagate_constants(code: Vec<Op>) -> Vec<Op> {
             }
         }
     }
-    cons.finish().code
+    cons.finish().finish()
 }
 
 fn fold<
