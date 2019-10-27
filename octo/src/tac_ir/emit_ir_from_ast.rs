@@ -14,15 +14,20 @@ use super::code::{
 
 pub fn emit(ast: ast::Pipeline) -> PipelineIR {
     let mut code = Code::new();
+    let mut arguments = vec![];
 
     for arg in ast.arguments.iter().enumerate() {
         let addr = code.push(Operation::Arg(arg.0));
         code.store(&arg.1.identifier.val, addr, false);
+        arguments.push(arg.1.typ);
     }
 
     emit_block(ast.block, &mut code);
 
-    code.finish()
+    let mut output = code.finish();
+    output.inputs = arguments;
+    output.outputs = ast.results.iter().map(|x| x.val).collect();
+    output
 }
 
 fn emit_block(block: ast::Block, code: &mut Code) {

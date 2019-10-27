@@ -24,13 +24,7 @@ impl<T: std::fmt::Display> std::fmt::Display for Spanned<T> {
     }
 }
 
-#[derive(Debug)]
-pub struct Program {
-    pub items: Vec<GpuFunction>,
-    pub pipeline: Pipeline,
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Type {
     Float,
     Vec2,
@@ -101,33 +95,6 @@ pub struct Pipeline {
     pub arguments: Vec<Variable>,
     pub results: Vec<Spanned<Type>>,
     pub block: Block,
-}
-
-//#[derive(Debug)]
-//pub struct Function {
-//    pub arguments: Vec<(Variable, Type)>,
-//    pub name: String,
-//    pub block: Block,
-//    pub ret: Option<Type>,
-//}
-//
-//impl Function {
-//    pub fn new(name: String, arguments: Vec<(Variable, Type)>, block: Block) -> Function {
-//        Function {
-//            name,
-//            arguments,
-//            block,
-//            ret: None,
-//        }
-//    }
-//}
-
-#[derive(Debug)]
-pub struct GpuFunction {
-    pub name: Spanned<String>,
-    pub code: Spanned<String>,
-    pub arguments: Vec<Variable>,
-    pub results: Vec<Variable>,
 }
 
 #[derive(Debug)]

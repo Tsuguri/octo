@@ -2,19 +2,29 @@ pub type Address = usize;
 
 pub type Op = (Address, Operation);
 
+pub use super::ast::Type as ValueType;
+
 pub struct PipelineIR {
     code: Vec<Op>,
+    pub inputs: Vec<ValueType>,
+    pub outputs: Vec<ValueType>,
 }
 
 impl PipelineIR {
     pub fn new(code: Vec<Op>) -> Self {
         PipelineIR {
-            code
+            code,
+            inputs: vec![],
+            outputs: vec![],
         }
     }
 
     pub fn operations(&self) -> std::slice::Iter<Op> {
         self.code.iter()
+    }
+
+    pub fn take(self)-> (Vec<Op>, Vec<ValueType>, Vec<ValueType>) {
+        (self.code, self.inputs, self.outputs)
     }
 }
 

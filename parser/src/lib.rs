@@ -17,7 +17,6 @@ lalrpop_mod!(pub grammar);
 type ParseErr = ParseError<usize, lexer::Token, errors::LexicalError>;
 
 pub struct FailedParsing {
-    pub program: Option<ast::Program>,
     pub errors: Vec<ParseErr>,
 }
 
@@ -34,7 +33,7 @@ pub fn parse(src: &str, lex: bool) -> Result<ast::Pipeline, FailedParsing> {
     match result {
         Result::Ok(ast) => Result::Ok(ast),
         Result::Err(error) => {
-            Result::Err(FailedParsing { program: Option::None, errors: vec![error] })
+            Result::Err(FailedParsing { errors: vec![error] })
         }
     }
 }

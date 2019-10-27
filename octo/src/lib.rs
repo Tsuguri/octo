@@ -66,7 +66,11 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     println!("after unused operation removal");
     println!("{:?}", tac);
 
-    tac_ir::emit_spirv(tac);
+    let pipeline_definition = tac_ir::split_passes(tac);
+
+    //let shaders: Vec<_> = pipeline_definition.shaders.iter().map(|x| tac_ir::emit_spirv(x)).collect();
+
+    //tac_ir::emit_spirv(tac);
 
 
     Result::Ok(())
