@@ -18,6 +18,17 @@ impl PipelineIR {
     }
 }
 
+impl std::fmt::Debug for PipelineIR {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for op in &self.code {
+            writeln!(f, "{} = {:?}", op.0, op.1)?;
+        }
+        Result::Ok(())
+
+    }
+
+}
+
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum ConstantValue {
     Int(i64),

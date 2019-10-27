@@ -19,17 +19,6 @@ use std::borrow::ToOwned;
 use log::{info};
 use crate::static_analysis::Diagnostics;
 
-fn parse_data(data: &str, path: &str) -> Result<ast::Pipeline, ()> {
-    match parser::parse(data, false) {
-        Err(failure_info) => {
-            println!("{:#?}", failure_info.errors);
-            report_errors(data, path, &[parser::ErrWrap { err: &failure_info.errors[0] }.into()]);
-            Result::Err(())
-        }
-        Ok(ast) => Result::Ok(ast),
-    }
-}
-
 pub fn process_file(path: &str) -> Result<(), ()> {
     info!("Processing file at: {}", path);
 
@@ -64,37 +53,35 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     };
 
     let tac = tac_ir::emit_ir(valid_ast);
-
     tac_ir::emit_graph(&tac,&(path.to_owned() + "1"));
-
     println!("before constant propagation");
-    for op in tac.operations() {
-        println!("{} = {:?}",op.0, op.1);
-
-    }
+    println!("{:?}", tac);
 
     let tac = tac_ir::propagate_constants(tac);
-
     tac_ir::emit_graph(&tac,&(path.to_owned() + "2"));
-
     println!("after constant propagation");
-    for op in tac.operations(){
-        println!("{} = {:?}",op.0, op.1);
-
-    }
+    println!("{:?}", tac);
 
     let tac = tac_ir::remove_unused_operations(tac);
-
     println!("after unused operation removal");
-    for op in tac.operations() {
-        println!("{} = {:?}",op.0, op.1);
-
-    }
+    println!("{:?}", tac);
 
     tac_ir::emit_spirv(tac);
 
 
     Result::Ok(())
+}
+
+
+fn parse_data(data: &str, path: &str) -> Result<ast::Pipeline, ()> {
+    match parser::parse(data, false) {
+        Err(failure_info) => {
+            println!("{:#?}", failure_info.errors);
+            report_errors(data, path, &[parser::ErrWrap { err: &failure_info.errors[0] }.into()]);
+            Result::Err(())
+        }
+        Ok(ast) => Result::Ok(ast),
+    }
 }
 
 fn report_errors(src: &str, location: &str, messages: &[codespan_reporting::Diagnostic]) {

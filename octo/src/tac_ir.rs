@@ -3,12 +3,14 @@ mod optimalizations;
 mod emit_spirv;
 mod ir;
 mod code;
+mod split_passes;
 
 use super::ast as ast;
 
 pub use emit_spirv::emit_spirv as emit_spirv;
 pub use emit_ir_from_ast::emit as emit_ir;
 pub use optimalizations::*;
+pub use split_passes::split as split_passes;
 
 use std::collections::HashMap;
 
