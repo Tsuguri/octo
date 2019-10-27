@@ -13,7 +13,6 @@ use parser::codespan_reporting;
 use parser::codespan::CodeMap;
 use codespan_reporting::Diagnostic;
 
-pub use shaderc::ShaderKind as Shader;
 use std::borrow::ToOwned;
 
 

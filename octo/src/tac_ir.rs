@@ -21,6 +21,7 @@ use ir::{
     PipelineIR,
 };
 
+/// debug data flow graph
 pub fn emit_graph(code: &PipelineIR, path: &str) {
     let mut graph = petgraph::Graph::<String, &str>::new();
     let mut nodes: HashMap<Address, petgraph::graph::NodeIndex<u32>> = HashMap::new();
