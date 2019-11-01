@@ -8,7 +8,7 @@ use super::ir::{
 };
 use super::{PipelineDef, ShaderDef};
 use rspirv::mr::*;
-use rspirv::binary::Assemble;
+use rspirv::binary::{Assemble, Disassemble};
 use spirv_headers as spirv;
 use octo_runtime::*;
 use log::{error};
@@ -42,7 +42,7 @@ fn version() -> u32{
     assert!(numbers.len()==3);
     let numbers: Vec<u32> = numbers.iter().map(|x| x.parse::<u32>().unwrap()).collect();
     let final_version = numbers[0]*10000 + numbers[1]*100 + numbers[2];
-    println!("{}", final_version);
+    //println!("{}", final_version);
     final_version
 }
 
@@ -53,6 +53,7 @@ pub fn emit_spirv(module_name: &str, code: PipelineDef) ->  OctoModule{
     let mut module = OctoModule::new();
     module.name = module_name.to_owned();
     module.version = version();
+    module.basic_vertex_spirv = create_basic_vertex();
 
     module.required_input = code.args.drain(0..code.args.len()).map(|(x, y)| {
         let x = match x {
@@ -98,26 +99,49 @@ pub fn emit_spirv(module_name: &str, code: PipelineDef) ->  OctoModule{
 }
 
 fn emit_single_shader(info: ShaderDef)->Vec<u32> {
-    println!("Emitting single fragment shader");
+    println!("Emitting single fragment shader\n\n");
 
-    // let mut module = Builder::new();
-    // module.memory_model(spirv::AddressingModel::Logical, spirv::MemoryModel::GLSL450);
+    let mut module = Builder::new();
+    let glsl = module.ext_inst_import("GLSL.std.450");
+    module.memory_model(spirv::AddressingModel::Logical, spirv::MemoryModel::GLSL450);
 
-    // let void_type = module.type_void();
+    let function_id = module.id();
 
-    // let main_type = module.type_function(void_type, vec![void_type]);
-    // module.begin_function(void_type,
-    //                  None,
-    //                  spirv::FunctionControl::DONT_INLINE |
-    //                   spirv::FunctionControl::CONST,
-    //                  main_type)
-    //  .unwrap();
+    module.entry_point(spirv::ExecutionModel::Fragment, function_id, "main", &[]);
+    module.execution_mode(function_id, spirv::ExecutionMode::OriginUpperLeft);
 
-    // // emitting main function
-    // module.begin_basic_block(None).unwrap();
-    // module.ret().unwrap();
-    // module.end_function().unwrap();
+    // generate IDs for all things
 
-    // module.module().assemble()
+    // here goes all decorations
+    // descriptor sets defs
+    // binding defs
+    // uniform defs
+    // locations
+    // etc
+
+    // probably IDs generation should be done beforehand for all constructs
+
+    // generate all types and store IDs
+
+    // generate all module-level variables
+
+    let void_type = module.type_void();
+
+    let main_type = module.type_function(void_type, vec![]);
+    module.begin_function(void_type,
+                     Some(function_id),
+                     spirv::FunctionControl::DONT_INLINE |
+                      spirv::FunctionControl::CONST,
+                     main_type)
+     .unwrap();
+
+    // emitting main function
+    module.begin_basic_block(None).unwrap();
+    module.ret().unwrap();
+    module.end_function().unwrap();
+
+    let m =module.module();
+
+    println!("{}", m.disassemble());
     vec![]
 }

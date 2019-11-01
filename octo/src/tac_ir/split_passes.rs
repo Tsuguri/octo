@@ -90,7 +90,6 @@ pub fn split(program: PipelineIR) -> PipelineDef {
     let the_only_pass = ShaderPass{
         shader_id: 0,
         input: (0..inputs_num).map(|x| InputTexture::Arg(x)).collect(),
-        // todo: fix unwrap
         output: OutputTexture::Result,
         dependencies: Option::None,
     };
