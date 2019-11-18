@@ -29,7 +29,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     if !p.is_file() {
         panic!("given path is not a file: {}", path);
     }
-    let _result_path = p.with_extension("octo_bin");
+    let result_path = p.with_extension("octo_bin");
 
     let mut file = File::open(path).unwrap();
     let mut data = String::new();
@@ -65,7 +65,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     let tac = tac_ir::remove_unused_operations(tac);
     println!("after unused operation removal");
     println!("{:?}", tac);
-
+    
     let pipeline_definition = tac_ir::split_passes(tac);
 
     let module = tac_ir::emit_spirv(path, pipeline_definition);
@@ -73,6 +73,32 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     //let shaders: Vec<_> = pipeline_definition.shaders.iter().map(|x| tac_ir::emit_spirv(x)).collect();
 
     //tac_ir::emit_spirv(tac);
+
+    let mut output_file = std::fs::File::create(&result_path).unwrap();
+    let data = serde_json::to_string(&module).unwrap();
+    use std::io::Write;
+    output_file.write_all(data.as_bytes());
+
+    //emit debug directory
+
+    {
+        let dir_name = p.file_stem().unwrap();
+        println!("dir name:{:?}", dir_name);
+        let dir = std::fs::create_dir_all(&dir_name).unwrap();
+
+        for (id, shader) in module.fragment_shaders {
+            use std::iter::Iterator;
+            let mut dir_n = std::path::PathBuf::from(dir_name);
+            dir_n.push(id.to_string());
+            dir_n.set_extension("frag");
+            let mut file = std::fs::File::create(&dir_n).unwrap();
+            let data: Vec<u8> = shader.iter().map(|x| {
+                x.to_le_bytes()
+            }).collect::<Vec<_>>().iter().flatten().cloned().collect();//.flatten().collect();
+            file.write_all(&data).unwrap();
+
+        }
+    }
 
 
     Result::Ok(())

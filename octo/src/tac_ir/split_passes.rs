@@ -10,9 +10,9 @@ use super::ir::{
 
 #[derive(Debug, Clone)]
 pub struct ShaderDef {
-    input_type: Vec<ValueType>,
-    output_type: Vec<ValueType>,
-    code: Vec<Op>,
+    pub input_type: Vec<ValueType>,
+    pub output_type: Vec<ValueType>,
+    pub code: Vec<Op>,
 }
 
 #[derive(Debug, Copy, Clone)]

@@ -8,6 +8,5 @@ layout(location = 1) in vec2 uv;
 layout(location = 0) out vec4 color;
 
 void main() {
-    vec4 kolorek = texture(sampler2D(colormaps[0], colorsampler), uv);
-    color = kolorek;
+    color = texture(sampler2D(colormaps[0], colorsampler), uv);
 }

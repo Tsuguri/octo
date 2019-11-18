@@ -32,6 +32,7 @@ pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
 
     let mut errs = Diagnostics { errors: vec![], warnings: vec![] };
 
+    // analyze argument and result types here...
     for arg in &pip.arguments {
         program_scope.create_variable(&arg.identifier.val, arg.typ.clone(), arg.identifier.span).unwrap();
     }

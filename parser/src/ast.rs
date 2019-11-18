@@ -24,7 +24,7 @@ impl<T: std::fmt::Display> std::fmt::Display for Spanned<T> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, Eq)]
 pub enum Type {
     Float,
     Vec2,
@@ -45,6 +45,7 @@ impl PartialEq for Type {
             (Type::Vec2, Type::Vec2) => true,
             (Type::Vec3, Type::Vec3) => true,
             (Type::Vec4, Type::Vec4) => true,
+            (Type::Void, Type::Void) => true,
             (_, _) => false,
         }
     }

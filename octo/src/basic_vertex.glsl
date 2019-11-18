@@ -4,7 +4,7 @@ layout (location = 0) out gl_PerVertex {
   vec4 gl_Position;
 };
 
-layout (location = 1) out vec2 outUV;
+layout (location = 0) out vec2 outUV;
 
 void main()
 {
