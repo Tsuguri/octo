@@ -82,7 +82,9 @@ pub enum Operation {
     Neq(Address, Address),
     And(Address, Address),
     Or(Address, Address),
+
     Neg(Address),
+
     Shift(Address, Address),
     Exit(Address, Address),
     Sync(Address),

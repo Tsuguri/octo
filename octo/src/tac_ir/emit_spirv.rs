@@ -126,6 +126,9 @@ struct SpirvIds {
     input_locations: HashMap<Address, SpirvAddress>,
     type_addresses: HashMap<ValueType, SpirvAddress>,
     const_addresses: HashMap<Address, SpirvAddress>,
+    pub bool2: SpirvAddress,
+    pub bool3: SpirvAddress,
+    pub bool4: SpirvAddress,
 }
 
 impl SpirvIds {
@@ -137,11 +140,18 @@ impl SpirvIds {
         let void_type = module.type_void();
         self.type_addresses.insert(ValueType::Void, void_type);
 
+        let bool_id = module.type_bool();
+        self.type_addresses.insert(ValueType::Bool, bool_id);
+
         let float_id = module.type_float(32);
         self.type_addresses.insert(ValueType::Float, float_id);
 
         let int_id = module.type_int(32, 0);
         self.type_addresses.insert(ValueType::Int, int_id);
+
+        self.bool2 = module.type_vector(bool_id, 2);
+        self.bool3 = module.type_vector(bool_id, 3);
+        self.bool4 = module.type_vector(bool_id, 4);
 
         let vec2_id = module.type_vector(float_id, 2);
         let vec3_id = module.type_vector(float_id, 3);
@@ -421,6 +431,7 @@ fn emit_single_shader(info: ShaderDef)->Vec<u32> {
 
     // do stuff
     let mut value_map : HashMap<Address, SpirvAddress> = HashMap::new();
+    let mut type_map: HashMap<Address, ValueType> = HashMap::new();
 
     for (ret, opCode) in info.code {
         //println!("{:?}", (ret, opCode));
@@ -428,9 +439,324 @@ fn emit_single_shader(info: ShaderDef)->Vec<u32> {
             Operation::Arg(x)=>{
 
                 let access = ids.sample_arg(x, ret, &mut module);
+                let val_type = info.input_type[x];
                 value_map.insert(ret, access);
+                type_map.insert(ret, val_type);
                 println!("loading arg {}", x);
             },
+            Operation::Store(addr) =>{
+                let spirv_addr = value_map[&addr];
+                value_map.insert(ret,spirv_addr);
+                type_map.insert(ret, type_map[&addr]);
+            }
+            Operation::Add(left, right) =>{
+                let left_address = value_map[&left];
+                let right_address = value_map[&right];
+                let left_type = type_map[&left];
+                let right_type = type_map[&right];
+                // should be checked by static analysis
+                assert!(left_type==right_type);
+                match left_type {
+                    ValueType::Bool =>{
+                        assert!(false);
+                    },
+                    ValueType::Int =>{
+                        let ret_type = ids.map_type(ValueType::Int);
+                        let ret_addr = module.iadd(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Int);
+                    },
+                    typ =>{
+                        // all other types are floats for spir-v
+                        let ret_type = ids.map_type(typ);
+                        let ret_addr = module.fadd(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, typ);
+                    },
+                }
+
+            }
+            Operation::Sub(left, right) =>{
+                let left_address = value_map[&left];
+                let right_address = value_map[&right];
+                let left_type = type_map[&left];
+                let right_type = type_map[&right];
+                // should be checked by static analysis
+                assert!(left_type==right_type);
+                match left_type {
+                    ValueType::Bool =>{
+                        assert!(false);
+                    },
+                    ValueType::Int =>{
+                        let ret_type = ids.map_type(ValueType::Int);
+                        let ret_addr = module.isub(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Int);
+                    },
+                    typ =>{
+                        // all other types are floats for spir-v
+                        let ret_type = ids.map_type(typ);
+                        let ret_addr = module.fsub(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, typ);
+                    },
+                }
+
+            }
+            Operation::Mul(left, right) =>{
+                let left_address = value_map[&left];
+                let right_address = value_map[&right];
+                let left_type = type_map[&left];
+                let right_type = type_map[&right];
+                // should be checked by static analysis
+                assert!(left_type==right_type);
+                match left_type {
+                    ValueType::Bool =>{
+                        assert!(false);
+                    },
+                    ValueType::Int =>{
+                        let ret_type = ids.map_type(ValueType::Int);
+                        let ret_addr = module.imul(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Int);
+                    },
+                    typ =>{
+                        // all other types are floats for spir-v
+                        let ret_type = ids.map_type(typ);
+                        let ret_addr = module.fmul(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, typ);
+                    },
+                }
+
+            }
+            Operation::Div(left, right) =>{
+                let left_address = value_map[&left];
+                let right_address = value_map[&right];
+                let left_type = type_map[&left];
+                let right_type = type_map[&right];
+                // should be checked by static analysis
+                assert!(left_type==right_type);
+                match left_type {
+                    ValueType::Bool =>{
+                        assert!(false);
+                    },
+                    ValueType::Int =>{
+                        let ret_type = ids.map_type(ValueType::Int);
+                        let ret_addr = module.sdiv(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Int);
+                    },
+                    typ =>{
+                        // all other types are floats for spir-v
+                        let ret_type = ids.map_type(typ);
+                        let ret_addr = module.fdiv(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, typ);
+                    },
+                }
+
+            }
+            Operation::Less(left, right) => {
+                let left_address = value_map[&left];
+                let right_address = value_map[&right];
+                let left_type = type_map[&left];
+                let right_type = type_map[&right];
+                // should be checked by static analysis
+                assert!(left_type==right_type);
+                match left_type {
+                    ValueType::Bool =>{
+                        assert!(false);
+                    },
+                    ValueType::Int =>{
+                        let ret_type = ids.map_type(ValueType::Bool);
+                        let ret_addr = module.sless_than(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+                    },
+                    ValueType::Float =>{
+                        // all other types are floats for spir-v
+                        let ret_type = ids.map_type(ValueType::Bool);
+                        let ret_addr = module.ford_less_than(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+                    },
+                    _=>{
+                        // we can't compare vectors yet.
+                        assert!(false);
+
+                    }
+                }
+
+            }
+            Operation::LessEq(left, right) => {
+                let left_address = value_map[&left];
+                let right_address = value_map[&right];
+                let left_type = type_map[&left];
+                let right_type = type_map[&right];
+                // should be checked by static analysis
+                assert!(left_type==right_type);
+                match left_type {
+                    ValueType::Bool =>{
+                        assert!(false);
+                    },
+                    ValueType::Int =>{
+                        let ret_type = ids.map_type(ValueType::Bool);
+                        let ret_addr = module.sless_than_equal(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+                    },
+                    ValueType::Float =>{
+                        // all other types are floats for spir-v
+                        let ret_type = ids.map_type(ValueType::Bool);
+                        let ret_addr = module.ford_less_than_equal(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+                    },
+                    _=>{
+                        // we can't compare vectors yet.
+                        assert!(false);
+
+                    }
+                }
+
+            }
+            Operation::Eq(left, right) =>{
+                let left_address = value_map[&left];
+                let right_address = value_map[&right];
+                let left_type = type_map[&left];
+                let right_type = type_map[&right];
+                // should be checked by static analysis
+                assert!(left_type==right_type);
+                let ret_type = ids.map_type(ValueType::Bool);
+
+                match left_type {
+                    ValueType::Bool =>{
+                        let ret_addr = module.logical_equal(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+                    }
+                    ValueType::Int => {
+                        let ret_addr = module.iequal(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+
+                    }
+                    ValueType::Float => {
+                        let ret_addr = module.ford_equal(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+                    }
+                    ValueType::Vec2 => {
+                        let temp_ret_type = ids.bool2;
+                        let ret_addr = module.ford_equal(temp_ret_type, None, left_address, right_address).unwrap();
+                        let ret_addr = module.all(ret_type, None, ret_addr).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+
+                    }
+                    ValueType::Vec3 => {
+                        let temp_ret_type = ids.bool3;
+                        let ret_addr = module.ford_equal(temp_ret_type, None, left_address, right_address).unwrap();
+                        let ret_addr = module.all(ret_type, None, ret_addr).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+
+                    }
+                    ValueType::Vec4 => {
+                        let temp_ret_type = ids.bool4;
+                        let ret_addr = module.ford_equal(temp_ret_type, None, left_address, right_address).unwrap();
+                        let ret_addr = module.all(ret_type, None, ret_addr).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+
+                    }
+                    _=>{}
+                }
+
+            }
+            Operation::Neq(left, right) =>{
+                let left_address = value_map[&left];
+                let right_address = value_map[&right];
+                let left_type = type_map[&left];
+                let right_type = type_map[&right];
+                // should be checked by static analysis
+                assert!(left_type==right_type);
+                let ret_type = ids.map_type(ValueType::Bool);
+
+                match left_type {
+                    ValueType::Bool =>{
+                        let ret_addr = module.logical_not_equal(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+                    }
+                    ValueType::Int => {
+                        let ret_addr = module.inot_equal(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+
+                    }
+                    ValueType::Float => {
+                        let ret_addr = module.ford_not_equal(ret_type, None, left_address, right_address).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+                    }
+                    ValueType::Vec2 => {
+                        let temp_ret_type = ids.bool2;
+                        let ret_addr = module.ford_not_equal(temp_ret_type, None, left_address, right_address).unwrap();
+                        let ret_addr = module.any(ret_type, None, ret_addr).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+
+                    }
+                    ValueType::Vec3 => {
+                        let temp_ret_type = ids.bool3;
+                        let ret_addr = module.ford_not_equal(temp_ret_type, None, left_address, right_address).unwrap();
+                        let ret_addr = module.any(ret_type, None, ret_addr).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+
+                    }
+                    ValueType::Vec4 => {
+                        let temp_ret_type = ids.bool4;
+                        let ret_addr = module.ford_not_equal(temp_ret_type, None, left_address, right_address).unwrap();
+                        let ret_addr = module.any(ret_type, None, ret_addr).unwrap();
+                        value_map.insert(ret, ret_addr);
+                        type_map.insert(ret, ValueType::Bool);
+
+                    }
+                    _=>{}
+                }
+
+            }
+            Operation::And(left, right) => {
+                let left_address = value_map[&left];
+                let right_address = value_map[&right];
+                let left_type = type_map[&left];
+                let right_type = type_map[&right];
+                // should be checked by static analysis
+                assert!(left_type==ValueType::Bool);
+                assert!(right_type==ValueType::Bool);
+                let ret_type = ids.map_type(ValueType::Bool);
+
+                let ret_addr = module.logical_and(ret_type, None, left_address, right_address).unwrap();
+                value_map.insert(ret, ret_addr);
+                type_map.insert(ret, ValueType::Bool);
+            }
+            Operation::Or(left, right) => {
+                let left_address = value_map[&left];
+                let right_address = value_map[&right];
+                let left_type = type_map[&left];
+                let right_type = type_map[&right];
+                // should be checked by static analysis
+                assert!(left_type==ValueType::Bool);
+                assert!(right_type==ValueType::Bool);
+                let ret_type = ids.map_type(ValueType::Bool);
+
+                let ret_addr = module.logical_or(ret_type, None, left_address, right_address).unwrap();
+                value_map.insert(ret, ret_addr);
+                type_map.insert(ret, ValueType::Bool);
+            }
             Operation::Exit(val, label)=>{
                 let value_addr = value_map[&val];
                 ids.store_result(0, value_addr, &mut module);
