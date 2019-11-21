@@ -13,6 +13,8 @@ void main() {
     } else {
         something = 14;
     }
-    something = something + 1;
+    for(int i=0; i<5; i++){
+        something = something + 1;
+    }
 
 }

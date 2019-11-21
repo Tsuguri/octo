@@ -77,17 +77,16 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     let mut output_file = std::fs::File::create(&result_path).unwrap();
     let data = serde_json::to_string(&module).unwrap();
     use std::io::Write;
-    output_file.write_all(data.as_bytes());
+    output_file.write_all(data.as_bytes()).unwrap();
 
     //emit debug directory
 
     {
         let dir_name = p.file_stem().unwrap();
         println!("dir name:{:?}", dir_name);
-        let dir = std::fs::create_dir_all(&dir_name).unwrap();
+        let _ = std::fs::create_dir_all(&dir_name).unwrap();
 
         for (id, shader) in module.fragment_shaders {
-            use std::iter::Iterator;
             let mut dir_n = std::path::PathBuf::from(dir_name);
             dir_n.push(id.to_string());
             dir_n.set_extension("frag");
