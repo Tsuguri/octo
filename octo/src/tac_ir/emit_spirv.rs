@@ -123,7 +123,6 @@ struct SpirvIds {
     sampler_pointer_type: SpirvAddress,
 
     pointer_types_locations: HashMap<PointerType, SpirvAddress>,
-    input_locations: HashMap<Address, SpirvAddress>,
     type_addresses: HashMap<ValueType, SpirvAddress>,
     const_addresses: HashMap<Address, SpirvAddress>,
     pub bool2: SpirvAddress,
@@ -279,7 +278,7 @@ impl SpirvIds {
         self.textures_location = module.id();
         self.sampler_location = module.id();
         self.output_locations = Vec::with_capacity(info.output_type.len());
-        for ret in &info.output_type {
+        for _ret in &info.output_type {
             self.output_locations.push(module.id());
         }
     }
@@ -300,7 +299,7 @@ impl SpirvIds {
         }
     }
 
-    pub fn decorate(&self, module: &mut Builder, info: &ShaderDef) {
+    pub fn decorate(&self, module: &mut Builder) {
         module.decorate(self.uv_location, spirv::Decoration::Location, &[0u32.into()]);
         for (id, loc) in self.output_locations.iter().enumerate() {
             module.decorate(*loc, spirv::Decoration::Location, &[(id as u32).into()]);
@@ -382,15 +381,18 @@ impl SpirvIds {
     }
 }
 
-struct MainEmitter<'a> {
+struct MainEmitter<'a, I: std::iter::Iterator<Item=&'a Op>> {
     builder: &'a mut Builder,
     ids: &'a mut SpirvIds,
     value_map: HashMap<Address, SpirvAddress>,
     type_map: HashMap<Address, ValueType>,
+
+    input_type: Vec<ValueType>,
+    iter: I,
 }
 
-impl<'a> MainEmitter<'a> {
-    pub fn new(ids: &'a mut SpirvIds, module: &'a mut Builder) -> MainEmitter<'a>{
+impl<'a, I: std::iter::Iterator<Item=&'a Op>> MainEmitter<'a, I> {
+    pub fn new(ids: &'a mut SpirvIds, module: &'a mut Builder, input_type: Vec<ValueType>, iter: I) -> MainEmitter<'a, I>{
         module.begin_basic_block(None).unwrap();
 
         Self {
@@ -398,12 +400,13 @@ impl<'a> MainEmitter<'a> {
             ids: ids,
             value_map: Default::default(),
             type_map: Default::default(),
+            input_type,
+            iter,
         }
     }
 
-    fn emit_arg(&mut self, info: &ShaderDef, id: usize, ret: Address) {
+    fn emit_arg(&mut self, val_type: ValueType, id: usize, ret: Address) {
         let access = self.ids.sample_arg(id, ret, self.builder);
-        let val_type = info.input_type[id];
         self.value_map.insert(ret, access);
         self.type_map.insert(ret, val_type);
         // println!("loading arg {}", x);
@@ -733,15 +736,18 @@ impl<'a> MainEmitter<'a> {
 
     }
 
-    pub fn emit(mut self, code: &ShaderDef){
+    pub fn emit(mut self){
 
-    for (ret, opCode) in &code.code {
-        let ret = *ret;
-        let opCode = *opCode;
-        //println!("{:?}", (ret, opCode));
-        match opCode {
+        while let Some((ret, op_code)) = self.iter.next() {
+            self.emit_operation(*ret, *op_code);
+
+        }
+    }
+
+    fn emit_operation(&mut self, ret: Address, operation: Operation) {
+        match operation {
             Operation::Arg(x)=>{
-                self.emit_arg(code, x, ret);
+                self.emit_arg(self.input_type[x], x, ret);
             },
             Operation::Store(addr) =>{
                 self.emit_store(addr, ret);
@@ -785,10 +791,9 @@ impl<'a> MainEmitter<'a> {
             _ => (),
         }
     }
-    }
 }
 
-impl<'a> std::ops::Drop for MainEmitter<'a> {
+impl<'a, I : Iterator<Item=&'a Op>> std::ops::Drop for MainEmitter<'a, I> {
     fn drop(&mut self) {
         self.builder.ret().unwrap();
     }
@@ -813,20 +818,10 @@ fn emit_single_shader(info: ShaderDef)->Vec<u32> {
     module.execution_mode(function_id, spirv::ExecutionMode::OriginUpperLeft, &[]);
 
 
-
-    ids.decorate(&mut module, &info);
-
+    ids.decorate(&mut module);
     ids.generate_types(&mut module, &info);
-
     ids.create_uniform_variables(&mut module, &info);
-
     ids.store_constants(&mut module, &info);
-
-
-    // uniform defs
-
-    // generate all module-level variables
-
 
     let main_type = module.type_function(ids.map_type(ValueType::Void), vec![]);
     module.begin_function(ids.map_type(ValueType::Void),
@@ -837,9 +832,9 @@ fn emit_single_shader(info: ShaderDef)->Vec<u32> {
      .unwrap();
 
     // emitting main function
-    let emitter = MainEmitter::new(&mut ids, &mut module);
+    let emitter = MainEmitter::new(&mut ids, &mut module, info.input_type.clone(), info.code.iter());
 
-    emitter.emit(&info);
+    emitter.emit();
 
     module.end_function().unwrap();
 
