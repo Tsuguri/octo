@@ -110,6 +110,7 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             let end_label = code.new_label();
 
 
+            let pre_cond_label = code.last_label();
             let label2 = if false_block.is_some() { else_label } else { end_label };
             // jump to first block
             code.push(Operation::JumpIfElse(cond, if_label, label2));
@@ -118,22 +119,26 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             code.push_with_label(Operation::Label, if_label);
             emit_block(true_block, code);
             let true_assignments = code.finish_observing(old_phi).unwrap();
+            let post_true_label = code.last_label();
             code.push(Operation::Jump(end_label));
 
 
             let mut false_assignments = None;
+            let mut post_false_label = pre_cond_label;
             if let Some(bl) = false_block {
                 let old_phi = code.observe_assignments();
                 code.push_with_label(Operation::Label, else_label);
                 emit_block(bl, code);
                 false_assignments = code.finish_observing(old_phi);
+                post_false_label = code.last_label();
                 code.push(Operation::Jump(end_label));
             }
+            let post_false_label = post_false_label;
 
             code.push_with_label(Operation::Label, end_label);
 
             // emit phi instructions
-            for phi in select_phi_operations(true_assignments, false_assignments) {
+            for phi in select_phi_operations(true_assignments, false_assignments, post_true_label, post_false_label) {
                 let address = code.push(Operation::Phi(phi.1));
                 code.store(&phi.0, address, false);
             }
@@ -144,20 +149,28 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
 fn select_phi_operations(
     true_block: PhiCollection,
     false_block: Option<PhiCollection>,
+    true_label: Address,
+    false_label: Address,
 ) -> PhiCollection {
     let mut results = true_block;
+
+    for (name, item) in results.iter_mut() {
+        item.label = true_label;
+        item.old_label = false_label;
+    }
 
     match false_block {
         None => {}
         Some(x) => {
             for (key, mut record) in x {
+                record.label=false_label;
+                record.old_label = true_label;
                 match results.get(&key) {
                     None => {
                         results.insert(key, record);
                     }
                     Some(&true_phi) => {
                         record.old = true_phi.new;
-                        record.old_label = true_phi.label;
                         results.insert(key, record);
                     }
                 }

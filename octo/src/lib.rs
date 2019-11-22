@@ -57,14 +57,14 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     println!("before constant propagation");
     println!("{:?}", tac);
 
-    let tac = tac_ir::propagate_constants(tac);
-    tac_ir::emit_graph(&tac,&(path.to_owned() + "2"));
-    println!("after constant propagation");
-    println!("{:?}", tac);
+    // let tac = tac_ir::propagate_constants(tac);
+    // tac_ir::emit_graph(&tac,&(path.to_owned() + "2"));
+    // println!("after constant propagation");
+    // println!("{:?}", tac);
 
-    let tac = tac_ir::remove_unused_operations(tac);
-    println!("after unused operation removal");
-    println!("{:?}", tac);
+    // let tac = tac_ir::remove_unused_operations(tac);
+    // println!("after unused operation removal");
+    // println!("{:?}", tac);
     
     let pipeline_definition = tac_ir::split_passes(tac);
 

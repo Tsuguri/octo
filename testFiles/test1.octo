@@ -1,6 +1,21 @@
 pipeline main(one: vec4, two: vec4, three: vec4) -> (vec4){
     let p = one + two;
+    let some = one == three;
     let tmp = one == two;
     let tmp2 = one != two;
+
+    //for(let i = 0; i<5; i=i+1){
+        //tmp2 = !tmp2;
+    //}
+    if (tmp2) {
+        if(tmp){
+            p = one;
+        }
+        if(tmp){
+            some = tmp;
+        }
+    } else {
+    }
+    let done = tmp;
     return p + three;
 }

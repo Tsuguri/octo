@@ -78,6 +78,10 @@ impl Code {
 
     }
 
+    pub fn last_label(&self) -> Address {
+        self.last_label
+    }
+
     pub fn finish(self) -> PipelineIR {
             PipelineIR::new(self.code)
     }
