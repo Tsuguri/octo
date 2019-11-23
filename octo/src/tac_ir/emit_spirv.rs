@@ -436,6 +436,9 @@ impl<'a, I: std::iter::Iterator<Item=&'a Op>> PeekableCode<'a, I> {
 struct LoopCode {
     content: Vec<Op>,
     cond: Vec<Op>, //includes phi nodes
+    content_label: Address,
+    condition_label: Address,
+    end_label: Address,
 
 }
 
@@ -921,6 +924,7 @@ impl<'a, I: std::iter::Iterator<Item=&'a Op>> MainEmitter<'a, I> {
                 }
             }
         };
+        content.pop();
 
         assert!(content.len() >0);
         let cond_label = match content[content.len()-1].1 {
@@ -966,6 +970,9 @@ impl<'a, I: std::iter::Iterator<Item=&'a Op>> MainEmitter<'a, I> {
         LoopCode{
             cond: condition_code,
             content,
+            content_label,
+            condition_label: cond_label,
+            end_label,
         }
     }
 
@@ -1029,6 +1036,7 @@ impl<'a, I: std::iter::Iterator<Item=&'a Op>> MainEmitter<'a, I> {
 
 
         for phi in data.phi_nodes {
+
             let ret =phi.0;
             let phi_record = match phi.1 {
                 Operation::Phi(rec) => rec,
@@ -1061,6 +1069,38 @@ impl<'a, I: std::iter::Iterator<Item=&'a Op>> MainEmitter<'a, I> {
     }
 
     fn emit_loop(&mut self, data: LoopCode) {
+
+        let init_label = self.builder.id();
+        self.builder.branch(init_label).unwrap();
+        //end last block and create entry point block
+
+        self.builder.begin_basic_block(Some(init_label));
+
+        let content_label = self.builder.id();
+        self.value_map.insert(data.content_label, content_label);
+
+        let condition_label = self.builder.id();
+        self.value_map.insert(data.condition_label, condition_label);
+
+        let continue_label = self.builder.id();
+        let end_label = self.builder.id();
+        self.value_map.insert(data.end_label, end_label);
+
+        self.builder.loop_merge(end_label, continue_label, spirv::LoopControl::NONE, &[]).unwrap();
+        self.builder.branch(condition_label).unwrap();
+
+        self.builder.begin_basic_block(Some(condition_label));
+        // emit condition stuff
+        let condition = self.builder.id();
+        self.builder.branch_conditional(condition, content_label, end_label, &[]).unwrap();
+
+        self.builder.begin_basic_block(Some(content_label));
+        //emit content
+        self.builder.branch(init_label);
+
+
+        self.builder.begin_basic_block(Some(end_label));
+
 
     }
 

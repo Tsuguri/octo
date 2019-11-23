@@ -59,48 +59,57 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             // initialization statement
             let _ = emit_statement(*stat, code);
 
+            let post_init_label = code.last_label();
 
+            let loop_def_label = code.new_label();
             let condition_label = code.new_label();
+            let continue_label = code.new_label();
             let content_label = code.new_label();
             let end_label = code.new_label();
 
+
+            code.push(Operation::Jump(loop_def_label));
+            // phi nodes go here?
+            code.push(Operation::LoopMerge(continue_label, end_label));
             code.push(Operation::Jump(condition_label));
 
+            // eval condition
             let old_phi = code.observe_assignments();
-            code.push_with_label(Operation::Label, content_label);
             let before_code_size = code.code_size();
+
+            code.push_with_label(Operation::Label, condition_label);
+            let cond = emit_expression(*exp1, code);
+            code.push(Operation::JumpIfElse(cond, content_label, end_label));
+
+            code.push_with_label(Operation::Label, content_label);
 
             // do loop stuff
             emit_block(block, code);
-
+            code.push(Operation::Jump(continue_label));
+            code.push_with_label(Operation::Label, continue_label);
             // increment
             let _ = emit_statement(*exp2, code);
+
+            code.push(Operation::Jump(loop_def_label));
 
             let phi_assignments = code.finish_observing(old_phi);
             assert!(phi_assignments.is_some());
 
             let after_code_size = code.code_size();
+            code.push_with_label(Operation::Label, end_label);
 
-            code.push(Operation::Jump(condition_label));
-
-            code.push_with_label(Operation::Label, condition_label);
-            // phi all assigned values
-            // and replace uses in for block to phi'd values
+            // these phi nodes shall go into loop merge block
             for phi in phi_assignments.unwrap() {
+                let mut rec = phi.1;
 
-                let address = code.push(Operation::Phi(phi.1));
+                rec.label = continue_label;
+                rec.old_label = post_init_label;
+
+                let address = code.push(Operation::Phi(rec));
                 code.store(&phi.0, address, false);
                 //old, new
                 code.replace_label(before_code_size..after_code_size, phi.1.old, address);
             }
-
-
-            // eval condition
-            let cond = emit_expression(*exp1, code);
-            code.push(Operation::JumpIfElse(cond, content_label, end_label));
-
-            code.push_with_label(Operation::Label, end_label);
-            // phi variables?
         }
         ast::Statement::IfElse(condition, true_block, false_block) => {
             let cond = emit_expression(*condition, code);

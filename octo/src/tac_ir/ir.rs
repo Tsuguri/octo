@@ -92,6 +92,7 @@ pub enum Operation {
     Phi(PhiRecord),
     JumpIfElse(Address, Address, Address),
     Jump(Address),
+    LoopMerge(Address, Address), // cond label, exit label
     Label,
 }
 
@@ -124,6 +125,7 @@ impl std::string::ToString for Operation {
             Sync(..) => "Sync".to_string(),
             JumpIfElse(..) => "JumpIfElse".to_string(),
             Jump(..) => "Jump".to_string(),
+            LoopMerge(..) => "LoopMerge".to_string(),
             Label => "Label".to_string(),
         }
     }
