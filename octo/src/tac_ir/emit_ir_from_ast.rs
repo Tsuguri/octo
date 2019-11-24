@@ -1,16 +1,7 @@
-use super::ast as ast;
-use super::ir::{
-    Address,
-    Operation,
-    ConstantValue,
-    PipelineIR
-};
+use super::ast;
+use super::ir::{Address, ConstantValue, Operation, PipelineIR};
 
-use super::code::{
-    Code,
-    PhiCollection,
-};
-
+use super::code::{Code, PhiCollection};
 
 pub fn emit(ast: ast::Pipeline) -> PipelineIR {
     let mut code = Code::new();
@@ -55,7 +46,6 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             code.store(&var.identifier.val, addr, create);
         }
         ast::Statement::For(stat, exp1, exp2, block) => {
-
             // initialization statement
             let _ = emit_statement(*stat, code);
 
@@ -67,8 +57,9 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             let content_label = code.new_label();
             let end_label = code.new_label();
 
-
             code.push(Operation::Jump(loop_def_label));
+            code.push_with_label(Operation::Label, loop_def_label);
+            let phi_insert_index = code.code_size();
             // phi nodes go here?
             code.push(Operation::LoopMerge(continue_label, end_label));
             code.push(Operation::Jump(condition_label));
@@ -99,16 +90,20 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             code.push_with_label(Operation::Label, end_label);
 
             // these phi nodes shall go into loop merge block
-            for phi in phi_assignments.unwrap() {
-                let mut rec = phi.1;
+            for (id, phi) in phi_assignments.unwrap().iter().enumerate() {
+                let mut rec = *phi.1;
 
                 rec.label = continue_label;
                 rec.old_label = post_init_label;
 
-                let address = code.push(Operation::Phi(rec));
+                let address = code.insert_at(Operation::Phi(rec), phi_insert_index);
                 code.store(&phi.0, address, false);
                 //old, new
-                code.replace_label(before_code_size..after_code_size, phi.1.old, address);
+                code.replace_label(
+                    (before_code_size + id)..(after_code_size + id),
+                    phi.1.old,
+                    address,
+                );
             }
         }
         ast::Statement::IfElse(condition, true_block, false_block) => {
@@ -118,9 +113,12 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             let else_label = code.new_label();
             let end_label = code.new_label();
 
-
             let pre_cond_label = code.last_label();
-            let label2 = if false_block.is_some() { else_label } else { end_label };
+            let label2 = if false_block.is_some() {
+                else_label
+            } else {
+                end_label
+            };
             // jump to first block
             code.push(Operation::JumpIfElse(cond, if_label, label2));
 
@@ -130,7 +128,6 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             let true_assignments = code.finish_observing(old_phi).unwrap();
             let post_true_label = code.last_label();
             code.push(Operation::Jump(end_label));
-
 
             let mut false_assignments = None;
             let mut post_false_label = pre_cond_label;
@@ -147,7 +144,12 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             code.push_with_label(Operation::Label, end_label);
 
             // emit phi instructions
-            for phi in select_phi_operations(true_assignments, false_assignments, post_true_label, post_false_label) {
+            for phi in select_phi_operations(
+                true_assignments,
+                false_assignments,
+                post_true_label,
+                post_false_label,
+            ) {
                 let address = code.push(Operation::Phi(phi.1));
                 code.store(&phi.0, address, false);
             }
@@ -172,7 +174,7 @@ fn select_phi_operations(
         None => {}
         Some(x) => {
             for (key, mut record) in x {
-                record.label=false_label;
+                record.label = false_label;
                 record.old_label = true_label;
                 match results.get(&key) {
                     None => {
@@ -192,19 +194,11 @@ fn select_phi_operations(
 fn emit_expression(exp: ast::Expression, code: &mut Code) -> Address {
     use ast::Expression::*;
     match exp {
-        Variable(var) => {
-            code.get(&var.identifier.val)
-        }
-        Literal(lit) => {
-            match lit {
-                ast::Literal::Int(val) => {
-                    code.store_constant(ConstantValue::Int(val.val))
-                }
-                ast::Literal::Float(val) => {
-                    code.store_constant(ConstantValue::Float(val.val))
-                }
-            }
-        }
+        Variable(var) => code.get(&var.identifier.val),
+        Literal(lit) => match lit {
+            ast::Literal::Int(val) => code.store_constant(ConstantValue::Int(val.val)),
+            ast::Literal::Float(val) => code.store_constant(ConstantValue::Float(val.val)),
+        },
         Negation(exp) => {
             let exp_address = emit_expression(*exp, code);
             code.push(Operation::Neg(exp_address))
@@ -275,8 +269,6 @@ fn emit_expression(exp: ast::Expression, code: &mut Code) -> Address {
             let left_synced = code.synchronize(left_address);
             code.push(Operation::Shift(left_synced, right_address))
         }
-        Scale(_scaled, _scale_by) => {
-            0
-        }
+        Scale(_scaled, _scale_by) => 0,
     }
 }

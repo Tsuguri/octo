@@ -1,5 +1,5 @@
-use structopt::StructOpt;
 use octo::process_file;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 struct Parameters {
@@ -11,7 +11,6 @@ fn main() {
     stderrlog::new().verbosity(4).init().unwrap();
     println!("lol");
 
-
     let opt = Parameters::from_args();
 
     let mut err = false;
@@ -20,11 +19,11 @@ fn main() {
             Result::Ok(()) => {}
             Result::Err(()) => {
                 log::error!("Compilation of {} failed", file);
-                
+
                 err = true;
             }
         }
     }
 
-    std::process::exit(if err {1} else {0});
+    std::process::exit(if err { 1 } else { 0 });
 }

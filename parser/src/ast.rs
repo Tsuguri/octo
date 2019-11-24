@@ -1,6 +1,6 @@
+use crate::lexer::span;
 pub use codespan::ByteIndex;
 pub use codespan::Span;
-use crate::lexer::span;
 
 #[derive(Debug, Clone)]
 pub struct Spanned<T> {
@@ -68,17 +68,20 @@ impl Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use Type::*;
-        write!(f, "{}", match self{
-            Float => "float",
-            Int => "int",
-            Bool => "bool",
-            Vec2 => "vec2",
-            Vec3 => "vec3",
-            Vec4 => "vec4",
-            Void => "void",
-            Unknown => "invalid_type",
-
-        })?;
+        write!(
+            f,
+            "{}",
+            match self {
+                Float => "float",
+                Int => "int",
+                Bool => "bool",
+                Vec2 => "vec2",
+                Vec3 => "vec3",
+                Vec4 => "vec4",
+                Void => "void",
+                Unknown => "invalid_type",
+            }
+        )?;
         Result::Ok(())
     }
 }
@@ -88,7 +91,6 @@ impl std::fmt::Display for Type {
 //    Function(Box<Function>),
 //    GpuFunction(Box<GpuFunction>),
 //}
-
 
 #[derive(Debug)]
 pub struct Pipeline {
@@ -159,9 +161,8 @@ impl Expression {
             // TODO: fix shift and scale. These are not including parentheses and Shift/Scale keyword
             Shift(left, right) => concat_spans(left.span(), right.span()),
             Scale(left, right) => concat_spans(left.span(), right.span()),
-            _ => span(0,1),
+            _ => span(0, 1),
         }
-
     }
 }
 

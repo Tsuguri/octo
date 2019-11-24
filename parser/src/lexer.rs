@@ -93,8 +93,8 @@ impl fmt::Display for Token {
             GpuFun => "fun".to_owned(),
             Pipeline => "pipeline".to_owned(),
             Import => "import".to_owned(),
-            Shift=> "shift".to_owned(),
-            Scale=> "scale".to_owned(),
+            Shift => "shift".to_owned(),
+            Scale => "scale".to_owned(),
             Return => "return".to_owned(),
             FunResultsArrow => "->".to_owned(),
         };
@@ -359,7 +359,8 @@ impl<'input> Iterator for Lexer<'input> {
                 Some((i, '\"')) => match self.read_string_literal(i) {
                     Result::Ok(slice) => {
                         let len = slice.len();
-                        return Some(Result::Ok((i, Token::StringLiteral(slice), i + len + 2))); // 2 because of two "s.
+                        return Some(Result::Ok((i, Token::StringLiteral(slice), i + len + 2)));
+                        // 2 because of two "s.
                     }
                     Result::Err(err) => return err!(err),
                 },

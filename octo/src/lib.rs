@@ -1,23 +1,22 @@
 //extern crate lalrpop_util;
 
+pub mod semantics;
 mod static_analysis;
 mod tac_ir;
-pub mod semantics;
 
 use std::fs::File;
-use std::io::{Read};
+use std::io::Read;
 use std::path::Path;
 
-use parser::ast;
-use parser::codespan_reporting;
-use parser::codespan::CodeMap;
 use codespan_reporting::Diagnostic;
+use parser::ast;
+use parser::codespan::CodeMap;
+use parser::codespan_reporting;
 
 use std::borrow::ToOwned;
 
-
-use log::{info};
 use crate::static_analysis::Diagnostics;
+use log::info;
 
 pub fn process_file(path: &str) -> Result<(), ()> {
     info!("Processing file at: {}", path);
@@ -35,14 +34,20 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     let mut data = String::new();
     file.read_to_string(&mut data).unwrap();
 
-
     let ast = parse_data(&data, path)?;
 
     let static_analysis_res = static_analysis::analyze(ast);
-    let Diagnostics{errors, warnings} = static_analysis_res.1;
+    let Diagnostics { errors, warnings } = static_analysis_res.1;
     let error_happened = errors.len() > 0;
-    let mut diagnostics: Vec<Diagnostic> = warnings.into_iter().map(|x| semantics::WarningWrap::new(x).into()).collect();
-    diagnostics.extend(errors.into_iter().map(|x| semantics::ErrorWrap::new(x).into()));
+    let mut diagnostics: Vec<Diagnostic> = warnings
+        .into_iter()
+        .map(|x| semantics::WarningWrap::new(x).into())
+        .collect();
+    diagnostics.extend(
+        errors
+            .into_iter()
+            .map(|x| semantics::ErrorWrap::new(x).into()),
+    );
     report_errors(&data, path, &diagnostics);
     if error_happened {
         return Result::Err(());
@@ -53,7 +58,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     };
 
     let tac = tac_ir::emit_ir(valid_ast);
-    tac_ir::emit_graph(&tac,&(path.to_owned() + "1"));
+    tac_ir::emit_graph(&tac, &(path.to_owned() + "1"));
     println!("before constant propagation");
     println!("{:?}", tac);
 
@@ -65,7 +70,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     // let tac = tac_ir::remove_unused_operations(tac);
     // println!("after unused operation removal");
     // println!("{:?}", tac);
-    
+
     let pipeline_definition = tac_ir::split_passes(tac);
 
     let module = tac_ir::emit_spirv(path, pipeline_definition);
@@ -91,24 +96,33 @@ pub fn process_file(path: &str) -> Result<(), ()> {
             dir_n.push(id.to_string());
             dir_n.set_extension("frag");
             let mut file = std::fs::File::create(&dir_n).unwrap();
-            let data: Vec<u8> = shader.iter().map(|x| {
-                x.to_le_bytes()
-            }).collect::<Vec<_>>().iter().flatten().cloned().collect();//.flatten().collect();
+            let data: Vec<u8> = shader
+                .iter()
+                .map(|x| x.to_le_bytes())
+                .collect::<Vec<_>>()
+                .iter()
+                .flatten()
+                .cloned()
+                .collect(); //.flatten().collect();
             file.write_all(&data).unwrap();
-
         }
     }
 
-
     Result::Ok(())
 }
-
 
 fn parse_data(data: &str, path: &str) -> Result<ast::Pipeline, ()> {
     match parser::parse(data, false) {
         Err(failure_info) => {
             println!("{:#?}", failure_info.errors);
-            report_errors(data, path, &[parser::ErrWrap { err: &failure_info.errors[0] }.into()]);
+            report_errors(
+                data,
+                path,
+                &[parser::ErrWrap {
+                    err: &failure_info.errors[0],
+                }
+                .into()],
+            );
             Result::Err(())
         }
         Ok(ast) => Result::Ok(ast),

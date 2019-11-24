@@ -1,12 +1,6 @@
 use octo_runtime as or;
 
-use super::ir::{
-    PipelineIR,
-    Operation,
-    Op,
-    Address,
-    ValueType,
-};
+use super::ir::{Address, Op, Operation, PipelineIR, ValueType};
 
 #[derive(Debug, Clone)]
 pub struct ShaderDef {
@@ -24,8 +18,8 @@ pub enum InputTexture {
 impl std::convert::Into<or::InputType> for InputTexture {
     fn into(self) -> or::InputType {
         match self {
-            InputTexture::Arg(x)=> or::InputType::ProvidedTexture(x),
-            InputTexture::Generated(x)=> or::InputType::PipelineTexture(x),
+            InputTexture::Arg(x) => or::InputType::ProvidedTexture(x),
+            InputTexture::Generated(x) => or::InputType::PipelineTexture(x),
         }
     }
 }
@@ -39,8 +33,8 @@ pub enum OutputTexture {
 impl std::convert::Into<or::OutputType> for OutputTexture {
     fn into(self) -> or::OutputType {
         match self {
-            OutputTexture::Result=> or::OutputType::Result,
-            OutputTexture::Generated(x)=> or::OutputType::Textures(x),
+            OutputTexture::Result => or::OutputType::Result,
+            OutputTexture::Generated(x) => or::OutputType::Textures(x),
         }
     }
 }
@@ -68,10 +62,10 @@ pub fn split(program: PipelineIR) -> PipelineDef {
     // it means that there is only one output shader
     for instruction in &operations {
         match instruction.1 {
-            Operation::Sync(..) | Operation::Shift(..)=> {
+            Operation::Sync(..) | Operation::Shift(..) => {
                 panic!("Octo is not yet able to emit code containing synchronization");
             }
-            _=>(),
+            _ => (),
         }
     }
 
@@ -81,21 +75,20 @@ pub fn split(program: PipelineIR) -> PipelineDef {
     let inputs_num = inputs.len();
     let outputs_num = outputs.len();
 
-    let the_only_shader = ShaderDef{
+    let the_only_shader = ShaderDef {
         code: operations,
         input_type: inputs.iter().map(|x| x.0).collect(),
         output_type: outputs,
     };
     println!("outputs: {}", outputs_num);
-    let the_only_pass = ShaderPass{
+    let the_only_pass = ShaderPass {
         shader_id: 0,
         input: (0..inputs_num).map(|x| InputTexture::Arg(x)).collect(),
         output: OutputTexture::Result,
         dependencies: Option::None,
     };
 
-
-    PipelineDef{
+    PipelineDef {
         shaders: vec![the_only_shader],
         passes: vec![the_only_pass],
         textures: vec![],

@@ -1,15 +1,8 @@
 use std::collections::HashMap;
 
-use super::ir::{
-    Address,
-    Operation,
-    ConstantValue,
-    PhiRecord,
-    PipelineIR,
-};
+use super::ir::{Address, ConstantValue, Operation, PhiRecord, PipelineIR};
 
 use super::code::Code;
-
 
 struct ConstantsContext {
     id_map: HashMap<Address, Address>,
@@ -24,7 +17,7 @@ impl ConstantsContext {
         }
     }
 
-    pub fn finish(self)-> Code{
+    pub fn finish(self) -> Code {
         self.code
     }
 
@@ -35,7 +28,7 @@ impl ConstantsContext {
                 let id = self.code.new_label();
                 self.insert(old, id);
                 id
-            },
+            }
             Some(x) => x,
         }
     }
@@ -58,7 +51,7 @@ impl ConstantsContext {
         self.id_map.insert(old, new);
     }
 
-    pub fn is_const(&self, address: Address)-> bool{
+    pub fn is_const(&self, address: Address) -> bool {
         self.code.is_const(address)
     }
 
@@ -81,6 +74,9 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                 //cons.insert(res, addr);
                 cons.push((res, op));
             }
+            LoopMerge(a, b) => {
+                cons.push((res, op));
+            }
             StoreVec3(val) => {
                 cons.push_constant(res, ConstantValue::Vec3(val));
             }
@@ -96,7 +92,7 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
             StoreBool(val) => {
                 cons.push_constant(res, ConstantValue::Bool(val));
             }
-            Store(addr) =>{
+            Store(addr) => {
                 let new_addr = cons.map(addr);
                 cons.insert(res, new_addr);
             }
@@ -152,7 +148,7 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                 let right_const = cons.is_const(right);
                 match (left_const, right_const) {
                     (false, false) => {
-                        cons.push((res,Operation::And(left, right)));
+                        cons.push((res, Operation::And(left, right)));
                     }
                     (true, false) => {
                         if let ConstantValue::Bool(false) = cons.get_const(left) {
@@ -167,7 +163,7 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                     (true, true) => {
                         let val = match (cons.get_const(left), cons.get_const(right)) {
                             (ConstantValue::Bool(true), ConstantValue::Bool(true)) => true,
-                            _ => false
+                            _ => false,
                         };
                         cons.push_constant(res, ConstantValue::Bool(val));
                     }
@@ -195,7 +191,7 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                     (true, true) => {
                         let val = match (cons.get_const(left), cons.get_const(right)) {
                             (ConstantValue::Bool(false), ConstantValue::Bool(false)) => false,
-                            _ => true
+                            _ => true,
                         };
                         cons.push_constant(res, ConstantValue::Bool(val));
                     }
@@ -211,20 +207,23 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                 let label = cons.map(record.label);
                 let old = cons.map(record.old);
                 let old_label = cons.map(record.old_label);
-                let record = PhiRecord{
+                let record = PhiRecord {
                     new,
                     label,
                     old,
-                    old_label
+                    old_label,
                 };
-                cons.push((res,Operation::Phi(record)));
+                cons.push((res, Operation::Phi(record)));
             }
             JumpIfElse(cond, true_address, false_address) => {
                 let cond_addr = cons.map(cond);
                 let true_label_addr = cons.map(true_address);
                 let false_label_addr = cons.map(false_address);
 
-                cons.push((res, Operation::JumpIfElse(cond_addr, true_label_addr, false_label_addr)));
+                cons.push((
+                    res,
+                    Operation::JumpIfElse(cond_addr, true_label_addr, false_label_addr),
+                ));
             }
             Jump(addr) => {
                 let x = cons.map(addr);
@@ -270,10 +269,17 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
 fn fold<
     F: Fn(ConstantValue, ConstantValue) -> ConstantValue,
     F2: Fn(Address, Address) -> Operation,
->(cons: &mut ConstantsContext, left_addr: Address, right_addr: Address, old_address: Address, f1: F, f2: F2) {
+>(
+    cons: &mut ConstantsContext,
+    left_addr: Address,
+    right_addr: Address,
+    old_address: Address,
+    f1: F,
+    f2: F2,
+) {
     let left = cons.map(left_addr);
     let right = cons.map(right_addr);
-//    println!("left: {}, right: {}", left, right);
+    //    println!("left: {}, right: {}", left, right);
     if cons.is_const(left) && cons.is_const(right) {
         let left_val = cons.get_const(left);
         let right_val = cons.get_const(right);
@@ -281,170 +287,182 @@ fn fold<
 
         cons.push_constant(old_address, val);
     } else {
-        cons.push((old_address,f2(left, right)));
+        cons.push((old_address, f2(left, right)));
     }
 }
 
-fn fold_div(cons: &mut ConstantsContext, left_addr: Address, right_addr: Address, old_address: Address) {
-    fold(cons, left_addr, right_addr, old_address, |x, y| {
-        use ConstantValue::*;
+fn fold_div(
+    cons: &mut ConstantsContext,
+    left_addr: Address,
+    right_addr: Address,
+    old_address: Address,
+) {
+    fold(
+        cons,
+        left_addr,
+        right_addr,
+        old_address,
+        |x, y| {
+            use ConstantValue::*;
 
-        match (x, y) {
-            (Float(l), Float(r)) => {
-                ConstantValue::Float(l / r)
+            match (x, y) {
+                (Float(l), Float(r)) => ConstantValue::Float(l / r),
+                (Int(l), Int(r)) => ConstantValue::Int(l / r),
+                (Vec2(l), Vec2(r)) => ConstantValue::Vec2([l[0] / r[0], l[1] / r[1]]),
+                (Vec3(l), Vec3(r)) => ConstantValue::Vec3([l[0] / r[0], l[1] / r[1], l[2] / r[2]]),
+                _ => {
+                    // panic
+                    unreachable!("wow");
+                }
             }
-            (Int(l), Int(r)) => {
-                ConstantValue::Int(l / r)
-            }
-            (Vec2(l), Vec2(r)) => {
-                ConstantValue::Vec2([l[0] / r[0], l[1] / r[1]])
-            }
-            (Vec3(l), Vec3(r)) => {
-                ConstantValue::Vec3([l[0] / r[0], l[1] / r[1], l[2] / r[2]])
-            }
-            _ => {
-                // panic
-                unreachable!("wow");
-            }
-        }
-    }, |x, y| {
-        Operation::Div(x, y)
-    });
+        },
+        |x, y| Operation::Div(x, y),
+    );
 }
 
-fn fold_mul(cons: &mut ConstantsContext, left_addr: Address, right_addr: Address, old_address: Address) {
-    fold(cons, left_addr, right_addr, old_address, |x, y| {
-        use ConstantValue::*;
+fn fold_mul(
+    cons: &mut ConstantsContext,
+    left_addr: Address,
+    right_addr: Address,
+    old_address: Address,
+) {
+    fold(
+        cons,
+        left_addr,
+        right_addr,
+        old_address,
+        |x, y| {
+            use ConstantValue::*;
 
-        match (x, y) {
-            (Float(l), Float(r)) => {
-                ConstantValue::Float(l * r)
+            match (x, y) {
+                (Float(l), Float(r)) => ConstantValue::Float(l * r),
+                (Int(l), Int(r)) => ConstantValue::Int(l * r),
+                (Vec2(l), Vec2(r)) => ConstantValue::Vec2([l[0] * r[0], l[1] * r[1]]),
+                (Vec3(l), Vec3(r)) => ConstantValue::Vec3([l[0] * r[0], l[1] * r[1], l[2] * r[2]]),
+                _ => {
+                    // panic
+                    unreachable!("wow");
+                }
             }
-            (Int(l), Int(r)) => {
-                ConstantValue::Int(l * r)
-            }
-            (Vec2(l), Vec2(r)) => {
-                ConstantValue::Vec2([l[0] * r[0], l[1] * r[1]])
-            }
-            (Vec3(l), Vec3(r)) => {
-                ConstantValue::Vec3([l[0] * r[0], l[1] * r[1], l[2] * r[2]])
-            }
-            _ => {
-                // panic
-                unreachable!("wow");
-            }
-        }
-    }, |x, y| {
-        Operation::Mul(x, y)
-    });
+        },
+        |x, y| Operation::Mul(x, y),
+    );
 }
 
-fn fold_neq(cons: &mut ConstantsContext, left_addr: Address, right_addr: Address, old_address: Address) {
-    fold(cons, left_addr, right_addr, old_address, |x, y| {
-        use ConstantValue::*;
-        match (x, y) {
-            (Float(l), Float(r)) => {
-                ConstantValue::Bool(l != r)
+fn fold_neq(
+    cons: &mut ConstantsContext,
+    left_addr: Address,
+    right_addr: Address,
+    old_address: Address,
+) {
+    fold(
+        cons,
+        left_addr,
+        right_addr,
+        old_address,
+        |x, y| {
+            use ConstantValue::*;
+            match (x, y) {
+                (Float(l), Float(r)) => ConstantValue::Bool(l != r),
+                (Int(l), Int(r)) => ConstantValue::Bool(l != r),
+                (Vec2(l), Vec2(r)) => ConstantValue::Bool(l[0] != r[0] || l[1] != r[1]),
+                (Vec3(l), Vec3(r)) => {
+                    ConstantValue::Bool(l[0] != r[0] || l[1] != r[1] || l[2] != r[2])
+                }
+                _ => {
+                    // panic
+                    unreachable!("wow");
+                }
             }
-            (Int(l), Int(r)) => {
-                ConstantValue::Bool(l != r)
-            }
-            (Vec2(l), Vec2(r)) => {
-                ConstantValue::Bool(l[0] != r[0] || l[1] != r[1])
-            }
-            (Vec3(l), Vec3(r)) => {
-                ConstantValue::Bool(l[0] != r[0] || l[1] != r[1] || l[2] != r[2])
-            }
-            _ => {
-                // panic
-                unreachable!("wow");
-            }
-        }
-    }, |x, y| {
-        Operation::Neq(x, y)
-    });
+        },
+        |x, y| Operation::Neq(x, y),
+    );
 }
 
-fn fold_eq(cons: &mut ConstantsContext, left_addr: Address, right_addr: Address, old_address: Address) {
-    fold(cons, left_addr, right_addr, old_address, |x, y| {
-        use ConstantValue::*;
-        match (x, y) {
-            (Float(l), Float(r)) => {
-                ConstantValue::Bool(l == r)
+fn fold_eq(
+    cons: &mut ConstantsContext,
+    left_addr: Address,
+    right_addr: Address,
+    old_address: Address,
+) {
+    fold(
+        cons,
+        left_addr,
+        right_addr,
+        old_address,
+        |x, y| {
+            use ConstantValue::*;
+            match (x, y) {
+                (Float(l), Float(r)) => ConstantValue::Bool(l == r),
+                (Int(l), Int(r)) => ConstantValue::Bool(l == r),
+                (Vec2(l), Vec2(r)) => ConstantValue::Bool(l[0] == r[0] && l[1] == r[1]),
+                (Vec3(l), Vec3(r)) => {
+                    ConstantValue::Bool(l[0] == r[0] && l[1] == r[1] && l[2] == r[2])
+                }
+                _ => {
+                    // panic
+                    unreachable!("wow");
+                }
             }
-            (Int(l), Int(r)) => {
-                ConstantValue::Bool(l == r)
-            }
-            (Vec2(l), Vec2(r)) => {
-                ConstantValue::Bool(l[0] == r[0] && l[1] == r[1])
-            }
-            (Vec3(l), Vec3(r)) => {
-                ConstantValue::Bool(l[0] == r[0] && l[1] == r[1] && l[2] == r[2])
-            }
-            _ => {
-                // panic
-                unreachable!("wow");
-            }
-        }
-    }, |x, y| {
-        Operation::Eq(x, y)
-    });
+        },
+        |x, y| Operation::Eq(x, y),
+    );
 }
 
-fn fold_sub(cons: &mut ConstantsContext,left_addr: Address, right_addr: Address, old_address: Address) {
-    fold(cons, left_addr, right_addr, old_address, |x, y| {
-        use ConstantValue::*;
+fn fold_sub(
+    cons: &mut ConstantsContext,
+    left_addr: Address,
+    right_addr: Address,
+    old_address: Address,
+) {
+    fold(
+        cons,
+        left_addr,
+        right_addr,
+        old_address,
+        |x, y| {
+            use ConstantValue::*;
 
-        match (x, y) {
-            (Float(l), Float(r)) => {
-                ConstantValue::Float(l - r)
+            match (x, y) {
+                (Float(l), Float(r)) => ConstantValue::Float(l - r),
+                (Int(l), Int(r)) => ConstantValue::Int(l - r),
+                (Vec2(l), Vec2(r)) => ConstantValue::Vec2([l[0] - r[0], l[1] - r[1]]),
+                (Vec3(l), Vec3(r)) => ConstantValue::Vec3([l[0] - r[0], l[1] - r[1], l[2] - r[2]]),
+                _ => {
+                    // panic
+                    unreachable!("wow");
+                }
             }
-            (Int(l), Int(r)) => {
-                ConstantValue::Int(l - r)
-            }
-            (Vec2(l), Vec2(r)) => {
-                ConstantValue::Vec2([l[0] - r[0], l[1] - r[1]])
-            }
-            (Vec3(l), Vec3(r)) => {
-                ConstantValue::Vec3([l[0] - r[0], l[1] - r[1], l[2] - r[2]])
-            }
-            _ => {
-                // panic
-                unreachable!("wow");
-            }
-        }
-    }, |x, y| {
-        Operation::Sub(x, y)
-    });
+        },
+        |x, y| Operation::Sub(x, y),
+    );
 }
 
-fn fold_add(cons: &mut ConstantsContext, left_addr: Address, right_addr: Address, old_address: Address) {
-    fold(cons, left_addr, right_addr, old_address, |x, y| {
-        use ConstantValue::*;
+fn fold_add(
+    cons: &mut ConstantsContext,
+    left_addr: Address,
+    right_addr: Address,
+    old_address: Address,
+) {
+    fold(
+        cons,
+        left_addr,
+        right_addr,
+        old_address,
+        |x, y| {
+            use ConstantValue::*;
 
-        match (x, y) {
-            (Float(l), Float(r)) => {
-                ConstantValue::Float(l + r)
+            match (x, y) {
+                (Float(l), Float(r)) => ConstantValue::Float(l + r),
+                (Int(l), Int(r)) => ConstantValue::Int(l + r),
+                (Vec2(l), Vec2(r)) => ConstantValue::Vec2([l[0] + r[0], l[1] + r[1]]),
+                (Vec3(l), Vec3(r)) => ConstantValue::Vec3([l[0] + r[0], l[1] + r[1], l[2] + r[2]]),
+                _ => {
+                    // panic
+                    unreachable!("wow");
+                }
             }
-            (Int(l), Int(r)) => {
-                ConstantValue::Int(l + r)
-            }
-            (Vec2(l), Vec2(r)) => {
-                ConstantValue::Vec2([l[0] + r[0], l[1] + r[1]])
-            }
-            (Vec3(l), Vec3(r)) => {
-                ConstantValue::Vec3([l[0] + r[0], l[1] + r[1], l[2] + r[2]])
-            }
-            _ => {
-                // panic
-                unreachable!("wow");
-            }
-        }
-    }, |x, y| {
-        Operation::Add(x, y)
-    });
+        },
+        |x, y| Operation::Add(x, y),
+    );
 }
-
-
-
-

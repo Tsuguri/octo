@@ -1,6 +1,6 @@
 use parser::ast::*;
-use std::clone::Clone as _;
 use std::cell::RefCell;
+use std::clone::Clone as _;
 
 #[derive(Debug)]
 pub struct Function {
@@ -39,19 +39,20 @@ impl<'a> Scope<'a> {
     }
     pub fn variable_exists(&self, name: &str) -> Option<Span<ByteIndex>> {
         match self.variables.borrow().iter().find(|x| x.name == name) {
-            None => {
-                match self.parent {
-                    None => None,
-                    Some(parent) => parent.variable_exists(name),
-                }
-            }
-            Some(x) => {
-                Some(x.span)
-            }
+            None => match self.parent {
+                None => None,
+                Some(parent) => parent.variable_exists(name),
+            },
+            Some(x) => Some(x.span),
         }
     }
 
-    pub fn create_variable(&mut self, name: &str, typ: Type, span: Span<ByteIndex>) -> Result<(), Span<ByteIndex>> {
+    pub fn create_variable(
+        &mut self,
+        name: &str,
+        typ: Type,
+        span: Span<ByteIndex>,
+    ) -> Result<(), Span<ByteIndex>> {
         match self.variable_exists(name) {
             Some(span) => return Result::Err(span),
             None => {}
@@ -69,14 +70,10 @@ impl<'a> Scope<'a> {
         let mut borr = self.variables.borrow_mut();
         let variable = borr.iter_mut().find(|x| x.name == name);
         match variable {
-            None => {
-                match self.parent {
-                    None => None,
-                    Some(parent) => {
-                        parent.use_variable(name)
-                    }
-                }
-            }
+            None => match self.parent {
+                None => None,
+                Some(parent) => parent.use_variable(name),
+            },
             Some(x) => {
                 x.used = true;
                 Some(x.typ.clone())
@@ -97,11 +94,11 @@ impl<'a> Scope<'a> {
         }
     }
 
-//    pub fn add_function(&mut self, func: &GpuFunction) {
-//        self.functions.push(Function{
-//            name: func.name.val.to_owned(),
-//            arguments: func.arguments.clone(),
-//            results: func.results.iter().map(|x| x.typ.clone()).collect(),
-//        });
-//    }
+    //    pub fn add_function(&mut self, func: &GpuFunction) {
+    //        self.functions.push(Function{
+    //            name: func.name.val.to_owned(),
+    //            arguments: func.arguments.clone(),
+    //            results: func.results.iter().map(|x| x.typ.clone()).collect(),
+    //        });
+    //    }
 }

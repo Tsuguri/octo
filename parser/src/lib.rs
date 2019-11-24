@@ -4,8 +4,8 @@ extern crate lalrpop_util;
 use std::convert::Into;
 
 pub use codespan;
-pub use codespan_reporting;
 use codespan::CodeMap;
+pub use codespan_reporting;
 use codespan_reporting::Diagnostic;
 use lalrpop_util::ParseError;
 
@@ -20,7 +20,6 @@ pub struct FailedParsing {
     pub errors: Vec<ParseErr>,
 }
 
-
 pub fn parse(src: &str, lex: bool) -> Result<ast::Pipeline, FailedParsing> {
     if lex {
         for lexeme in lexer::Lexer::new(src) {
@@ -32,9 +31,9 @@ pub fn parse(src: &str, lex: bool) -> Result<ast::Pipeline, FailedParsing> {
     let result = grammar::PipelineParser::new().parse(lexer);
     match result {
         Result::Ok(ast) => Result::Ok(ast),
-        Result::Err(error) => {
-            Result::Err(FailedParsing { errors: vec![error] })
-        }
+        Result::Err(error) => Result::Err(FailedParsing {
+            errors: vec![error],
+        }),
     }
 }
 
@@ -42,14 +41,12 @@ pub struct ErrWrap<'a> {
     pub err: &'a ParseErr,
 }
 
-
 macro_rules! error {
     ($message:expr; $from:expr, $to: expr) => {
         error!($message, lexer::span($from, $to))
     };
     ($message:expr, $span:expr) => {
-        Diagnostic::new_error($message)
-            .with_label(codespan_reporting::Label::new_primary($span))
+        Diagnostic::new_error($message).with_label(codespan_reporting::Label::new_primary($span))
     };
     ($message:expr, $span:expr, $label:expr) => {
         Diagnostic::new_error($message)
@@ -79,34 +76,41 @@ impl<'a> From<ErrWrap<'a>> for Diagnostic {
                             x => format!("Expected one of: {:?}, found \"{}\"", expected, x),
                         };
                         Diagnostic::new_error(message).with_label(
-                            codespan_reporting::Label::new_primary(lexer::span(*start, *end + 1)).with_message("Problem occurs here"),
+                            codespan_reporting::Label::new_primary(lexer::span(*start, *end + 1))
+                                .with_message("Problem occurs here"),
                         )
                     }
                 }
             }
-            ParseError::InvalidToken { location } => {
-                error!("Parser found invalid token."; *location, *location + 1)
-            }
-            ParseError::ExtraToken { token } => {
-                error!(format!("Parser found unexpected token: {}", token.1);token.0, token.2)
-            }
+            ParseError::InvalidToken { location } => error!("Parser found invalid token."; *location, *location + 1),
+            ParseError::ExtraToken { token } => error!(format!("Parser found unexpected token: {}", token.1);token.0, token.2),
             ParseError::User { error } => match error {
-                errors::LexicalError::LiteralFloatOverflow(span) =>
-                    error!("Float literal overflow", *span, "Consider changing this value"),
+                errors::LexicalError::LiteralFloatOverflow(span) => error!(
+                    "Float literal overflow",
+                    *span, "Consider changing this value"
+                ),
 
-                errors::LexicalError::LiteralIntOverflow(span) =>
-                    error!("Int literal overflow", *span, "Consider changing this value"),
+                errors::LexicalError::LiteralIntOverflow(span) => error!(
+                    "Int literal overflow",
+                    *span, "Consider changing this value"
+                ),
 
-                errors::LexicalError::OpenComment(span) =>
-                    error!("Unclosed comment", *span, "Not closed comment starting here"),
+                errors::LexicalError::OpenComment(span) => error!(
+                    "Unclosed comment",
+                    *span, "Not closed comment starting here"
+                ),
 
                 errors::LexicalError::IsVeryBad => panic!("Very bad error, please fill bug report"),
-                errors::LexicalError::OpenStringLiteral(span) =>
-                    error!("Parser found not closed string literal", *span, "Not closed literal starts here."),
+                errors::LexicalError::OpenStringLiteral(span) => error!(
+                    "Parser found not closed string literal",
+                    *span, "Not closed literal starts here."
+                ),
 
-                errors::LexicalError::UnexpectedCharacter(span, character) =>
-                    error!(format!("Parser found unexpected character: {}", character), *span),
-            }
+                errors::LexicalError::UnexpectedCharacter(span, character) => error!(
+                    format!("Parser found unexpected character: {}", character),
+                    *span
+                ),
+            },
         }
     }
 }
@@ -172,17 +176,14 @@ mod tests {
         assert!(fast_block("{if(i){}}"));
         assert!(fast_block("{if(i){}else {}}"));
 
-
-
-//
-//        assert!(result.is_ok());
-//        let result = result.unwrap();
-//        match result {
-//            ast::Literal::Int(val) =>{
-//                assert!(val.val == 2);
-//            },
-//            _ => assert!(false),
-//        }
+        //
+        //        assert!(result.is_ok());
+        //        let result = result.unwrap();
+        //        match result {
+        //            ast::Literal::Int(val) =>{
+        //                assert!(val.val == 2);
+        //            },
+        //            _ => assert!(false),
+        //        }
     }
 }
-

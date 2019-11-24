@@ -1,37 +1,31 @@
+mod code;
 mod emit_ir_from_ast;
-mod optimalizations;
 mod emit_spirv;
 mod ir;
-mod code;
+mod optimalizations;
 mod split_passes;
 
-use super::ast as ast;
+use super::ast;
 
-pub use emit_spirv::emit_spirv as emit_spirv;
 pub use emit_ir_from_ast::emit as emit_ir;
+pub use emit_spirv::emit_spirv;
 pub use optimalizations::*;
 pub use split_passes::split as split_passes;
-pub use split_passes::{ShaderDef, PipelineDef};
+pub use split_passes::{PipelineDef, ShaderDef};
 
 use std::collections::HashMap;
 
 use std::io::Write;
 
-
-use ir::{
-    Address,
-    Operation,
-    PipelineIR,
-};
+use ir::{Address, Operation, PipelineIR};
 
 /// debug data flow graph
 pub fn emit_graph(code: &PipelineIR, path: &str) {
     let mut graph = petgraph::Graph::<String, &str>::new();
     let mut nodes: HashMap<Address, petgraph::graph::NodeIndex<u32>> = HashMap::new();
 
-    let id =graph.add_node("bad node".to_string());
+    let id = graph.add_node("bad node".to_string());
     nodes.insert(0, id);
-
 
     for node in code.operations() {
         let id = graph.add_node(node.1.to_string());
@@ -43,7 +37,7 @@ pub fn emit_graph(code: &PipelineIR, path: &str) {
         let node_idx = nodes[&node.0];
         use Operation::*;
         match &node.1 {
-            Store(a)=>{
+            Store(a) => {
                 let l = nodes[a];
                 graph.add_edge(l, node_idx, "");
             }
@@ -149,7 +143,7 @@ pub fn emit_graph(code: &PipelineIR, path: &str) {
                 let l = nodes[l];
                 graph.add_edge(l, node_idx, "");
             }
-            JumpIfElse(a, b, c)=>{
+            JumpIfElse(a, b, c) => {
                 let cond = nodes[a];
                 let tru = nodes[b];
                 let fals = nodes[c];
@@ -158,14 +152,14 @@ pub fn emit_graph(code: &PipelineIR, path: &str) {
                 graph.add_edge(node_idx, tru, "true");
                 graph.add_edge(node_idx, fals, "false");
             }
-            Label=>{
-                last_label=node.0;
+            Label => {
+                last_label = node.0;
             }
             _ => {}
         }
     }
 
-    let dot =petgraph::dot::Dot::with_config(&graph, &[]);
+    let dot = petgraph::dot::Dot::with_config(&graph, &[]);
 
     let mut file = std::fs::File::create(path).unwrap();
     file.write_all(format!("{}", dot).as_bytes()).unwrap();

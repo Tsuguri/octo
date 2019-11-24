@@ -26,7 +26,6 @@ pub enum InputType {
     PipelineTexture(TextureId),
 }
 
-
 #[derive(Serialize, Deserialize, PartialEq)]
 pub enum TextureSize {
     Original,
@@ -41,7 +40,6 @@ pub struct ShaderPass {
     pub output: OutputType,
     pub shader: ShaderId,
     pub dependencies: Option<Vec<PassId>>,
-
 }
 
 #[derive(Serialize, Deserialize)]
@@ -58,7 +56,7 @@ pub struct OctoModule {
 
 impl OctoModule {
     pub fn new() -> Self {
-        OctoModule{
+        OctoModule {
             name: "test_module".to_owned(),
             version: 0u32,
             fragment_shaders: HashMap::new(),

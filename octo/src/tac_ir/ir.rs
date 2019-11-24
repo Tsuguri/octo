@@ -19,7 +19,7 @@ impl PipelineIR {
         }
     }
 
-    pub fn with(code: Vec<Op>, prev: &Self)-> Self{
+    pub fn with(code: Vec<Op>, prev: &Self) -> Self {
         PipelineIR {
             code,
             inputs: prev.inputs.clone(),
@@ -31,7 +31,7 @@ impl PipelineIR {
         self.code.iter()
     }
 
-    pub fn take(self)-> (Vec<Op>, Vec<(ValueType, String)>, Vec<ValueType>) {
+    pub fn take(self) -> (Vec<Op>, Vec<(ValueType, String)>, Vec<ValueType>) {
         (self.code, self.inputs, self.outputs)
     }
 }
@@ -42,9 +42,7 @@ impl std::fmt::Debug for PipelineIR {
             writeln!(f, "{} = {:?}", op.0, op.1)?;
         }
         Result::Ok(())
-
     }
-
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -107,7 +105,7 @@ impl std::string::ToString for Operation {
             StoreBool(i) => format!("Bool({})", i),
             StoreVec2(i) => format!("Vec2({}, {})", i[0], i[1]),
             StoreVec3(i) => format!("Vec3({}, {}, {})", i[0], i[1], i[2]),
-            Store(..)=> "Store".to_string(),
+            Store(..) => "Store".to_string(),
             Add(..) => "Add".to_string(),
             Sub(..) => "Sub".to_string(),
             Mul(..) => "Mul".to_string(),
