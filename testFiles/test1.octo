@@ -5,13 +5,13 @@ pipeline main(one: vec4, two: vec4, three: vec4) -> (vec4){
     for(let i = 0; i<3; i=i+1){
         if (tmp) {
             return_val = return_val + one;
-        } //else {
-            //if (i == 1) {
-                //return_val = return_val + two;
-            //} else {
-                //return_val = return_val + three;
-            //}
-        //}
+        } else {
+            if (i == 1) {
+                return_val = return_val + two;
+            } else {
+                return_val = return_val + three;
+            }
+        }
     }
     return return_val;
 }

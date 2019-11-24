@@ -523,22 +523,23 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
 
             let spirv_type = self.ids.map_type(typ);
 
-            let new_address = self.value_map[&phi_record.new];
-            let old_address = self.value_map[&phi_record.old];
+            let new_address = self.map(phi_record.new);
+            let old_address = self.map(phi_record.old);
 
-            let first = self.value_map[&phi_record.label];
-            let second = self.value_map[&phi_record.old_label];
+            let first = self.map(phi_record.label);
+            let second = self.map(phi_record.old_label);
+
+            let ret_addr = self.map(ret);
 
             let id = self
                 .builder
                 .phi(
                     spirv_type,
-                    None,
+                    Some(ret_addr),
                     &[(new_address, first), (old_address, second)],
                 )
                 .unwrap();
 
-            self.value_map.insert(ret, id);
             self.type_map.insert(ret, typ);
         }
         println!("finished if else");

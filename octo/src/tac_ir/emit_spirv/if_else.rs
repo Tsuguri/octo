@@ -65,7 +65,6 @@ pub fn find_if_else<'b, I: std::iter::Iterator<Item = &'b Op>>(
 
     let false_code = if end_label != else_label {
         let mut false_code: Vec<(Address, Operation)> = vec![];
-        false_code.push((else_label, Operation::Label));
         loop {
             let op = match code.next() {
                 None => panic!("internal compiler error"),
