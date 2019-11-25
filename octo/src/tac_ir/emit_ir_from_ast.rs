@@ -270,5 +270,8 @@ fn emit_expression(exp: ast::Expression, code: &mut Code) -> Address {
             code.push(Operation::Shift(left_synced, right_address))
         }
         Scale(_scaled, _scale_by) => 0,
+        Invocation(..) => {
+            0
+        }
     }
 }

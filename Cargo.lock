@@ -445,6 +445,7 @@ dependencies = [
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "errors 0.0.1",
  "lalrpop-util 0.16.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "octo_runtime 0.0.1",
  "parser 0.0.1",

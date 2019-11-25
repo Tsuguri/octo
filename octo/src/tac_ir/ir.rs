@@ -61,6 +61,46 @@ pub struct PhiRecord {
     pub old: Address,
     pub old_label: Address,
 }
+
+#[derive(Debug, Copy, Clone)]
+pub enum StdFunction {
+    Round(Address),
+    Trunc(Address),
+    Abs(Address),
+    Sign(Address),
+    Floor(Address),
+    Ceil(Address),
+    Fract(Address),
+    Radians(Address),
+    Degrees(Address),
+    Sin(Address),
+    Cos(Address),
+    Tan(Address),
+    Asin(Address),
+    Acos(Address),
+    Atan(Address),
+    Sinh(Address),
+    Cosh(Address),
+    Tanh(Address),
+    Asinh(Address),
+    Acosh(Address),
+    Atanh(Address),
+    Atan2(Address),
+    Pow(Address, Address),
+    Exp(Address),
+    Log(Address),
+    Exp2(Address),
+    Log2(Address),
+    Sqrt(Address),
+    Min(Address),
+    Max(Address),
+    Clamp(Address),
+    Cross(Address),
+    Normalize(Address),
+    Reflect(Address, Address),
+    Refract(Address, Address),
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum Operation {
     Arg(usize),
@@ -86,6 +126,8 @@ pub enum Operation {
     Shift(Address, Address),
     Exit(Address, Address),
     Sync(Address),
+
+    Invoke(StdFunction),
 
     Phi(PhiRecord),
     JumpIfElse(Address, Address, Address),
@@ -121,6 +163,7 @@ impl std::string::ToString for Operation {
             Neg(..) => "Neg".to_string(),
             Exit(..) => "Exit".to_string(),
             Sync(..) => "Sync".to_string(),
+            Invoke(func) => "Std()".to_string(),
             JumpIfElse(..) => "JumpIfElse".to_string(),
             Jump(..) => "Jump".to_string(),
             LoopMerge(..) => "LoopMerge".to_string(),

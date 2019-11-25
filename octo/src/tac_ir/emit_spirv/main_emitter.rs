@@ -677,6 +677,9 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
                 let value_addr = self.value_map[&val];
                 self.ids.store_result(0, value_addr, self.builder);
             }
+            Operation::Invoke(function) => {
+                panic!("Not yet implemented");
+            }
             Operation::Phi(rec) => {
                 // emit phi
                 let mut phi_record = rec;

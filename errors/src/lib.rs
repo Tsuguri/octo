@@ -36,6 +36,7 @@ pub enum SemanticError {
     TypeMismatch(Sp, String, String),
     OperationTypeMismatch(String, Sp, String, Sp),
     ArgumentsNumberMismatch,
+    UnknownFunction(Sp, String, Sp, Vec<String>),
     NotAssignedReturnVariable(Sp, String),
     VariableRedefinition(String, Sp, Sp),
     LogicTypeMismatch(String, String, Sp),

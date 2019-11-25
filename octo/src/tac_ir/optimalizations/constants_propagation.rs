@@ -239,6 +239,9 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                     cons.push((res, Operation::Sync(new_addr)));
                 }
             }
+            Invoke(std) => {
+                panic!("not implemented");
+            }
             Shift(shifted, shift_by) => (|| {
                 let shifted = cons.map(shifted);
                 let shift_by = cons.map(shift_by);

@@ -5,6 +5,9 @@ use parser::ast::{Expression, Statement};
 
 use super::semantics::env::Scope;
 use parser::ast::Type;
+use lazy_static::lazy_static;
+
+use std::collections::HashMap;
 
 pub struct Diagnostics {
     pub errors: Vec<SemanticError>,
@@ -301,7 +304,80 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
             }
             value_type
         }
-        //        Scale(left, right)=> {},
-        _ => Type::Unknown,
+        Scale(_left, _right)=> {Type::Unknown},
+        Invocation(name, args) => {
+
+            analyze_invocation(name, args, diagnostics, scope)
+        }
     }
+}
+
+// const BUILT_IN_FUNCTIONS_PROTOTYPES: phf::Map<&'static str, Vec<(Vec<Type>, Type)>> = phf_map! {
+//     "sin" => vec![(vec![], Type::Unknown)],
+// };
+
+lazy_static!{
+    static ref BUILTIN_PROTOTYPES: HashMap<&'static str, Vec<(Vec<Type>, Type)>> = {
+        let mut m = HashMap::new();
+        use Type::*;
+
+        {
+            //sin
+            let protos = vec![
+                (vec![Float], Float),
+                (vec![Vec2], Vec2),
+                (vec![Vec3], Vec3)
+            ];
+            m.insert("sin", protos);
+        }
+        
+        m
+    };
+}
+
+fn match_prototype(types: Vec<Type>, prototypes: &Vec<(Vec<Type>, Type)>)-> Option<usize>{
+    for (id, proto) in prototypes.iter().enumerate() {
+        if types.len() != proto.0.len(){
+            continue;
+        }
+
+        let not_fits = proto.0.iter().zip(types.iter()). map(|(x,y)| *x == *y).any(|x| !x);
+        if not_fits {
+            continue;
+        }
+        return Some(id)
+    }
+    None
+}
+
+fn analyze_invocation(name: &str, args: &mut Vec<Box<Expression>>, diagnostics: &mut Diagnostics, scope: &Scope)-> Type {
+
+    let mut types = Vec::with_capacity(args.len());
+    for arg in args {
+        let typ = analyze_expression(arg, diagnostics, scope);
+        types.push(typ);
+    }
+
+    match BUILTIN_PROTOTYPES.get(name){
+        None => (),
+        Some(x)=> {
+            // match x(&types){
+            //     Type::Unknown => {
+            //         // error
+            //             diagnostics.err(SemanticError::TypeMismatch(
+            //                 vec.span(),
+            //                 "Vec2".to_owned(),
+            //                 vec_type.to_string(),
+            //             ));
+            //         return Type::Unknown;
+            //     }
+            //     x =>{
+            //         return x;
+            //     }
+            // }
+        }
+    }
+
+    // match user functions here
+    Type::Unknown
 }

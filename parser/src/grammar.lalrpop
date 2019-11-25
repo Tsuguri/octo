@@ -155,7 +155,7 @@ Primitive: Box<ast::Expression> = {
     "shift" "(" <e1:Expression> "," <e2:Expression> ")" => Box::new(ast::Expression::Shift(e1, e2)),
     "scale" "(" <e1:Expression> "," <e2:Expression> ")" => Box::new(ast::Expression::Scale(e1, e2)),
     "(" <e:Expression> ")" => e,
-    //<i:"ident"> "("<args: Comma<Expression>> ")" => Box::new(ast::Expression::Invocation(i, args)),
+    <i:"ident"> "("<args: Comma<Expression>> ")" => Box::new(ast::Expression::Invocation(i, args)),
     <l:@L> <id:"ident"> <r:@R> => Box::new(ast::Expression::Variable(ast::Variable::new(Sp::from_loc(id, l, r)))),
 }
 
