@@ -1,5 +1,11 @@
 use super::ast;
-use super::ir::{Address, ConstantValue, Operation, PipelineIR};
+use super::ir::{
+    Address, 
+    ConstantValue, 
+    Operation, 
+    PipelineIR,
+    StdFunction,
+};
 
 use super::code::{Code, PhiCollection};
 
@@ -270,8 +276,32 @@ fn emit_expression(exp: ast::Expression, code: &mut Code) -> Address {
             code.push(Operation::Shift(left_synced, right_address))
         }
         Scale(_scaled, _scale_by) => 0,
-        Invocation(..) => {
-            0
+        Invocation(name, exps) => {
+            let mut addresses = Vec::with_capacity(exps.len());
+            for exp in exps {
+                addresses.push(emit_expression(*exp, code));
+            }
+            emit_invocation(&name, addresses, code)
         }
     }
+}
+
+fn emit_invocation(name: &str, addresses: Vec<Address>, code: &mut Code) -> Address{
+    use StdFunction::*;
+    let a = addresses;
+    let op = match name {
+        "round"=> {
+            assert!(a.len()==1);
+            Some(Round(a[0]))
+        }
+        "trunc" =>{
+            assert!(a.len()==1);
+            Some(Trunc(a[0]))
+        }
+        _=> None
+    };
+    if op.is_some() {
+        return code.push(Operation::Invoke(op.unwrap()));
+    }
+    0
 }

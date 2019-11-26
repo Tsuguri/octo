@@ -9,6 +9,8 @@ use lazy_static::lazy_static;
 
 use std::collections::HashMap;
 
+use super::prototypes::{match_prototype, PrototypeMatchError};
+
 pub struct Diagnostics {
     pub errors: Vec<SemanticError>,
     pub warnings: Vec<SemanticWarning>,
@@ -335,20 +337,6 @@ lazy_static!{
     };
 }
 
-fn match_prototype(types: Vec<Type>, prototypes: &Vec<(Vec<Type>, Type)>)-> Option<usize>{
-    for (id, proto) in prototypes.iter().enumerate() {
-        if types.len() != proto.0.len(){
-            continue;
-        }
-
-        let not_fits = proto.0.iter().zip(types.iter()). map(|(x,y)| *x == *y).any(|x| !x);
-        if not_fits {
-            continue;
-        }
-        return Some(id)
-    }
-    None
-}
 
 fn analyze_invocation(name: &str, args: &mut Vec<Box<Expression>>, diagnostics: &mut Diagnostics, scope: &Scope)-> Type {
 
@@ -357,27 +345,22 @@ fn analyze_invocation(name: &str, args: &mut Vec<Box<Expression>>, diagnostics: 
         let typ = analyze_expression(arg, diagnostics, scope);
         types.push(typ);
     }
+    match match_prototype(name, &types) {
+        Ok(val) => return val,
+        Err(e) => {
+            match e {
+                PrototypeMatchError::NameNotFound =>{
+                    //emit error
 
-    match BUILTIN_PROTOTYPES.get(name){
-        None => (),
-        Some(x)=> {
-            // match x(&types){
-            //     Type::Unknown => {
-            //         // error
-            //             diagnostics.err(SemanticError::TypeMismatch(
-            //                 vec.span(),
-            //                 "Vec2".to_owned(),
-            //                 vec_type.to_string(),
-            //             ));
-            //         return Type::Unknown;
-            //     }
-            //     x =>{
-            //         return x;
-            //     }
-            // }
+                },
+                PrototypeMatchError::NoMatchingPrototype =>{
+
+                    //emit error
+                }
+            }
         }
     }
 
-    // match user functions here
+    // check user functions here
     Type::Unknown
 }

@@ -3,6 +3,7 @@
 pub mod semantics;
 mod static_analysis;
 mod tac_ir;
+mod prototypes;
 
 use std::fs::File;
 use std::io::Read;

@@ -1,0 +1,13 @@
+---
+- name: "sin"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "cos"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
