@@ -133,12 +133,13 @@ pub enum Expression {
     Or(Box<Expression>, Box<Expression>),
     Shift(Box<Expression>, Box<Expression>),
     Scale(Box<Expression>, Box<Expression>),
-    Invocation(String, Vec<Box<Expression>>),
+    Invocation(Spanned<String>, Vec<Box<Expression>>),
 }
 
 fn concat_spans(span1: Span<ByteIndex>, span2: Span<ByteIndex>) -> Span<ByteIndex> {
     Span::new(span1.start().into(), span2.end().into())
 }
+
 impl Expression {
     pub fn span(&self) -> Span<ByteIndex> {
         use Expression::*;

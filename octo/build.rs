@@ -60,20 +60,28 @@ use askama::Template; // bring trait in scope
 
 #[derive(Template)] // this will generate the code...
 #[template(path = "protos.rs", escape="none")]
-struct PrototypesTemplate {
-    data: Funcs,
+struct PrototypesTemplate<'a> {
+    data: &'a Funcs,
+}
+
+#[derive(Template)] // this will generate the code...
+#[template(path = "emit_builtin.rs", escape="none")]
+struct BuiltinEmitTemplates<'a> {
+    data: &'a Funcs,
 }
 fn main() {
-    let out_path = "src/prototypes/protos.rs";
     let in_path = "src/prototypes/protos.yaml";
 
 
     let prototypes_list_data = std::fs::read_to_string(&in_path).unwrap();
     let protos: Funcs = serde_yaml::from_str(&prototypes_list_data).unwrap();
 
-    let template = PrototypesTemplate {data: protos};
+    let out_path = "src/prototypes/protos.rs";
+    let template = PrototypesTemplate {data: &protos};
+    std::fs::write(&out_path, &template.render().unwrap());
 
-    // write stuff
+    let out_path = "src/tac_ir/emit_builtins.rs";
+    let template = BuiltinEmitTemplates{data: &protos};
     std::fs::write(&out_path, &template.render().unwrap());
 
 }

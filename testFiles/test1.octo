@@ -1,6 +1,8 @@
 pipeline main(one: vec4, two: vec4, three: vec4) -> (vec4){
     let return_val = one;
     let tmp = one == one;
+    let intoo = 1;
+    let somethin = vec2(1.0, 2.0);
     let tmp2 = sin(one);
     return_val = return_val - one;
     for(let i = 0; i<3; i=i+1){

@@ -102,6 +102,23 @@ impl From<ErrorWrap> for Diagnostic {
                     )),
                 )
             }
+            SemanticError::UnknownFunction(name, span) => {
+                Diagnostic::new_error(format!(
+                    "Function {} was not found in current scope", name
+                ))
+                .with_label(
+                    codespan_reporting::Label::new_primary(span).with_message("Faulty invocation found here")
+                )
+            }
+            SemanticError::ArgumentsMismatch(name, span, _possible) => {
+                // ignore possible prototypes for now...
+                Diagnostic::new_error(format!(
+                    "No prototype of function {} accepts given argument types.", name
+                ))
+                .with_label(
+                    codespan_reporting::Label::new_primary(span).with_message("Faulty invocation found here")
+                )
+            }
             _ => Diagnostic::new_error(format!("error is not implemented...")),
         }
     }

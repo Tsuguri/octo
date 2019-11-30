@@ -74,7 +74,7 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                 //cons.insert(res, addr);
                 cons.push((res, op));
             }
-            LoopMerge(a, b) => {
+            LoopMerge(..) => {
                 cons.push((res, op));
             }
             StoreVec3(val) => {
@@ -91,6 +91,15 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
             }
             StoreBool(val) => {
                 cons.push_constant(res, ConstantValue::Bool(val));
+            }
+            ConstructVec2(..) => {
+                panic!("not implemented");
+            }
+            ConstructVec3(..) => {
+                panic!("not implemented");
+            }
+            Extract(..)=>{
+                panic!("not implemented");
             }
             Store(addr) => {
                 let new_addr = cons.map(addr);
@@ -239,7 +248,7 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                     cons.push((res, Operation::Sync(new_addr)));
                 }
             }
-            Invoke(std) => {
+            Invoke(..) => {
                 panic!("not implemented");
             }
             Shift(shifted, shift_by) => (|| {

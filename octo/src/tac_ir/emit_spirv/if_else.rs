@@ -13,7 +13,7 @@ pub struct IfElseCode {
 }
 
 pub fn find_if_else<'b, I: std::iter::Iterator<Item = &'b Op>>(
-    ret: Address,
+    _ret: Address,
     op: Operation,
     code: &mut PeekableCode<'b, I>,
 ) -> IfElseCode {
