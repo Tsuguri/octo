@@ -1,4 +1,60 @@
 ---
+- name: "round"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "trunc"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "abs"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+    - Int
+- name: "sign"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+    - Int
+- name: "floor"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "ceil"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "fract"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "radians"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "degrees"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
 - name: "sin"
   pass_through:
     - Float
@@ -6,6 +62,113 @@
     - Vec3
     - Vec4
 - name: "cos"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "tan"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "asin"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "acos"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "atan"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "sinh"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "cosh"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "tanh"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "asinh"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "acosh"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "atanh"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "atan2"
+- name: "pow"
+- name: "exp"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "log"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "exp2"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "log2"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "sqrt"
+  pass_through:
+    - Float
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "min"
+- name: "max"
+- name: "clamp"
+- name: "length"
+  pass_through:
+    - Vec2
+    - Vec3
+    - Vec4
+- name: "cross"
+- name: "normalize"
   pass_through:
     - Float
     - Vec2

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use parser::ast::Type;
 
 pub enum PrototypeMatchError{
@@ -14,6 +13,15 @@ pub fn match_prototype(name: &str, args: &Vec<Type>) -> Result<Type, PrototypeMa
     }
 }
 
+pub fn get_prototypes(name: &str) -> Vec<Vec<Type>> {
+    match name { {% for func in data %}
+        "{{ func.name }}"=> prototypes_{{func.name}}(),{% endfor %}
+        _=>{
+            return vec![];
+        }
+    }
+}
+
 {% for func in data%}
 const PASS_THROUGH_{{func.name|upper}}: [Type; {{func.pass_through.len()}}] = [
     {% for typ in func.pass_through %}
@@ -25,5 +33,9 @@ fn match_{{func.name}}(args: &Vec<Type>)-> Result<Type, PrototypeMatchError> {
         return Result::Ok(args[0]);
     }
     Result::Err(PrototypeMatchError::NoMatchingPrototype)
+}
+
+fn prototypes_{{func.name}}() -> Vec<Vec<Type>> {
+    PASS_THROUGH_{{func.name|upper}}.iter().map(|x| vec![*x]).collect()
 }
 {% endfor%}

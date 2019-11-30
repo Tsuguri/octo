@@ -109,7 +109,7 @@ fn emit_single_shader(info: ShaderDef) -> Vec<u32> {
 
     let mut module = Builder::new();
     module.capability(spirv::Capability::Shader);
-    let _glsl = module.ext_inst_import("GLSL.std.450");
+    let glsl = module.ext_inst_import("GLSL.std.450");
     module.memory_model(spirv::AddressingModel::Logical, spirv::MemoryModel::GLSL450);
 
     let mut ids = SpirvIds::new();
@@ -147,6 +147,7 @@ fn emit_single_shader(info: ShaderDef) -> Vec<u32> {
         &mut ids,
         &mut module,
         info.input_type.clone(),
+        glsl,
         info.code.iter(),
     );
 

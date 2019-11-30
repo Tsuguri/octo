@@ -1,6 +1,6 @@
 use super::ast::Pipeline as IncomingIR;
 use super::ast::Pipeline as OutgoingIR;
-use errors::{SemanticError, SemanticWarning};
+use errors::{SemanticError, SemanticWarning, Sp};
 use parser::ast::{Expression, Statement};
 
 use super::semantics::env::Scope;
@@ -9,7 +9,7 @@ use lazy_static::lazy_static;
 
 use std::collections::HashMap;
 
-use super::prototypes::{match_prototype, PrototypeMatchError};
+use super::prototypes::{match_prototype, PrototypeMatchError, get_prototypes};
 
 pub struct Diagnostics {
     pub errors: Vec<SemanticError>,
@@ -309,51 +309,74 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
         Scale(_left, _right)=> {Type::Unknown},
         Invocation(name, args) => {
 
-            analyze_invocation(name, args, diagnostics, scope)
+            analyze_invocation(&name.val, name.span, args, diagnostics, scope)
         }
     }
 }
 
-// const BUILT_IN_FUNCTIONS_PROTOTYPES: phf::Map<&'static str, Vec<(Vec<Type>, Type)>> = phf_map! {
-//     "sin" => vec![(vec![], Type::Unknown)],
-// };
-
-lazy_static!{
-    static ref BUILTIN_PROTOTYPES: HashMap<&'static str, Vec<(Vec<Type>, Type)>> = {
-        let mut m = HashMap::new();
-        use Type::*;
-
-        {
-            //sin
-            let protos = vec![
-                (vec![Float], Float),
-                (vec![Vec2], Vec2),
-                (vec![Vec3], Vec3)
-            ];
-            m.insert("sin", protos);
-        }
-        
+lazy_static::lazy_static! {
+    static ref TYPE_SET: std::collections::HashSet<&'static str> = {
+        let mut m = std::collections::HashSet::new();
+        m.insert("vec2");
+        m.insert("vec3");
+        // m.insert("vec4");
         m
     };
 }
+ 
+fn match_constructor(name: &str, name_span: Sp, args: &Vec<Type>, diagnostics: &mut Diagnostics, scope: &Scope)-> Type {
+    match name {
+        "vec2"=> {
+            if args.len() ==2 && args[0] == Type::Float && args[1] ==Type::Float {
+                Type::Vec2
+            } else {
+                // error
+                Type::Unknown
+            }
+        },
+        "vec3"=> {
+            if args.len() ==3 && args[0] == Type::Float && args[1] ==Type::Float && args[2] == Type::Float {
+                Type::Vec2
+            } else {
+                // error
+                Type::Unknown
+            }
+        },
+        // "vec4"=> {
+        //         Type::Unknown
+        // }
+        _=>{unreachable!()}
+    }
 
-
-fn analyze_invocation(name: &str, args: &mut Vec<Box<Expression>>, diagnostics: &mut Diagnostics, scope: &Scope)-> Type {
+}
+fn analyze_invocation(name: &str, name_span: Sp, args: &mut Vec<Box<Expression>>, diagnostics: &mut Diagnostics, scope: &Scope)-> Type {
 
     let mut types = Vec::with_capacity(args.len());
     for arg in args {
         let typ = analyze_expression(arg, diagnostics, scope);
         types.push(typ);
     }
+    if TYPE_SET.contains(name){
+        println!("lolz");
+        return match_constructor(name, name_span, &types, diagnostics, scope);
+    }
     match match_prototype(name, &types) {
         Ok(val) => return val,
         Err(e) => {
             match e {
                 PrototypeMatchError::NameNotFound =>{
-                    //emit error
+                    diagnostics.err(SemanticError::UnknownFunction(
+                        name.to_owned(),
+                        name_span
+                    ));
 
                 },
                 PrototypeMatchError::NoMatchingPrototype =>{
+                    diagnostics.err(SemanticError::ArgumentsMismatch(
+                        name.to_owned(),
+                        name_span,
+                        get_prototypes(name).iter().map(|x| x.iter().map(|y| y.to_string()).collect()).collect()
+                    ));
 
                     //emit error
                 }

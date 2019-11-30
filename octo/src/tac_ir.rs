@@ -4,6 +4,7 @@ mod emit_spirv;
 mod ir;
 mod optimalizations;
 mod split_passes;
+mod emit_builtins;
 
 use super::ast;
 

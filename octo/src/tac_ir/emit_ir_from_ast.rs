@@ -6,6 +6,7 @@ use super::ir::{
     PipelineIR,
     StdFunction,
 };
+use super::emit_builtins::emit_builtin;
 
 use super::code::{Code, PhiCollection};
 
@@ -281,27 +282,43 @@ fn emit_expression(exp: ast::Expression, code: &mut Code) -> Address {
             for exp in exps {
                 addresses.push(emit_expression(*exp, code));
             }
-            emit_invocation(&name, addresses, code)
+            emit_invocation(&name.val, &addresses, code)
         }
     }
 }
 
-fn emit_invocation(name: &str, addresses: Vec<Address>, code: &mut Code) -> Address{
-    use StdFunction::*;
-    let a = addresses;
-    let op = match name {
-        "round"=> {
-            assert!(a.len()==1);
-            Some(Round(a[0]))
-        }
-        "trunc" =>{
-            assert!(a.len()==1);
-            Some(Trunc(a[0]))
-        }
-        _=> None
+lazy_static::lazy_static! {
+    static ref TYPE_SET: std::collections::HashSet<&'static str> = {
+        let mut m = std::collections::HashSet::new();
+        m.insert("vec2");
+        m.insert("vec3");
+        //m.insert("vec4");
+        m
     };
-    if op.is_some() {
-        return code.push(Operation::Invoke(op.unwrap()));
+}
+
+fn emit_constructor(name: &str, addresses: &Vec<Address>, code: &mut Code) -> Address{
+    match name {
+        "vec2"=>{
+            assert!(addresses.len()==2);
+            code.push(Operation::ConstructVec2(addresses[0], addresses[1]))
+        }
+        "vec3"=>{
+            assert!(addresses.len()==3);
+            code.push(Operation::ConstructVec3(addresses[0], addresses[1], addresses[2]))
+        }
+        // "vec4"=>{
+        //     assert!(addresses.len()==4);
+        //     code.push(Operation::ConstructVec4(addresses[0], addresses[1], address[2], address[3]))
+        // }
+        _=>panic!("not implemented")
     }
-    0
+}
+fn emit_invocation(name: &str, addresses: &Vec<Address>, code: &mut Code) -> Address{
+    if TYPE_SET.contains(name) {
+        println!("hehe");
+        emit_constructor(name, addresses, code)
+    } else {
+        emit_builtin(name, addresses, code).unwrap()
+    }
 }

@@ -16,7 +16,7 @@ pub struct LoopCode {
 }
 
 pub fn find_loop<'b, I: std::iter::Iterator<Item = &'b Op>>(
-    ret: Address,
+    _ret: Address,
     op: Operation,
     code: &mut PeekableCode<'b, I>,
     current_block: Address,
@@ -42,7 +42,7 @@ pub fn find_loop<'b, I: std::iter::Iterator<Item = &'b Op>>(
 
     let mut condition_code = vec![];
     let mut body_label = Default::default();
-    let mut condition_value = Default::default();
+    let condition_value;
     loop {
         let op = match code.next() {
             None => panic!("internal compiler error"),
@@ -61,7 +61,6 @@ pub fn find_loop<'b, I: std::iter::Iterator<Item = &'b Op>>(
         }
     }
     let body_label = body_label;
-    let condition_value = condition_value;
 
     let v = code.next().unwrap();
     match v.1 {
