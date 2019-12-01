@@ -4,17 +4,8 @@ pipeline main(one: vec4, two: vec4, three: vec4) -> (vec4){
     let intoo = 1;
     let somethin = vec2(1.0, 2.0);
     let tmp2 = sin(one);
-    return_val = return_val - one;
-    for(let i = 0; i<3; i=i+1){
-        if (tmp) {
-            return_val = return_val + one;
-        } else {
-            if (i == 1) {
-                return_val = return_val + two;
-            } else {
-                return_val = return_val + three;
-            }
-        }
-    }
-    return return_val;
+    let some_vec3 = (one + two).rgb;
+    let sth14 = vec4(1.0, 0.0, 1.0, 1.0);
+
+    return one;
 }

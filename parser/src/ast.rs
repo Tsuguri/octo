@@ -114,6 +114,7 @@ pub enum Statement {
     IfElse(Box<Expression>, Block, Option<Block>),
 }
 
+
 #[derive(Debug)]
 pub enum Expression {
     Variable(Variable),
@@ -134,7 +135,7 @@ pub enum Expression {
     Shift(Box<Expression>, Box<Expression>),
     Scale(Box<Expression>, Box<Expression>),
     Invocation(Spanned<String>, Vec<Box<Expression>>),
-    AccessChain(Box<Expression>, Vec<Spanned<String>>),
+    Access(Box<Expression>, Spanned<String>),
 }
 
 fn concat_spans(span1: Span<ByteIndex>, span2: Span<ByteIndex>) -> Span<ByteIndex> {

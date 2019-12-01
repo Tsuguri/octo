@@ -145,6 +145,19 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         self.set_type(ret, ValueType::Vec3);
     }
 
+    fn emit_construct_vec4(&mut self, addr1: Address, addr2: Address, addr3: Address, addr4: Address, ret: Address){
+        let ret_spirv = self.map(ret);
+        let x_spirv = self.map(addr1);
+        let y_spirv = self.map(addr2);
+        let z_spirv = self.map(addr3);
+        let w_spirv = self.map(addr4);
+
+        let typ = self.ids.map_type(ValueType::Vec4);
+
+        self.builder.composite_construct(typ, Some(ret_spirv), &[x_spirv, y_spirv, z_spirv, w_spirv]).unwrap();
+        self.set_type(ret, ValueType::Vec4);
+    }
+
     fn emit_extract(&mut self, vec_addr: Address, id: usize, ret: Address) {
         let ret_spirv = self.map(ret);
         let vec_spirv = self.map(vec_addr);
@@ -765,6 +778,9 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             Operation::ConstructVec3(addr1, addr2, addr3) => {
                 self.emit_construct_vec3(addr1, addr2, addr3, ret);
             }
+            Operation::ConstructVec4(addr1, addr2, addr3, addr4) => {
+                self.emit_construct_vec4(addr1, addr2, addr3, addr4, ret);
+            }
             Operation::ExtractComponent(vec_addr, id) => {
                 self.emit_extract(vec_addr, id, ret);
             }
@@ -845,6 +861,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             Operation::StoreFloat(..) => (),
             Operation::StoreVec2(..) => (),
             Operation::StoreVec3(..) => (),
+            Operation::StoreVec4(..) => (),
             Operation::StoreBool(..) => (),
 
             Operation::Shift(..) => {

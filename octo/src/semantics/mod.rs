@@ -119,6 +119,14 @@ impl From<ErrorWrap> for Diagnostic {
                     codespan_reporting::Label::new_primary(span).with_message("Faulty invocation found here")
                 )
             }
+            SemanticError::NoField(type_name, expression_span, field_name) => {
+                Diagnostic::new_error(format!(
+                    "Expression of type {} has no field named \"{}\"", type_name, field_name
+                ))
+                .with_label(
+                    codespan_reporting::Label::new_primary(expression_span).with_message(format!("Expression has type {}", type_name))
+                )
+            }
             _ => Diagnostic::new_error(format!("error is not implemented...")),
         }
     }

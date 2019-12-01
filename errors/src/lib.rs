@@ -42,6 +42,8 @@ pub enum SemanticError {
     LogicTypeMismatch(String, String, Sp),
     UnknownFunction(String, Sp),
     ArgumentsMismatch(String, Sp, Vec<Vec<String>>),
+    // type name, variable span, field name
+    NoField(String, Sp, String),
 }
 
 #[derive(Debug)]

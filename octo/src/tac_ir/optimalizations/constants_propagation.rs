@@ -77,11 +77,14 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
             LoopMerge(..) => {
                 cons.push((res, op));
             }
+            StoreVec2(val) => {
+                cons.push_constant(res, ConstantValue::Vec2(val));
+            }
             StoreVec3(val) => {
                 cons.push_constant(res, ConstantValue::Vec3(val));
             }
-            StoreVec2(val) => {
-                cons.push_constant(res, ConstantValue::Vec2(val));
+            StoreVec4(val) => {
+                cons.push_constant(res, ConstantValue::Vec4(val));
             }
             StoreInt(val) => {
                 cons.push_constant(res, ConstantValue::Int(val));
@@ -96,6 +99,9 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                 panic!("not implemented");
             }
             ConstructVec3(..) => {
+                panic!("not implemented");
+            }
+            ConstructVec4(..) => {
                 panic!("not implemented");
             }
             ExtractComponent(..)=>{
@@ -118,6 +124,7 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                         Int(val) => Int(-val),
                         Vec2([v1, v2]) => Vec2([-v1, -v2]),
                         Vec3([v1, v2, v3]) => Vec3([-v1, -v2, -v3]),
+                        Vec4([v1, v2, v3, v4]) => Vec4([-v1, -v2, -v3, -v4]),
                         Bool(val) => Bool(!val),
                     };
                     cons.push_constant(res, c);

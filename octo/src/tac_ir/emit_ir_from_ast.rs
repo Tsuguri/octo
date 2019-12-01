@@ -284,6 +284,9 @@ fn emit_expression(exp: ast::Expression, code: &mut Code) -> Address {
             }
             emit_invocation(&name.val, &addresses, code)
         }
+        Access(value, field) => {
+            emit_access(*value, field.val, code)
+        }
     }
 }
 
@@ -292,9 +295,37 @@ lazy_static::lazy_static! {
         let mut m = std::collections::HashSet::new();
         m.insert("vec2");
         m.insert("vec3");
-        //m.insert("vec4");
+        m.insert("vec4");
         m
     };
+}
+
+fn get_field(field: char, value: Address, code: &mut Code) -> Address {
+    let id = match field {
+        'r' | 'x' | 'u' => 0,
+        'g' | 'y' | 'v' => 1,
+        'b' | 'z' => 2,
+        'a' | 'w' => 3,
+        _ => unreachable!()
+    };
+
+    code.push(Operation::ExtractComponent(value, id))
+}
+
+fn emit_access(value: ast::Expression, field: String, code: &mut Code) -> Address {
+    let value_address = emit_expression(value, code);
+    let extracted_components = field.chars().map(|x| get_field(x, value_address, code)).collect::<Vec<_>>();
+
+    match extracted_components.len() {
+        1 => extracted_components[0],
+        2 => {
+            code.push(Operation::ConstructVec2(extracted_components[0], extracted_components[1]))
+        },
+        3 => {
+            code.push(Operation::ConstructVec3(extracted_components[0], extracted_components[1], extracted_components[2]))
+        },
+        _ => unreachable!()
+    }
 }
 
 fn emit_constructor(name: &str, addresses: &Vec<Address>, code: &mut Code) -> Address{
@@ -307,10 +338,10 @@ fn emit_constructor(name: &str, addresses: &Vec<Address>, code: &mut Code) -> Ad
             assert!(addresses.len()==3);
             code.push(Operation::ConstructVec3(addresses[0], addresses[1], addresses[2]))
         }
-        // "vec4"=>{
-        //     assert!(addresses.len()==4);
-        //     code.push(Operation::ConstructVec4(addresses[0], addresses[1], address[2], address[3]))
-        // }
+        "vec4" => {
+            assert!(addresses.len()==4);
+            code.push(Operation::ConstructVec4(addresses[0], addresses[1], addresses[2], addresses[3]))
+        }
         _=>panic!("not implemented")
     }
 }

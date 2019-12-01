@@ -251,6 +251,7 @@ impl Code {
             Int(val) => self.push(Operation::StoreInt(val)),
             Vec2(val) => self.push(Operation::StoreVec2(val)),
             Vec3(val) => self.push(Operation::StoreVec3(val)),
+            Vec4(val) => self.push(Operation::StoreVec4(val)),
             Bool(val) => self.push(Operation::StoreBool(val)),
         };
         self.make_const(address, val);

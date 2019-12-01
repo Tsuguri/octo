@@ -68,6 +68,18 @@ Comma<T>: Vec<T> = {
         }
     }
 };
+Dot<T>: Vec<T> = {
+    <v:(<T> ".")*> <e:T> => {
+        let mut v = v;
+        v.push(e);
+        v
+    }
+};
+
+AccessChain: Vec<String> = {
+    <lol:Dot<"ident">> => lol,
+}
+
 
 pub Pipeline: ast::Pipeline = {
     "pipeline" <l:@L> <i:"ident"> <r:@R> "(" <args:Comma<Definition>> ")"
@@ -157,6 +169,7 @@ Primitive: Box<ast::Expression> = {
     "(" <e:Expression> ")" => e,
     <l:@L> <i:"ident"> <r:@R>"("<args: Comma<Expression>> ")" => Box::new(ast::Expression::Invocation(Sp::from_loc(i, l, r), args)),
     <l:@L> <id:"ident"> <r:@R> => Box::new(ast::Expression::Variable(ast::Variable::new(Sp::from_loc(id, l, r)))),
+    <p:Primitive> "." <l:@L> <field:"ident"> <r:@R> => Box::new(ast::Expression::Access(p, Sp::from_loc(field, l, r))),
 }
 
 Literal: ast::Literal = {

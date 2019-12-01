@@ -1,7 +1,7 @@
 use super::ast::Pipeline as IncomingIR;
 use super::ast::Pipeline as OutgoingIR;
 use errors::{SemanticError, SemanticWarning, Sp};
-use parser::ast::{Expression, Statement};
+use parser::ast::{Expression, Statement, Spanned};
 
 use super::semantics::env::Scope;
 use parser::ast::Type;
@@ -311,7 +311,105 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
 
             analyze_invocation(&name.val, name.span, args, diagnostics, scope)
         }
+        Access(val, field) => {
+            analyze_access(val, field, diagnostics, scope)
+        }
     }
+}
+
+fn analyze_access(exp: &mut Box<Expression>, field: &mut Spanned<String>, diagnostics: &mut Diagnostics, scope: &Scope) -> Type{
+    let value_type = analyze_expression(exp, diagnostics, scope);
+    //let name = field.val.clone();
+
+    let ret = match value_type {
+        Type::Unknown => Type::Unknown,
+        Type::Float =>{
+            // float has no fields
+            Type::Unknown
+        },
+        Type::Int => {
+            // int has no fields
+            Type::Unknown
+        }
+        Type::Bool => {
+            Type::Unknown
+        }
+        Type::Vec2 => {
+            match field.val.as_str() {
+                "x"=> Type::Float,
+                "y"=> Type::Float,
+                "r" => Type::Float,
+                "g" => Type::Float,
+                "u" => Type::Float,
+                "v" => Type::Float,
+                _=> Type::Unknown
+            }
+        }
+        Type::Vec3 => {
+            match field.val.as_str() {
+                "x"=> Type::Float,
+                "y"=> Type::Float,
+                "z"=> Type::Float,
+                "r" => Type::Float,
+                "g" => Type::Float,
+                "b" => Type::Float,
+                "xy"=>Type::Vec2,
+                "yx"=>Type::Vec2,
+                "xz"=>Type::Vec2,
+                "zx"=>Type::Vec2,
+                "yz"=>Type::Vec2,
+                "zy"=>Type::Vec2,
+                "rg"=>Type::Vec2,
+                "gr"=>Type::Vec2,
+                "rb"=>Type::Vec2,
+                "br"=>Type::Vec2,
+                "gb"=>Type::Vec2,
+                "bg"=>Type::Vec2,
+                _=> Type::Unknown
+            }
+        }
+        Type::Vec4 => {
+            match field.val.as_str() {
+                "x"=> Type::Float,
+                "y"=> Type::Float,
+                "z"=> Type::Float,
+                "w"=> Type::Float,
+                "r" => Type::Float,
+                "g" => Type::Float,
+                "b" => Type::Float,
+                "a" => Type::Float,
+                "xy"=>Type::Vec2,
+                "yx"=>Type::Vec2,
+                "xz"=>Type::Vec2,
+                "zx"=>Type::Vec2,
+                "yz"=>Type::Vec2,
+                "zy"=>Type::Vec2,
+                "rg"=>Type::Vec2,
+                "gr"=>Type::Vec2,
+                "rb"=>Type::Vec2,
+                "br"=>Type::Vec2,
+                "gb"=>Type::Vec2,
+                "bg"=>Type::Vec2,
+                "xyz"=>Type::Vec3,
+                "rgb"=>Type::Vec3,
+                _=> Type::Unknown
+            }
+        }
+        Type::Void => {
+            Type::Unknown
+        }
+    };
+    match ret {
+        Type::Unknown  if value_type != Type::Unknown => {
+            diagnostics.err(SemanticError::NoField(
+                value_type.to_string(),
+                exp.span(),
+                field.val.clone()
+            ));
+        }
+        _=>{}
+    };
+    ret
 }
 
 lazy_static::lazy_static! {
@@ -319,7 +417,7 @@ lazy_static::lazy_static! {
         let mut m = std::collections::HashSet::new();
         m.insert("vec2");
         m.insert("vec3");
-        // m.insert("vec4");
+        m.insert("vec4");
         m
     };
 }
@@ -336,15 +434,20 @@ fn match_constructor(name: &str, name_span: Sp, args: &Vec<Type>, diagnostics: &
         },
         "vec3"=> {
             if args.len() ==3 && args[0] == Type::Float && args[1] ==Type::Float && args[2] == Type::Float {
-                Type::Vec2
+                Type::Vec3
             } else {
                 // error
                 Type::Unknown
             }
         },
-        // "vec4"=> {
-        //         Type::Unknown
-        // }
+        "vec4" => {
+            if args.len() ==3 && args[0] == Type::Float && args[1] ==Type::Float && args[2] == Type::Float && args[3] == Type::Float {
+                Type::Vec4
+            } else {
+                // error
+                Type::Unknown
+            }
+        }
         _=>{unreachable!()}
     }
 
