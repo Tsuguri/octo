@@ -98,7 +98,10 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
             ConstructVec3(..) => {
                 panic!("not implemented");
             }
-            Extract(..)=>{
+            ExtractComponent(..)=>{
+                panic!("not implemented");
+            }
+            StoreComponent(..) => {
                 panic!("not implemented");
             }
             Store(addr) => {

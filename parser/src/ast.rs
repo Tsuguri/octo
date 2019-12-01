@@ -134,6 +134,7 @@ pub enum Expression {
     Shift(Box<Expression>, Box<Expression>),
     Scale(Box<Expression>, Box<Expression>),
     Invocation(Spanned<String>, Vec<Box<Expression>>),
+    AccessChain(Box<Expression>, Vec<Spanned<String>>),
 }
 
 fn concat_spans(span1: Span<ByteIndex>, span2: Span<ByteIndex>) -> Span<ByteIndex> {

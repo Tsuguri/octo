@@ -155,6 +155,19 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         self.set_type(ret, ValueType::Float);
     }
 
+    fn emit_store_component(&mut self, vec_addr: Address, id: usize, val: Address, ret: Address) {
+        let ret_spirv = self.map(ret);
+        let vec_spirv = self.map(vec_addr);
+        let val_spirv = self.map(val);
+
+        let return_type = self.get_single_type(vec_addr);
+        let typ = self.ids.map_type(return_type);
+
+        self.builder.composite_insert(typ, Some(ret_spirv), val_spirv, vec_spirv, &[id as u32]).unwrap();
+
+        self.set_type(ret, return_type);
+    }
+
     fn emit_algebraic<
         F: Fn(&mut Builder, SpirvAddress, Option<SpirvAddress>, SpirvAddress, SpirvAddress),
         F2: Fn(&mut Builder, SpirvAddress, Option<SpirvAddress>, SpirvAddress, SpirvAddress),
@@ -752,8 +765,11 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             Operation::ConstructVec3(addr1, addr2, addr3) => {
                 self.emit_construct_vec3(addr1, addr2, addr3, ret);
             }
-            Operation::Extract(vec_addr, id) => {
+            Operation::ExtractComponent(vec_addr, id) => {
                 self.emit_extract(vec_addr, id, ret);
+            }
+            Operation::StoreComponent(vec_addr, id, float_addr) => {
+                self.emit_store_component(vec_addr, id, float_addr, ret);
             }
             Operation::Add(left, right) => {
                 self.emit_add(left, right, ret);
