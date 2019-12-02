@@ -7,5 +7,8 @@ pipeline main(one: vec4, two: vec4, three: vec4) -> (vec4){
     let some_vec3 = (one + two).rgb;
     let sth14 = vec4(1.0, 0.0, 1.0, 1.0);
 
-    return one;
+    sth14.x = one.x;
+    sth14.xy = one.yz;
+
+    return sth14;
 }

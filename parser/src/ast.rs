@@ -106,12 +106,37 @@ pub struct Block {
 }
 
 #[derive(Debug)]
+pub enum ValueStorage {
+    Existing(Vec<Spanned<String>>),
+    Creation(Spanned<String>),
+}
+
+#[derive(Debug)]
 pub enum Statement {
     Expression(Box<Expression>),
-    Assignment(Box<Variable>, Box<Expression>, bool),
+    Assignment(ValueStorage, Box<Expression>),
     Return(Box<Expression>),
     For(Box<Statement>, Box<Expression>, Box<Statement>, Block),
     IfElse(Box<Expression>, Block, Option<Block>),
+}
+
+
+pub fn extract_access_chain(exp: Box<Expression>)-> Result<Vec<Spanned<String>>, ()> {
+    let mut exp = *exp;
+    match exp {
+        Expression::Access(exp2, field)=> {
+            let mut path = extract_access_chain(exp2)?;
+            path.push(field);
+            Result::Ok(path)
+        }
+        Expression::Variable(var) => {
+            Result::Ok(vec![var.identifier])
+        }
+        _=>{
+            Result::Err(())
+        }
+
+    }
 }
 
 

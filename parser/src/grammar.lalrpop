@@ -107,8 +107,15 @@ pub Op: ast::Statement = {
     "if" "(" <e:Expression> ")" <b:Block> <el:("else" <Block>)?> => ast::Statement::IfElse(e, b, el),
 }
 
+pub Storage: ast::ValueStorage ={
+    "let" <l:@L> <id:"ident"> <r:@R> => ast::ValueStorage::Creation(Sp::from_loc(id, l,r)),
+    <ac:Expression> => {
+        ast::ValueStorage::Existing(extract_access_chain(ac))
+    },
+}
+
 pub Statement: ast::Statement = {
-    <lr:"let"?> <l:@L> <id:"ident"> <r:@R> "=" <e:Expression> => ast::Statement::Assignment(Box::new(ast::Variable::new(Sp::from_loc(id, l, r))), e, match lr {Some(_)=> true, None =>false,}),
+    <st:Storage> "=" <e:Expression> => ast::Statement::Assignment(st, e),
     <e:Expression> => ast::Statement::Expression(e),
     "return" <l:@L> <e:Expression> <r:@R> => ast::Statement::Return(e),
 }

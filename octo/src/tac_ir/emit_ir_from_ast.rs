@@ -47,10 +47,41 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             let ret_add = emit_expression(*exp, code);
             code.exit(ret_add);
         }
-        ast::Statement::Assignment(var, exp, create) => {
+        ast::Statement::Assignment(storage,exp) => {
             let addr = emit_expression(*exp, code);
-            let addr = code.push(Operation::Store(addr));
-            code.store(&var.identifier.val, addr, create);
+            match storage {
+                ast::ValueStorage::Creation(name) => {
+                    let addr = code.push(Operation::Store(addr));
+                    code.store(&name.val, addr, true);
+                }
+                ast::ValueStorage::Existing(path) => {
+
+                    if path.len() ==1 {
+                        let addr = code.push(Operation::Store(addr));
+                        code.store(&path[0].val, addr, false);
+                    } else {
+                        if path.len() > 2 {
+                            panic!("nested field assignment expression is not supported yet");
+                        }
+                        let mut current_val = code.get(&path[0].val);
+
+                        let field_ids: Vec<_> = path[1].val.chars().map(|x| get_field_id(x)).collect();
+
+                        if field_ids.len() == 1 {
+                            current_val = code.push(Operation::StoreComponent(current_val, field_ids[0], addr));
+                        } else {
+                            // very primitive...
+                            let fields: Vec<_> = field_ids.iter().enumerate().map(|(i, field)| (field, code.push(Operation::ExtractComponent(addr, i)))).collect();
+                            for (field_id, component_addr) in fields{
+                                current_val = code.push(Operation::StoreComponent(current_val, *field_id, component_addr));
+                            }
+                        }
+
+                        code.store(&path[0].val, current_val, false);
+                    }
+                }
+
+            }
         }
         ast::Statement::For(stat, exp1, exp2, block) => {
             // initialization statement
@@ -300,15 +331,18 @@ lazy_static::lazy_static! {
     };
 }
 
-fn get_field(field: char, value: Address, code: &mut Code) -> Address {
-    let id = match field {
+fn get_field_id(field: char) -> Address {
+    match field {
         'r' | 'x' | 'u' => 0,
         'g' | 'y' | 'v' => 1,
         'b' | 'z' => 2,
         'a' | 'w' => 3,
         _ => unreachable!()
-    };
+    }
+}
 
+fn get_field(field: char, value: Address, code: &mut Code) -> Address {
+    let id = get_field_id(field);
     code.push(Operation::ExtractComponent(value, id))
 }
 

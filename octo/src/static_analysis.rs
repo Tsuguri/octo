@@ -1,7 +1,7 @@
 use super::ast::Pipeline as IncomingIR;
 use super::ast::Pipeline as OutgoingIR;
 use errors::{SemanticError, SemanticWarning, Sp};
-use parser::ast::{Expression, Statement, Spanned};
+use parser::ast::{Expression, Statement, Spanned, ValueStorage};
 
 use super::semantics::env::Scope;
 use parser::ast::Type;
@@ -65,48 +65,33 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
         Statement::Expression(ex) => {
             analyze_expression(ex, diagnostics, scope);
         }
-        Statement::Assignment(var, exp, create) => {
-            let typ = analyze_expression(exp, diagnostics, scope);
-            let name = var.identifier.val.clone();
+        Statement::Assignment(storage, exp) => {
 
-            // we want to create even if type is invalid. It will prevent cascading errors
-            if *create {
-                match scope.create_variable(&name, typ, var.identifier.span) {
-                    Result::Ok(()) => {}
-                    Err(err) => {
-                        diagnostics.err(SemanticError::VariableRedefinition(
-                            name,
-                            err,
-                            var.identifier.span,
-                        ));
+            let typ = analyze_expression(exp, diagnostics, scope);
+
+            match storage {
+                ValueStorage::Creation(name)=> {
+                    println!("creating {} with type {:?}", name.val, typ);
+                    match scope.create_variable(&name.val, typ, name.span) {
+                        Result::Ok(()) => {}
+                        Err(err) => {
+                            diagnostics.err(SemanticError::VariableRedefinition(
+                                name.val.clone(),
+                                err,
+                                name.span,
+                            ));
+                        }
                     }
+                    return;
+                },
+                ValueStorage::Existing(path)=>{
+                    analyze_access_path(path, diagnostics, scope);
                 }
-                return;
             }
 
             match typ {
                 Type::Unknown => return,
                 _ => {}
-            }
-
-            let variable = scope.use_variable(&name);
-            match variable {
-                Some(x) => {
-                    if x != typ {
-                        diagnostics.err(SemanticError::TypeMismatch(
-                            exp.span(),
-                            x.to_string(),
-                            typ.to_string(),
-                        ));
-                    }
-                }
-                None => {
-                    diagnostics.err(SemanticError::UndefinedIdentifier(
-                        var.identifier.span,
-                        name,
-                    ));
-                    return;
-                }
             }
         }
         Statement::Return(val) => {
@@ -317,11 +302,45 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
     }
 }
 
-fn analyze_access(exp: &mut Box<Expression>, field: &mut Spanned<String>, diagnostics: &mut Diagnostics, scope: &Scope) -> Type{
-    let value_type = analyze_expression(exp, diagnostics, scope);
-    //let name = field.val.clone();
+fn analyze_access_path(path: &Vec<Spanned<String>>, diagnostics: &mut Diagnostics, scope: &Scope) {
 
-    let ret = match value_type {
+    println!("{:#?}", path);
+    let first = path[0].val.clone();
+
+    let variable = scope.use_variable(&first);
+    let mut typ = match variable {
+        Some(x) => {
+            println!("type of {} is {:?}", first, x);
+            x
+        }
+        None => {
+            diagnostics.err(SemanticError::UndefinedIdentifier(
+                path[0].span,
+                path[0].val.clone(),
+            ));
+            return;
+        }
+    };
+
+    for (id, name) in path.iter().skip(1).enumerate() {
+        match analyze_field_access(typ, name) {
+            Err(_) => {
+                diagnostics.err(SemanticError::NoField(
+                    typ.to_string(),
+                    name.span,
+                    name.val.clone()
+                ));
+                return;
+            }
+            Ok(new_typ) =>{
+                typ = new_typ;
+            }
+        }
+    }
+
+}
+fn analyze_field_access(typ: Type, field: &Spanned<String>)-> Result<Type, ()>{
+    let ret = match typ {
         Type::Unknown => Type::Unknown,
         Type::Float =>{
             // float has no fields
@@ -400,16 +419,29 @@ fn analyze_access(exp: &mut Box<Expression>, field: &mut Spanned<String>, diagno
         }
     };
     match ret {
-        Type::Unknown  if value_type != Type::Unknown => {
+        Type::Unknown => Result::Err(()),
+        _ => Result::Ok(ret)
+    }
+}
+
+fn analyze_access(exp: &mut Box<Expression>, field: &mut Spanned<String>, diagnostics: &mut Diagnostics, scope: &Scope) -> Type{
+    let value_type = analyze_expression(exp, diagnostics, scope);
+    //let name = field.val.clone();
+
+    let ret = analyze_field_access(value_type, field);
+
+    match ret {
+        Err(_) if value_type != Type::Unknown => {
             diagnostics.err(SemanticError::NoField(
                 value_type.to_string(),
                 exp.span(),
                 field.val.clone()
             ));
+            Type::Unknown
         }
-        _=>{}
-    };
-    ret
+        Ok(x)=>{x},
+        _=> Type::Unknown,
+    }
 }
 
 lazy_static::lazy_static! {
@@ -441,7 +473,7 @@ fn match_constructor(name: &str, name_span: Sp, args: &Vec<Type>, diagnostics: &
             }
         },
         "vec4" => {
-            if args.len() ==3 && args[0] == Type::Float && args[1] ==Type::Float && args[2] == Type::Float && args[3] == Type::Float {
+            if args.len() ==4 && args[0] == Type::Float && args[1] ==Type::Float && args[2] == Type::Float && args[3] == Type::Float {
                 Type::Vec4
             } else {
                 // error
