@@ -84,4 +84,5 @@ fn main() {
     let template = BuiltinEmitTemplates{data: &protos};
     std::fs::write(&out_path, &template.render().unwrap());
 
+    println!("cargo:rerun-if-changed=src/prototypes/protos.yaml");
 }

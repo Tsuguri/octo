@@ -110,7 +110,7 @@ pub Op: ast::Statement = {
 pub Storage: ast::ValueStorage ={
     "let" <l:@L> <id:"ident"> <r:@R> => ast::ValueStorage::Creation(Sp::from_loc(id, l,r)),
     <ac:Expression> => {
-        ast::ValueStorage::Existing(extract_access_chain(ac))
+        ast::ValueStorage::Existing(ast::extract_access_chain(ac).unwrap())
     },
 }
 
