@@ -1,7 +1,13 @@
-pipeline main(one: vec4, two: vec4, three: vec4) -> (vec4){
+pipeline main(one: vec4, two: vec4, three: vec4) -> (vec4)
+    with {
+        camera_pos: vec3,
+        light_color: vec3,
+        light_pos: vec3,
+    }
+{
     let return_val = one;
     let tmp = one == one;
-    let intoo = 1;
+    let intoo = camera_pos.x;
     let somethin = vec2(1.0, 2.0);
     let tmp2 = sin(one);
     let some_vec3 = (one + two).rgb;

@@ -28,6 +28,7 @@ extern {
         "pipeline" => lexer::Token::Pipeline,
         "shift" => lexer::Token::Shift,
         "scale" => lexer::Token::Scale,
+        "with" => lexer::Token::With,
         
 	    "(" => lexer::Token::ParOpen,
         ")" => lexer::Token::ParClose,
@@ -80,15 +81,20 @@ AccessChain: Vec<String> = {
     <lol:Dot<"ident">> => lol,
 }
 
+pub UniformBlock: ast::UniformBlock = {
+    "with" "{" <entries:Comma<Definition>> "}" => ast::UniformBlock{entries},
+}
+
 
 pub Pipeline: ast::Pipeline = {
     "pipeline" <l:@L> <i:"ident"> <r:@R> "(" <args:Comma<Definition>> ")"
-        "->" "(" <results:Comma<Type>> ")" <b: Block> =>
+        "->" "(" <results:Comma<Type>> ")" <uni:UniformBlock?> <b: Block> =>
             ast::Pipeline{
                 name: Sp::from_loc(i, l,r),
                 arguments: args,
                 results,
-                block: b
+                block: b,
+                uniforms: uni,
             }
 }
 

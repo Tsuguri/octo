@@ -45,6 +45,14 @@ pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
             .unwrap();
     }
 
+    if pip.uniforms.is_some(){
+        for uniform in &pip.uniforms.as_ref().unwrap().entries {
+            program_scope
+                .create_variable(&uniform.identifier.val, uniform.typ.clone(), uniform.identifier.span)
+                .unwrap();
+        }
+    }
+
     for statement in &mut pip.block.statements {
         analyze_statement(statement, &mut errs, &mut program_scope);
     }
@@ -414,6 +422,8 @@ fn analyze_field_access(typ: Type, field: &Spanned<String>)-> Result<Type, ()>{
                 _=> Type::Unknown
             }
         }
+        Type::Mat3 => Type::Unknown,
+        Type::Mat4 => Type::Unknown,
         Type::Void => {
             Type::Unknown
         }

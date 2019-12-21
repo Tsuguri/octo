@@ -30,6 +30,8 @@ pub enum Type {
     Vec2,
     Vec3,
     Vec4,
+    Mat3,
+    Mat4,
     Int,
     Bool,
     Void,
@@ -45,6 +47,8 @@ impl PartialEq for Type {
             (Type::Vec2, Type::Vec2) => true,
             (Type::Vec3, Type::Vec3) => true,
             (Type::Vec4, Type::Vec4) => true,
+            (Type::Mat3, Type::Mat3) => true,
+            (Type::Mat4, Type::Mat4) => true,
             (Type::Void, Type::Void) => true,
             (_, _) => false,
         }
@@ -60,6 +64,8 @@ impl Type {
             "vec2" => Type::Vec2,
             "vec3" => Type::Vec3,
             "vec4" => Type::Vec4,
+            "mat3" => Type::Mat3,
+            "mat4" => Type::Mat4,
             _ => Type::Unknown,
         }
     }
@@ -78,6 +84,8 @@ impl std::fmt::Display for Type {
                 Vec2 => "vec2",
                 Vec3 => "vec3",
                 Vec4 => "vec4",
+                Mat3 => "mat3",
+                Mat4 => "mat4",
                 Void => "void",
                 Unknown => "invalid_type",
             }
@@ -98,6 +106,12 @@ pub struct Pipeline {
     pub arguments: Vec<Variable>,
     pub results: Vec<Spanned<Type>>,
     pub block: Block,
+    pub uniforms: Option<UniformBlock>,
+}
+
+#[derive(Debug)]
+pub struct UniformBlock {
+    pub entries: Vec<Variable>,
 }
 
 #[derive(Debug)]
