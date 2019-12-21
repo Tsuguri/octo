@@ -63,6 +63,7 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
                         if path.len() > 2 {
                             panic!("nested field assignment expression is not supported yet");
                         }
+                       
                         let mut current_val = code.get(&path[0].val);
 
                         let field_ids: Vec<_> = path[1].val.chars().map(|x| get_field_id(x)).collect();

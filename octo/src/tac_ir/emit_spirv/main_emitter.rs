@@ -511,28 +511,44 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         self.current_block
     }
 
+    fn emit_dot_instruction(&mut self, arg1: Address, arg2: Address, ret: Address) -> SpirvAddress {
+        let typ = self.ids.map_type(ValueType::Float);
+        let ret_addr = self.map(ret);
+        let arg1_addr = self.map(arg1);
+        let arg2_addr = self.map(arg2);
+        self.type_map.insert(ret, ValueType::Float);
+        self.builder.dot(typ,Some(ret_addr),arg1_addr, arg2_addr).unwrap();
+        ret_addr
+    }
+
     fn emit_glsl_ext_instruction(&mut self, id: SpirvAddress, arg: Address, ret: Address) -> SpirvAddress{
-        let typ = self.get_single_type(arg);
+        self.emit_glsl_ext_many(id, &[arg], ret)
+    }
+    fn emit_glsl_ext_many(&mut self, id: SpirvAddress, args: &[Address], ret: Address) -> SpirvAddress{
+        let typ = self.get_single_type(args[0]);
         let ret_type = self.ids.map_type(typ);
-        let spirv_addr = self.map(arg);
+        let spirv_addresses: Vec<_> = args.iter().map(|x| self.map(*x)).collect();
         self.type_map.insert(ret, typ);
         let ret = self.map(ret);
-        let ret = self.builder.ext_inst(ret_type, Some(ret), self.glsl_id, id, &[spirv_addr]).unwrap();
+        let ret = self.builder.ext_inst(ret_type, Some(ret), self.glsl_id, id, &spirv_addresses).unwrap();
         ret
     }
 
-    fn emit_selected_glsl(&mut self, int_id: SpirvAddress, float_id: SpirvAddress, arg: Address, ret: Address)-> SpirvAddress {
-        let typ = self.get_single_type(arg);
+
+    fn emit_selected_glsl(&mut self, int_id: SpirvAddress, float_id: SpirvAddress, args: &[Address], ret: Address)-> SpirvAddress {
+        println!("looking for type: {:?}", args[0]);
+        let typ = self.get_single_type(args[0]);
+        println!("looking for type: {:?}", typ);
         let ret_type = self.ids.map_type(typ);
         let id = if typ == ValueType::Int {
             int_id
         } else {
             float_id
         };
-        let spirv_addr = self.map(arg);
+        let spirv_addresses: Vec<_> = args.iter().map(|x| self.map(*x)).collect();
         self.type_map.insert(ret, typ);
         let ret = self.map(ret);
-        let ret = self.builder.ext_inst(ret_type, Some(ret), self.glsl_id, id, &[spirv_addr]).unwrap();
+        let ret = self.builder.ext_inst(ret_type, Some(ret), self.glsl_id, id, &spirv_addresses).unwrap();
         ret
 
     }
@@ -541,8 +557,8 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         let id = match function{
             sf::Round(addr) => self.emit_glsl_ext_instruction(1, addr, ret),
             sf::Trunc(addr)=> self.emit_glsl_ext_instruction(3, addr, ret),
-            sf::Abs(addr)=> self.emit_selected_glsl(5, 4, addr, ret),
-            sf::Sign(addr)=> self.emit_selected_glsl(7, 6, addr, ret),
+            sf::Abs(addr)=> self.emit_selected_glsl(5, 4, &[addr], ret),
+            sf::Sign(addr)=> self.emit_selected_glsl(7, 6, &[addr], ret),
             sf::Floor(addr)=> self.emit_glsl_ext_instruction(8, addr, ret),
             sf::Ceil(addr)=> self.emit_glsl_ext_instruction(9, addr, ret),
             sf::Fract(addr)=> self.emit_glsl_ext_instruction(10, addr, ret),
@@ -565,24 +581,26 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             sf::Exp2(addr)=>self.emit_glsl_ext_instruction(29, addr, ret),
             sf::Log2(addr)=>self.emit_glsl_ext_instruction(30, addr, ret),
             sf::Sqrt(addr)=>self.emit_glsl_ext_instruction(31, addr, ret),
-            sf::Cross(addr, addr2)=>self.emit_selected_glsl(43, 45, addr, ret),
+            sf::Dot(addr1, addr2)=>self.emit_dot_instruction(addr1, addr2, ret),
+            sf::Cross(addr, addr2)=>self.emit_selected_glsl(45, 43, &[addr, addr2], ret),
             sf::Normalize(addr)=>self.emit_glsl_ext_instruction(69, addr, ret),
             sf::Length(addr)=> self.emit_glsl_ext_instruction(66, addr, ret), 
 
             sf::Clamp(clamped, min, max)=>{
-                //self.emit_selected_glsl(43, 45, addr, ret);
-                panic!("no impl");
+                self.emit_selected_glsl(45, 43, &[clamped, min, max], ret)
             },
             sf::Min(val1, val2)=>{
-                //self.emit_selected_glsl(37, 39, addr, ret);
-                panic!("not implemented");
+                self.emit_selected_glsl(39, 37, &[val1, val2], ret)
             },
             sf::Max(val1, val2)=>{
-                //self.emit_selected_glsl(40, 42, addr, ret);
-                panic!("not implemented");
+                self.emit_selected_glsl(42, 40, &[val1, val2], ret)
             },
-            sf::Atan2(addr, addr2)=> {panic!("not implemented");},
-            sf::Pow(addr, addr2)=>{panic!("not implemented");},
+            sf::Atan2(addr, addr2)=> {
+                self.emit_glsl_ext_many(25, &[addr, addr2], ret)
+            },
+            sf::Pow(addr, addr2)=>{
+                self.emit_glsl_ext_many(26, &[addr, addr2], ret)
+            },
         };
         return id;
     }

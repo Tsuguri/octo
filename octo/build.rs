@@ -52,6 +52,8 @@ struct Function {
     #[serde(default)]
     pass_through: Vec<Type>,
     name: String,
+    #[serde(default)]
+    special: bool
 
 }
 type Funcs = Vec<Function>;

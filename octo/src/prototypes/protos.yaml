@@ -160,8 +160,40 @@
     - Vec3
     - Vec4
 - name: "min"
+  prototypes:
+    - o: Int
+      i:
+        - Int
+        - Int
+    - o: Float
+      i:
+        - Float
+        - Float
 - name: "max"
+  prototypes:
+    - o: Int
+      i:
+        - Int
+        - Int
+    - o: Float
+      i:
+        - Float
+        - Float
 - name: "clamp"
+- name: "dot"
+  prototypes:
+    - o: Float
+      i:
+        - Vec4
+        - Vec4
+    - o: Float
+      i:
+        - Vec3
+        - Vec3
+    - o: Float
+      i:
+        - Vec2
+        - Vec2
 - name: "length"
   pass_through:
     - Vec2

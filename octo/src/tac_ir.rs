@@ -5,6 +5,7 @@ mod ir;
 mod optimalizations;
 mod split_passes;
 mod emit_builtins;
+mod special_builtins;
 
 use super::ast;
 

@@ -93,6 +93,7 @@ pub enum StdFunction {
     Exp2(Address),
     Log2(Address),
     Sqrt(Address),
+    Dot(Address, Address),
     Min(Address, Address),
     Max(Address, Address),
     Clamp(Address, Address, Address),
