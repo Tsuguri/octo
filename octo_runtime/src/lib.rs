@@ -15,6 +15,18 @@ pub enum TextureType {
 }
 
 #[derive(Serialize, Deserialize, PartialEq)]
+pub enum ValueType {
+    Float,
+    Vec2,
+    Vec3,
+    Vec4,
+    Mat3,
+    Mat4,
+    Int,
+    Bool,
+}
+
+#[derive(Serialize, Deserialize, PartialEq)]
 pub enum OutputType {
     Result,
     Textures(Vec<TextureId>),
@@ -50,7 +62,8 @@ pub struct OctoModule {
     pub fragment_shaders: HashMap<ShaderId, Vec<u32>>,
     pub passes: Vec<ShaderPass>,
 
-    pub required_input: Vec<(String, TextureType)>,
+    pub uniform_block: Vec<(String, ValueType)>,
+    pub required_input: Vec<(String, ValueType)>,
     pub textures: Vec<(TextureId, TextureType, TextureSize)>,
 }
 
@@ -62,6 +75,7 @@ impl OctoModule {
             fragment_shaders: HashMap::new(),
             basic_vertex_spirv: vec![],
             passes: vec![],
+            uniform_block: vec![],
             required_input: vec![],
             textures: vec![],
         }

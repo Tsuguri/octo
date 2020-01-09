@@ -8,6 +8,7 @@ pub struct PipelineIR {
     code: Vec<Op>,
     pub inputs: Vec<(ValueType, String)>,
     pub outputs: Vec<ValueType>,
+    pub uniforms: Vec<(ValueType, String)>,
 }
 
 impl PipelineIR {
@@ -16,6 +17,7 @@ impl PipelineIR {
             code,
             inputs: vec![],
             outputs: vec![],
+            uniforms: vec![],
         }
     }
 
@@ -24,6 +26,7 @@ impl PipelineIR {
             code,
             inputs: prev.inputs.clone(),
             outputs: prev.outputs.clone(),
+            uniforms: prev.uniforms.clone(),
         }
     }
 
@@ -31,8 +34,8 @@ impl PipelineIR {
         self.code.iter()
     }
 
-    pub fn take(self) -> (Vec<Op>, Vec<(ValueType, String)>, Vec<ValueType>) {
-        (self.code, self.inputs, self.outputs)
+    pub fn take(self) -> (Vec<Op>, Vec<(ValueType, String)>, Vec<ValueType>, Vec<(ValueType, String)>) {
+        (self.code, self.inputs, self.outputs, self.uniforms)
     }
 }
 
@@ -105,6 +108,7 @@ pub enum StdFunction {
 #[derive(Debug, Copy, Clone)]
 pub enum Operation {
     Arg(usize),
+    Uniform(usize),
     StoreInt(i64),
     StoreFloat(f64),
     StoreVec2([f64; 2]),
@@ -149,6 +153,7 @@ impl std::string::ToString for Operation {
 
         match *self {
             Arg(i) => format!("Arg({})", i),
+            Uniform(i) => format!("Uniform({})", i),
             StoreInt(i) => format!("int ({})", i),
             StoreFloat(i) => format!("float({})", i),
             StoreBool(i) => format!("Bool({})", i),

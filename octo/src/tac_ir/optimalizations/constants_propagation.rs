@@ -74,6 +74,9 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                 //cons.insert(res, addr);
                 cons.push((res, op));
             }
+            Uniform(_) => {
+                cons.push((res, op));
+            }
             LoopMerge(..) => {
                 cons.push((res, op));
             }

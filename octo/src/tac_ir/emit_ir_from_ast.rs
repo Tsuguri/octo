@@ -13,21 +13,32 @@ use super::code::{Code, PhiCollection};
 pub fn emit(ast: ast::Pipeline) -> PipelineIR {
     let mut code = Code::new();
     let mut arguments = vec![];
+    let mut uniforms = vec![];
 
     for arg in ast.arguments.iter().enumerate() {
         let addr = code.push(Operation::Arg(arg.0));
         code.store(&arg.1.identifier.val, addr, false);
         arguments.push((arg.1.typ, arg.1.identifier.val.clone()));
     }
+    if ast.uniforms.is_some() {
+        for uni in ast.uniforms.unwrap().entries.iter().enumerate() {
+            let addr = code.push(Operation::Uniform(uni.0));
+            code.store(&uni.1.identifier.val, addr, false);
+            uniforms.push((uni.1.typ, uni.1.identifier.val.clone()));
+        }
+    }
+
     println!("inputs: {}", ast.arguments.len());
     println!("inputs2: {}", arguments.len());
     println!("outputs: {}", ast.results.len());
+    println!("uniforms: {}", uniforms.len());
 
     emit_block(ast.block, &mut code);
 
     let mut output = code.finish();
     output.inputs = arguments;
     output.outputs = ast.results.iter().map(|x| x.val).collect();
+    output.uniforms = uniforms;
     println!("outputs2: {}", output.outputs.len());
     output
 }

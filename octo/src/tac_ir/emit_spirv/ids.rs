@@ -15,13 +15,19 @@ pub struct SpirvIds {
     uv_location: SpirvAddress,
     textures_location: SpirvAddress,
     sampler_location: SpirvAddress,
+    push_constants_location: SpirvAddress,
     output_locations: Vec<SpirvAddress>,
 
     textures_access: Vec<Option<SpirvAddress>>,
     sampler_access: Option<SpirvAddress>,
     uv_access: Option<SpirvAddress>,
+    uniform_access: Vec<Option<SpirvAddress>>,
     input_types: Vec<SpirvAddress>,
 
+    //uniform_types: Vec<ValueType>,
+
+    push_constants_type: SpirvAddress,
+    push_constants_pointer_type: SpirvAddress,
     texture_type: SpirvAddress,
     texture_pointer_type: SpirvAddress,
     texture_array_type: SpirvAddress,
@@ -29,6 +35,7 @@ pub struct SpirvIds {
     sampler_type: SpirvAddress,
     sampler_pointer_type: SpirvAddress,
 
+    push_constant_types_locations: HashMap<ValueType, SpirvAddress>,
     pointer_types_locations: HashMap<PointerType, SpirvAddress>,
     type_addresses: HashMap<ValueType, SpirvAddress>,
     const_addresses: HashMap<Address, SpirvAddress>,
@@ -43,7 +50,7 @@ impl SpirvIds {
         Default::default()
     }
 
-    pub fn generate_types(&mut self, module: &mut Builder, info: &ShaderDef) {
+    pub fn generate_types(&mut self, module: &mut Builder, info: &ShaderDef, uniforms: &Vec<(ValueType, String)>) {
         let void_type = module.type_void();
         self.type_addresses.insert(ValueType::Void, void_type);
 
@@ -67,9 +74,15 @@ impl SpirvIds {
         self.type_addresses.insert(ValueType::Vec3, vec3_id);
         self.type_addresses.insert(ValueType::Vec4, vec4_id);
 
+        let mat3_id = module.type_matrix(vec3_id, 3);
+        let mat4_id = module.type_matrix(vec4_id, 4);
+        self.type_addresses.insert(ValueType::Mat3, mat3_id);
+        self.type_addresses.insert(ValueType::Mat4, mat4_id);
+
         let id = module.type_pointer(None, spirv::StorageClass::Input, vec2_id);
         self.pointer_types_locations
             .insert((true, ValueType::Vec2), id);
+
 
         for ret in &info.output_type {
             let def = (false, *ret);
@@ -79,6 +92,22 @@ impl SpirvIds {
                 let id = module.type_pointer(None, spirv::StorageClass::Output, contained_id);
                 self.pointer_types_locations.insert(def, id);
             }
+        }
+        
+        // push constants type
+        let consts_types: Vec<_> = uniforms.iter().map(|x| self.map_type(x.0)).collect();
+
+        self.push_constants_type = module.type_struct(&consts_types);
+        self.push_constants_pointer_type = module.type_pointer(None, spirv::StorageClass::PushConstant, self.push_constants_type);
+
+
+        for uniform in uniforms {
+            if !self.push_constant_types_locations.contains_key(&uniform.0) {
+                let contained_id = self.map_type(uniform.0);
+                let id = module.type_pointer(None, spirv::StorageClass::PushConstant, contained_id);
+                self.push_constant_types_locations.insert(uniform.0, id);
+            }
+
         }
 
         let num_of_textures = info.input_type.len() as u32;
@@ -184,7 +213,13 @@ impl SpirvIds {
                     let typ = self.map_type(ValueType::Int);
                     let res_addr = module.constant_u32(typ, *x as u32);
                     self.const_addresses.insert(*addr, res_addr);
-                    self.const_types.insert(*addr, ValueType::Vec4);
+                    //self.const_types.insert(*addr, ValueType::Int);
+                }
+                Operation::Uniform(x)=>{
+                    let typ = self.map_type(ValueType::Int);
+                    let res_addr = module.constant_u32(typ, *x as u32);
+                    self.const_addresses.insert(*addr, res_addr);
+                    //self.const_types.insert(*addr, ValueType::Int);
                 }
                 _ => (),
             };
@@ -207,6 +242,7 @@ impl SpirvIds {
         self.uv_location = module.id();
         self.textures_location = module.id();
         self.sampler_location = module.id();
+        self.push_constants_location = module.id();
         self.output_locations = Vec::with_capacity(info.output_type.len());
         for _ret in &info.output_type {
             self.output_locations.push(module.id());
@@ -221,7 +257,7 @@ impl SpirvIds {
             .collect()
     }
 
-    pub fn create_uniform_variables(&mut self, module: &mut Builder, info: &ShaderDef) {
+    pub fn create_uniform_variables(&mut self, module: &mut Builder, info: &ShaderDef, uniforms: &Vec<(ValueType, String)>) {
         module.variable(
             self.texture_array_type,
             Some(self.textures_location),
@@ -245,9 +281,18 @@ impl SpirvIds {
             let type_id = self.pointer_types_locations[&(false, info.output_type[id])];
             module.variable(type_id, Some(*loc), spirv::StorageClass::Output, None);
         }
+
+        if uniforms.len() > 0 {
+            module.variable(
+                self.push_constants_pointer_type,
+                Some(self.push_constants_location),
+                spirv::StorageClass::PushConstant,
+                None,
+            );
+        }
     }
 
-    pub fn decorate(&self, module: &mut Builder) {
+    pub fn decorate(&self, module: &mut Builder, uniforms: &Vec<(ValueType, String)>) {
         module.decorate(
             self.uv_location,
             spirv::Decoration::Location,
@@ -277,6 +322,65 @@ impl SpirvIds {
             self.textures_location,
             spirv::Decoration::Binding,
             &[1u32.into()],
+        );
+
+        let mut offset = 0u32;
+        for (id, member) in uniforms.iter().enumerate() {
+            let member_size = match member.0 {
+                ValueType::Float => 16,
+                ValueType::Vec2 => 16,
+                ValueType::Vec3 => 16,
+                ValueType::Vec4 => 16,
+                ValueType::Mat3 => 36,
+                ValueType::Mat4 => 64,
+                ValueType::Int => 16,
+                ValueType::Bool => 16,
+                _ => panic!(),
+            };
+            
+            module.member_decorate(
+                self.push_constants_type,
+                id as u32,
+                spirv::Decoration::Offset,
+                &[offset.into()],
+            );
+            match member.0 {
+                ValueType::Mat3=>{
+                    module.member_decorate(
+                        self.push_constants_type,
+                        id as u32,
+                        spirv::Decoration::ColMajor,
+                        &[],
+                    );
+                    module.member_decorate(
+                        self.push_constants_type,
+                        id as u32,
+                        spirv::Decoration::MatrixStride,
+                        &[9u32.into()],
+                    );
+                }
+                ValueType::Mat4=>{
+                    module.member_decorate(
+                        self.push_constants_type,
+                        id as u32,
+                        spirv::Decoration::ColMajor,
+                        &[],
+                    );
+                    module.member_decorate(
+                        self.push_constants_type,
+                        id as u32,
+                        spirv::Decoration::MatrixStride,
+                        &[16u32.into()],
+                    );
+                }
+                _=>{},
+            }
+            offset += member_size;
+        }
+        module.decorate(
+            self.push_constants_type,
+            spirv::Decoration::Block,
+            &[],
         );
     }
 
@@ -359,5 +463,31 @@ impl SpirvIds {
             .image_sample_implicit_lod(typ, None, sampled, uv, None, &[])
             .unwrap();
         result
+    }
+
+    pub fn access_uniform(&mut self, id: usize, addr: Address, module: &mut Builder, uniform_type: ValueType) -> SpirvAddress {
+        while self.uniform_access.len() <= id {
+            self.uniform_access.push(None);
+        }
+
+        let access = self.uniform_access[id];
+        match access {
+            Some(x) => x,
+            None =>{
+                let ptr_type = self.push_constant_types_locations[&uniform_type];
+                let typ = self.type_addresses[&uniform_type];
+                let id_addr = self.get_const(addr);
+                let access_chain = module.access_chain(
+                    ptr_type,
+                    None,
+                    self.push_constants_location,
+                    &[(id_addr as u32).into()],
+                ).unwrap();
+                let load = module.load(typ, None, access_chain, None, &[]).unwrap();
+                self.uniform_access[id] = Some(load);
+                load
+            }
+        }
+
     }
 }

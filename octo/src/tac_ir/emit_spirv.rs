@@ -2,7 +2,13 @@ use super::ir;
 use super::{PipelineDef, ShaderDef};
 use ir::{Address, Op, Operation, PipelineIR, ValueType};
 use log::error;
-use octo_runtime::*;
+use octo_runtime::{
+    TextureType as RTTextureType,
+    ValueType as RTValueType,
+    OctoModule,
+    ShaderPass,
+    TextureSize,
+};
 use rspirv::binary::{Assemble, Disassemble};
 use rspirv::mr::*;
 use spirv_headers as spirv;
@@ -63,10 +69,12 @@ pub fn emit_spirv(module_name: &str, code: PipelineDef) -> OctoModule {
         .drain(0..code.args.len())
         .map(|(x, y)| {
             let x = match x {
-                ValueType::Vec2 => TextureType::Vec2,
-                ValueType::Vec3 => TextureType::Vec3,
-                ValueType::Vec4 => TextureType::Vec4,
-                _ => TextureType::Float,
+                ValueType::Vec2 => RTValueType::Vec2,
+                ValueType::Vec3 => RTValueType::Vec3,
+                ValueType::Vec4 => RTValueType::Vec4,
+                ValueType::Int => RTValueType::Int,
+                ValueType::Bool => RTValueType::Bool,
+                _ => RTValueType::Float,
             };
 
             (y, x)
@@ -74,7 +82,7 @@ pub fn emit_spirv(module_name: &str, code: PipelineDef) -> OctoModule {
         .collect();
 
     for (id, shader_ir) in code.shaders.drain(0..code.shaders.len()).enumerate() {
-        let shader_spirv = emit_single_shader(shader_ir);
+        let shader_spirv = emit_single_shader(shader_ir, &code.uniforms);
         module.fragment_shaders.insert(id, shader_spirv);
     }
 
@@ -91,10 +99,10 @@ pub fn emit_spirv(module_name: &str, code: PipelineDef) -> OctoModule {
 
     for (id, tex) in code.textures.drain(0..code.textures.len()).enumerate() {
         let typ = match tex {
-            ValueType::Vec2 => TextureType::Vec2,
-            ValueType::Vec3 => TextureType::Vec3,
-            ValueType::Vec4 => TextureType::Vec4,
-            _ => TextureType::Float,
+            ValueType::Vec2 => RTTextureType::Vec2,
+            ValueType::Vec3 => RTTextureType::Vec3,
+            ValueType::Vec4 => RTTextureType::Vec4,
+            _ => RTTextureType::Float,
         };
         // probably to be changed once Scale operation is implemented
         let size = TextureSize::Original;
@@ -104,7 +112,7 @@ pub fn emit_spirv(module_name: &str, code: PipelineDef) -> OctoModule {
     module
 }
 
-fn emit_single_shader(info: ShaderDef) -> Vec<u32> {
+fn emit_single_shader(info: ShaderDef, uniforms: &Vec<(ValueType, String)>) -> Vec<u32> {
     println!("Emitting single fragment shader\n\n");
 
     let mut module = Builder::new();
@@ -127,9 +135,9 @@ fn emit_single_shader(info: ShaderDef) -> Vec<u32> {
     );
     module.execution_mode(function_id, spirv::ExecutionMode::OriginUpperLeft, &[]);
 
-    ids.decorate(&mut module);
-    ids.generate_types(&mut module, &info);
-    ids.create_uniform_variables(&mut module, &info);
+    ids.generate_types(&mut module, &info, uniforms);
+    ids.decorate(&mut module, uniforms);
+    ids.create_uniform_variables(&mut module, &info, uniforms);
     ids.store_constants(&mut module, &info);
 
     let main_type = module.type_function(ids.map_type(ValueType::Void), vec![]);
@@ -147,6 +155,7 @@ fn emit_single_shader(info: ShaderDef) -> Vec<u32> {
         &mut ids,
         &mut module,
         info.input_type.clone(),
+        uniforms.iter().map(|x| x.0).collect(),
         glsl,
         info.code.iter(),
     );

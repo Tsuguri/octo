@@ -21,6 +21,7 @@ pub struct MainEmitter<'a, I: std::iter::Iterator<Item = &'a Op>> {
     last_label: Address,
 
     input_type: Vec<ValueType>,
+    uniform_type: Vec<ValueType>,
     iter: Option<PeekableCode<'a, I>>,
     glsl_id: SpirvAddress,
 }
@@ -30,6 +31,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         ids: &'a mut SpirvIds,
         module: &'a mut Builder,
         input_type: Vec<ValueType>,
+        uniform_type: Vec<ValueType>,
         glsl_inst_id: SpirvAddress,
         iter: I,
     ) -> MainEmitter<'a, I> {
@@ -46,6 +48,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             current_block,
             last_label: 1,
             input_type,
+            uniform_type,
             iter: Some(PeekableCode::new(iter)),
             glsl_id: glsl_inst_id,
         }
@@ -72,6 +75,9 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         match old_type {
             None => {}
             Some(x) => {
+                if x != typ {
+                    println!("{:?} is not {:?}", x, typ);
+                }
                 assert!(x == typ);
             }
         }
@@ -108,6 +114,12 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
     fn emit_arg(&mut self, val_type: ValueType, id: usize, ret: Address) {
         let access = self.ids.sample_arg(id, ret, self.builder);
         self.insert(ret, access);
+        self.set_type(ret, val_type);
+    }
+
+    fn emit_uniform(&mut self, val_type: ValueType, id: usize, ret: Address) {
+        let acc = self.ids.access_uniform(id, ret, self.builder, val_type);
+        self.insert(ret, acc);
         self.set_type(ret, val_type);
     }
 
@@ -786,6 +798,10 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         match operation {
             Operation::Arg(x) => {
                 self.emit_arg(self.input_type[x], x, ret);
+            }
+            Operation::Uniform(x) => {
+                self.emit_uniform(self.uniform_type[x], x, ret);
+                //panic!();
             }
             Operation::Store(addr) => {
                 self.emit_store(addr, ret);

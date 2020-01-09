@@ -39,6 +39,7 @@ pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
     };
 
     // analyze argument and result types here...
+    // and uniforms types...
     for arg in &pip.arguments {
         program_scope
             .create_variable(&arg.identifier.val, arg.typ.clone(), arg.identifier.span)

@@ -53,10 +53,11 @@ pub struct PipelineDef {
     pub passes: Vec<ShaderPass>,
     pub textures: Vec<ValueType>,
     pub args: Vec<(ValueType, String)>,
+    pub uniforms: Vec<(ValueType, String)>,
 }
 
 pub fn split(program: PipelineIR) -> PipelineDef {
-    let (operations, inputs, outputs) = program.take();
+    let (operations, inputs, outputs, uniforms) = program.take();
 
     // for now sync is not supported for simplicity
     // it means that there is only one output shader
@@ -93,5 +94,6 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         passes: vec![the_only_pass],
         textures: vec![],
         args: inputs,
+        uniforms
     }
 }

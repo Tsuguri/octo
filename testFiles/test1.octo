@@ -3,6 +3,9 @@ pipeline main(one: vec4, two: vec4, three: vec4) -> (vec4)
         camera_pos: vec3,
         light_color: vec3,
         light_pos: vec3,
+        roman_pos: vec2,
+        wutss: mat4,
+        wotc1: mat3,
     }
 {
     let return_val = one;
@@ -15,6 +18,7 @@ pipeline main(one: vec4, two: vec4, three: vec4) -> (vec4)
 
     sth14.x = one.x;
     sth14.xy = one.yz;
+    sth14.z = camera_pos.x;
 
     return sth14;
 }
