@@ -6,7 +6,7 @@ pub type TextureId = usize;
 pub type PassId = usize;
 pub type ShaderId = usize;
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Copy, Clone)]
 pub enum TextureType {
     Float,
     Vec2,
@@ -14,7 +14,7 @@ pub enum TextureType {
     Vec4,
 }
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Copy, Clone)]
 pub enum ValueType {
     Float,
     Vec2,
@@ -63,6 +63,7 @@ pub struct OctoModule {
     pub passes: Vec<ShaderPass>,
 
     pub uniform_block: Vec<(String, ValueType)>,
+    pub uniform_block_size: usize,
     pub required_input: Vec<(String, ValueType)>,
     pub textures: Vec<(TextureId, TextureType, TextureSize)>,
 }
@@ -76,6 +77,7 @@ impl OctoModule {
             basic_vertex_spirv: vec![],
             passes: vec![],
             uniform_block: vec![],
+            uniform_block_size: 0,
             required_input: vec![],
             textures: vec![],
         }

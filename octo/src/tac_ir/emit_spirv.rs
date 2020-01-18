@@ -55,6 +55,39 @@ fn version() -> u32 {
     final_version
 }
 
+fn uniform_size(typ: ValueType) -> usize {
+    use ValueType::*;
+    match typ {
+        ValueType::Float => 16,
+        ValueType::Vec2 => 16,
+        ValueType::Vec3 => 16,
+        ValueType::Vec4 => 16,
+        ValueType::Mat3 => 36,
+        ValueType::Mat4 => 64,
+        ValueType::Int => 16,
+        ValueType::Bool => 16,
+        _ => panic!(),
+    }
+}
+
+fn map_type(typ: ir::ValueType) -> octo_runtime::ValueType {
+    use ir::ValueType as it;
+    use octo_runtime::ValueType as rt;
+    match typ {
+        it::Float => rt::Float,
+        it::Vec2 => rt::Vec2,
+        it::Vec3 => rt::Vec3,
+        it::Vec4 => rt::Vec4,
+        it::Mat3 => rt::Mat3,
+        it::Mat4 => rt::Mat4,
+        it::Int => rt::Int,
+        it::Bool => rt::Bool,
+        _ => panic!(),
+
+    }
+
+}
+
 pub fn emit_spirv(module_name: &str, code: PipelineDef) -> OctoModule {
     let mut code = code;
     println!("Emitting spirv module");
@@ -108,6 +141,11 @@ pub fn emit_spirv(module_name: &str, code: PipelineDef) -> OctoModule {
         let size = TextureSize::Original;
         module.textures.push((id, typ, size));
     }
+
+
+    module.uniform_block_size = code.uniforms.iter().map(|x| uniform_size(x.0)).sum();
+    module.uniform_block = code.uniforms.iter().map(|x| (x.1.clone(), map_type(x.0))).collect();
+
 
     module
 }
