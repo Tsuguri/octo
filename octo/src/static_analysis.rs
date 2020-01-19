@@ -7,7 +7,7 @@ use super::semantics::env::Scope;
 use parser::ast::Type;
 use lazy_static::lazy_static;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use super::prototypes::{match_prototype, PrototypeMatchError, get_prototypes};
 
@@ -164,6 +164,82 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
     }
 }
 
+lazy_static::lazy_static! {
+    static ref ALLOWED_MUL_OPERATIONS: HashMap<(Type, Type), Type> = {
+        use Type::*;
+        let mut m = HashMap::new();
+        m.insert((Vec3, Vec3), Vec3);
+        m.insert((Vec2, Vec2), Vec2);
+        m.insert((Vec4, Vec4), Vec4);
+        m.insert((Mat3, Mat3), Mat3);
+        m.insert((Mat4, Mat4), Mat4);
+        m.insert((Float, Float), Float);
+        m.insert((Int, Int), Int);
+
+        m.insert((Vec3, Mat3), Vec3);
+        m.insert((Mat3, Vec3), Vec3);
+
+        m.insert((Mat3, Float), Mat3);
+        m.insert((Mat4, Float), Mat4);
+        m.insert((Float, Mat3), Mat3);
+        m.insert((Float, Mat4), Mat4);
+
+        m.insert((Vec4, Mat4), Vec4);
+        m.insert((Mat4, Vec4), Vec4);
+
+        m.insert((Vec2, Float), Vec2);
+        m.insert((Vec3, Float), Vec3);
+        m.insert((Vec4, Float), Vec4);
+
+        m.insert((Float, Vec2), Vec2);
+        m.insert((Float, Vec3), Vec3);
+        m.insert((Float, Vec4), Vec4);
+
+        m
+    };
+
+    static ref ALLOWED_DIV_OPERATIONS: HashMap<(Type, Type), Type> = {
+        use Type::*;
+        let mut m = HashMap::new();
+        m.insert((Vec3, Vec3), Vec3);
+        m.insert((Vec2, Vec2), Vec2);
+        m.insert((Vec4, Vec4), Vec4);
+        m.insert((Float, Float), Float);
+        m.insert((Int, Int), Int);
+        m.insert((Vec2, Float), Vec2);
+        m.insert((Vec3, Float), Vec3);
+        m.insert((Vec4, Float), Vec4);
+        m
+    };
+}
+fn analyze_mul_operation(
+    left: &mut Expression,
+    right: &mut Expression,
+    scope: &Scope,
+    diagnostics: &mut Diagnostics,
+    allowed: &'static HashMap<(Type, Type), Type>,
+) -> Type {
+    let left_type = analyze_expression(left, diagnostics, scope);
+    let right_type = analyze_expression(right, diagnostics, scope);
+
+    if allowed.contains_key(&(left_type, right_type)) {
+        return allowed[&(left_type, right_type)];
+    }
+    if match (left_type.clone(), right_type.clone()) {
+            (Type::Unknown, _) => false,
+            (_, Type::Unknown) => false,
+            (_, _) => true,
+    } {
+            diagnostics.err(SemanticError::OperationTypeMismatch(
+                left_type.to_string(),
+                left.span(),
+                right_type.to_string(),
+                right.span(),
+            ));
+    }
+    return Type::Unknown;
+}
+
 fn analyze_binary_operation(
     left: &mut Expression,
     right: &mut Expression,
@@ -213,8 +289,8 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
             super::ast::Literal::Int(_) => Type::Int,
         },
         Negation(exp) => analyze_expression(exp, diagnostics, scope),
-        Mul(left, right) => analyze_binary_operation(left, right, scope, diagnostics),
-        Div(left, right) => analyze_binary_operation(left, right, scope, diagnostics),
+        Mul(left, right) => analyze_mul_operation(left, right, scope, diagnostics, &ALLOWED_MUL_OPERATIONS),
+        Div(left, right) => analyze_mul_operation(left, right, scope, diagnostics, &ALLOWED_DIV_OPERATIONS),
         Add(left, right) => analyze_binary_operation(left, right, scope, diagnostics),
         Sub(left, right) => analyze_binary_operation(left, right, scope, diagnostics),
         Less(left, right) => {

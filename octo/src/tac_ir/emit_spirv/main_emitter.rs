@@ -99,6 +99,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             (None, Some(x)) => *x,
             (Some(x), Some(y)) => {
                 // at this point in pipeline this should never happen and means compiler bug
+                println!("oops");
                 assert!(*x == *y);
                 *x
             }
@@ -110,6 +111,68 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
     }
 }
 
+enum PossibleMulOp {
+    VecMat,
+    MatVec,
+    VecScal,
+    ScalVec,
+    MatMat,
+    ScalMat,
+    MatScal,
+    VecVec,
+    ScalScal,
+}
+
+lazy_static::lazy_static! {
+    static ref ALLOWED_MUL_OPERATIONS: HashMap<(ValueType, ValueType), (PossibleMulOp, ValueType)> = {
+        use ValueType::*;
+        use PossibleMulOp::*;
+        let mut m = HashMap::new();
+        m.insert((Vec3, Vec3), (VecVec, Vec3));
+        m.insert((Vec2, Vec2), (VecVec, Vec2));
+        m.insert((Vec4, Vec4), (VecVec, Vec4));
+        m.insert((Mat3, Mat3), (MatMat, Mat3));
+        m.insert((Mat4, Mat4), (MatMat, Mat4));
+        m.insert((Float, Float), (ScalScal, Float));
+        m.insert((Int, Int), (ScalScal, Int));
+
+        m.insert((Vec3, Mat3), (VecMat, Vec3));
+        m.insert((Mat3, Vec3), (MatVec, Vec3));
+
+        m.insert((Vec4, Mat4), (VecMat, Vec4));
+        m.insert((Mat4, Vec4), (MatVec, Vec4));
+
+        m.insert((Mat3, Float), (MatScal, Mat3));
+        m.insert((Mat4, Float), (MatScal, Mat4));
+
+        m.insert((Float, Mat3), (ScalMat, Mat3));
+        m.insert((Float, Mat4), (ScalMat, Mat4));
+
+        m.insert((Vec2, Float), (VecScal, Vec2));
+        m.insert((Vec3, Float), (VecScal, Vec3));
+        m.insert((Vec4, Float), (VecScal, Vec4));
+
+        m.insert((Float, Vec2), (ScalVec, Vec2));
+        m.insert((Float, Vec3), (ScalVec, Vec3));
+        m.insert((Float, Vec4), (ScalVec, Vec4));
+
+        m
+    };
+
+    // static ref ALLOWED_DIV_OPERATIONS: HashMap<(Type, Type), Type> = {
+    //     use Type::*;
+    //     let mut m = HashMap::new();
+    //     m.insert((Vec3, Vec3), Vec3);
+    //     m.insert((Vec2, Vec2), Vec2);
+    //     m.insert((Vec4, Vec4), Vec4);
+    //     m.insert((Float, Float), Float);
+    //     m.insert((Int, Int), Int);
+    //     m.insert((Vec2, Float), Vec2);
+    //     m.insert((Vec3, Float), Vec3);
+    //     m.insert((Vec4, Float), Vec4);
+    //     m
+    // };
+}
 impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
     fn emit_arg(&mut self, val_type: ValueType, id: usize, ret: Address) {
         let access = self.ids.sample_arg(id, ret, self.builder);
@@ -193,6 +256,76 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         self.set_type(ret, return_type);
     }
 
+
+    fn emit_mul_experimental(
+        &mut self,
+        left: Address,
+        right: Address,
+        ret: Address,
+    ) {
+        let left_address = self.map(left);
+        let right_address = self.map(right);
+        let result_address = self.map(ret);
+
+        let left_type = self.type_map.get(&left).expect("type should be known at this point");
+        let right_type = self.type_map.get(&right).expect("type should be known at this point");
+
+        let types = (left_type.clone(), right_type.clone());
+
+        if !ALLOWED_MUL_OPERATIONS.contains_key(&types) {
+            // well...
+            assert!(false);
+
+        }
+
+        let (operation, return_type) = &ALLOWED_MUL_OPERATIONS[&types];
+
+        use PossibleMulOp::*;
+        let ret_type = self.ids.map_type(*return_type);
+        match operation {
+            MatVec=>{
+                self.builder.matrix_times_vector(ret_type, Some(result_address), left_address, right_address);
+            },
+            VecMat => {
+                self.builder.vector_times_matrix(ret_type, Some(result_address), left_address, right_address);
+            },
+            ScalMat =>{
+                self.builder.matrix_times_scalar(ret_type, Some(result_address), right_address, left_address);
+            },
+            MatScal =>{
+                self.builder.matrix_times_scalar(ret_type, Some(result_address), left_address, right_address);
+            },
+            VecScal=>{
+                self.builder.vector_times_scalar(ret_type, Some(result_address), left_address, right_address);
+            },
+            ScalVec=>{
+                // it's SCAL * VEC, so invert left and right
+                self.builder.vector_times_scalar(ret_type, Some(result_address), right_address, left_address);
+            },
+            MatMat=>{
+                self.builder.matrix_times_matrix(ret_type, Some(result_address), left_address, right_address);
+            },
+            VecVec=>{
+                self.builder.fmul(ret_type, Some(result_address), left_address, right_address);
+            },
+            ScalScal=>{
+                match return_type {
+                    ValueType::Float => {
+                        self.builder.fmul(ret_type, Some(result_address), left_address, right_address);
+                    },
+                    ValueType::Int => {
+                        self.builder.imul(ret_type, Some(result_address), left_address, right_address);
+                    },
+                    _=>{assert!(false);}
+                }
+            },
+
+        }
+
+
+        self.set_type(ret, *return_type);
+    }
+
     fn emit_algebraic<
         F: Fn(&mut Builder, SpirvAddress, Option<SpirvAddress>, SpirvAddress, SpirvAddress),
         F2: Fn(&mut Builder, SpirvAddress, Option<SpirvAddress>, SpirvAddress, SpirvAddress),
@@ -268,17 +401,18 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
     }
 
     fn emit_mul(&mut self, left: Address, right: Address, ret: Address) {
-        self.emit_algebraic(
-            left,
-            right,
-            ret,
-            |x, a, b, c, d| {
-                x.imul(a, b, c, d).unwrap();
-            },
-            |x, a, b, c, d| {
-                x.fmul(a, b, c, d).unwrap();
-            },
-        );
+        self.emit_mul_experimental(left, right, ret);
+        // self.emit_algebraic(
+        //     left,
+        //     right,
+        //     ret,
+        //     |x, a, b, c, d| {
+        //         x.imul(a, b, c, d).unwrap();
+        //     },
+        //     |x, a, b, c, d| {
+        //         x.fmul(a, b, c, d).unwrap();
+        //     },
+        // );
     }
 
     fn emit_div(&mut self, left: Address, right: Address, ret: Address) {
