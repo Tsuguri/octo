@@ -29,6 +29,14 @@ impl PipelineIR {
             uniforms: prev.uniforms.clone(),
         }
     }
+    pub fn construct(code: Vec<Op>, inputs: Vec<(ValueType, String)>, outputs: Vec<ValueType>, uniforms: Vec<(ValueType, String)>) -> Self {
+        PipelineIR {
+            code,
+            inputs,
+            outputs,
+            uniforms,
+        }
+    }
 
     pub fn operations(&self) -> std::slice::Iter<Op> {
         self.code.iter()
@@ -103,6 +111,49 @@ pub enum StdFunction {
     Length(Address),
     Cross(Address, Address),
     Normalize(Address),
+}
+
+impl StdFunction {
+    pub fn deps(&self) -> Vec<Address> {
+        use StdFunction::*;
+        match *self {
+            Round(a) => vec![a],
+            Trunc(a) => vec![a],
+            Abs(a) => vec![a],
+            Sign(a) => vec![a],
+            Floor(a) => vec![a],
+            Ceil(a) => vec![a],
+            Fract(a) => vec![a],
+            Radians(a) => vec![a],
+            Degrees(a) => vec![a],
+            Sin(a) => vec![a],
+            Cos(a) => vec![a],
+            Tan(a) => vec![a],
+            Asin(a) => vec![a],
+            Acos(a) => vec![a],
+            Atan(a) => vec![a],
+            Sinh(a) => vec![a],
+            Cosh(a) => vec![a],
+            Tanh(a) => vec![a],
+            Asinh(a) => vec![a],
+            Acosh(a) => vec![a],
+            Atanh(a) => vec![a],
+            Atan2(a,b) => vec![a,b],
+            Pow(a,b) => vec![a,b],
+            Exp(a) => vec![a],
+            Log(a) => vec![a],
+            Exp2(a) => vec![a],
+            Log2(a) => vec![a],
+            Sqrt(a) => vec![a],
+            Dot(a,b) => vec![a,b],
+            Min(a,b) => vec![a,b],
+            Max(a,b) => vec![a,b],
+            Clamp(a,b,c) => vec![a,b,c],
+            Length(a) => vec![a],
+            Cross(a,b) => vec![a,b],
+            Normalize(a) => vec![a],
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

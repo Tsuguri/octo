@@ -10,6 +10,11 @@ pipeline main(one: vec4, two: vec4, three: vec4) -> (vec4)
 {
     let wut = sin(camera_pos);
     let by = vec2(0.01, 0.01);
+    let som = by * by + by;
+
+    if (som.x > by.y) {
+        by.x = 12.0;
+    }
 
     return shift(wut, by);
 }

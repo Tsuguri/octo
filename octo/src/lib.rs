@@ -68,9 +68,9 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     println!("after constant propagation");
     println!("{:?}", tac);
 
-    // let tac = tac_ir::remove_unused_operations(tac);
-    // println!("after unused operation removal");
-    // println!("{:?}", tac);
+    let tac = tac_ir::remove_unused_operations(tac);
+    println!("after unused operation removal");
+    println!("{:?}", tac);
 
     let pipeline_definition = tac_ir::split_passes(tac);
 
