@@ -63,7 +63,6 @@ pub fn remove_unused_operations(code: PipelineIR) -> PipelineIR {
         }
     }
 
-    println!("usage generated");
 
     let mut used = HashSet::new();
     let mut to_check = Vec::new();
@@ -71,7 +70,6 @@ pub fn remove_unused_operations(code: PipelineIR) -> PipelineIR {
     let usage = usage;
 
     while let Some(elem) = to_check.pop() {
-        println!("checking id {}", elem);
         if used.contains(&elem) {
             continue;
         }
@@ -85,7 +83,6 @@ pub fn remove_unused_operations(code: PipelineIR) -> PipelineIR {
     }
 
     let mut res_code = Vec::with_capacity(code.len());
-    println!("emitting code without unused");
 
     for (ret_addr, op) in code {
         use Operation::*;

@@ -42,7 +42,13 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
     };
     let mut code = code;
 
-    let result_code: Vec<(Address, Operation)> = code.operations().map(|x| {
+    let mut operations: Vec<(Address, Operation)> = code.operations().rev().map(|x| *x).collect();
+    let mut result_code = Vec::with_capacity(operations.len());
+    let mut label_map: HashMap<Address, Address> = HashMap::new();
+    let mut current_label = 0;
+
+    while let Some(x) = operations.pop() {
+    //let result_code: Vec<(Address, Operation)> = code.operations().map(|x| {
         let result_address = x.0;
         use Operation::*;
         let x = x.1;
@@ -381,7 +387,14 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                     _ => x,
                 }
             },
-            Exit(..) => x,
+            Exit(a, b) => {
+                let lab = if label_map.contains_key(&b) {
+                    label_map[&b]
+                } else {
+                    b
+                };
+                Exit(a,lab)
+            },
             Invoke(..) => x, //ignore now for simplicity
             Sync(addr) => {
                 // syncing const value seems useless
@@ -394,7 +407,14 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
             }
             Shift(..) => x,
             Phi(..) => x,
-            Jump(..) => x,
+            Jump(lab) => {
+                if label_map.contains_key(&lab) {
+                    Operation::Jump(label_map[&lab])
+                } else {
+                    x
+                }
+
+            },
             JumpIfElse(cond, true_label, false_label) => {
                 if let Some(val) = ctx.get_const(&cond) {
                     let val = match val {
@@ -402,22 +422,113 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                         _ => unreachable!(),
                     };
                     if val {
-                        Operation::Jump(true_label)
+                        // true label
+                        operations.pop();
+                        let mut last_jump = 0;
+                        let mut temp_ops: Vec<(Address, Operation)> = Vec::new();
+                        while let Some(x) = operations.pop() {
+                            match x.1 {
+                                Operation::Jump(dest) => {last_jump = dest;},
+                                _ => (),
+                            }
+                            if x.0 == false_label {
+                                break;
+                            }
+                            temp_ops.push(x);
+                        }
+                        // jump from true to end
+                        temp_ops.pop();
+                        let end_label = last_jump;
+                        label_map.insert(end_label, current_label);
+
+                        if end_label!=false_label {
+                            while let Some(x) = operations.pop() {
+                                if x.0 == end_label {
+                                    break;
+                                }
+                            }
+                        }
+
+                        while let Some(x) = operations.pop() {
+                            match x.1 {
+                                Phi(rec) => {
+                                    if rec.label == true_label {
+                                        temp_ops.push((x.0, Operation::Store(rec.new)));
+                                    } else {
+                                        temp_ops.push((x.0, Operation::Store(rec.old)));
+                                    }
+                                },
+                                _ => {
+                                    temp_ops.push(x);
+                                    break;
+                                }
+                            }
+                        }
+
+                        while let Some(op) = temp_ops.pop() {
+                            operations.push(op);
+                        }
 
                     } else {
-                        Operation::Jump(false_label)
+                        let mut last_jump = 0;
+
+                        while let Some(x) = operations.pop() {
+                            match x.1 {
+                                Operation::Jump(dest) => {last_jump = dest;},
+                                _ => (),
+                            }
+                            if x.0 == false_label {
+                                assert!(last_jump != 0);
+                                break;
+                            }
+                        }
+                        let end_label = last_jump;
+                        label_map.insert(end_label, current_label);
+                        let mut temp_ops: Vec<(Address, Operation)> = Vec::new();
+
+                        while let Some(x) = operations.pop() {
+                            if x.0 == end_label {
+                                break;
+                            }
+                            temp_ops.push(x);
+                        }
+                        // jump from else to end
+                        temp_ops.pop();
+                        while let Some(x) = operations.pop() {
+                            match x.1 {
+                                Phi(rec) => {
+                                    if rec.label == false_label {
+                                        temp_ops.push((x.0, Operation::Store(rec.new)));
+                                    } else {
+                                        temp_ops.push((x.0, Operation::Store(rec.old)));
+                                    }
+                                },
+                                _ => {
+                                    temp_ops.push(x);
+                                    break;
+                                }
+                            }
+                        }
+                        while let Some(op) = temp_ops.pop() {
+                            operations.push(op);
+                        }
                     }
+
+                    continue;
                 } else {
                     x
                 }
             }
             LoopMerge(..) => x,
-            Label => x,
+            Label => {
+                current_label = result_address;
+                x
+            },
             //_=> x,
         };
 
-        (result_address, result_operation)
-    }).collect();
+        result_code.push((result_address, result_operation));
+    }
 
 
 
