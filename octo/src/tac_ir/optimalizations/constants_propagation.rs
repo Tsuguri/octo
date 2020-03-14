@@ -406,7 +406,17 @@ pub fn propagate_constants(code: PipelineIR) -> PipelineIR {
                 }
             }
             Shift(..) => x,
-            Phi(..) => x,
+            Phi(rec) => {
+                let mut modified_rec = rec;
+                if label_map.contains_key(&modified_rec.label) {
+                    modified_rec.label = label_map[&modified_rec.label];
+                }
+                if label_map.contains_key(&modified_rec.old_label) {
+                    modified_rec.old_label = label_map[&modified_rec.old_label];
+                }
+
+                Phi(modified_rec)
+            },
             Jump(lab) => {
                 if label_map.contains_key(&lab) {
                     Operation::Jump(label_map[&lab])

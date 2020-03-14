@@ -17,6 +17,7 @@ pub fn remove_unused_operations(code: PipelineIR) -> PipelineIR {
 
     let mut usage: HashMap<Address, Vec<Address>> = HashMap::new();
 
+    let mut to_check = Vec::new();
     for (ret_addr, op) in &code {
         let ret_addr = *ret_addr;
         let op = *op;
@@ -43,7 +44,10 @@ pub fn remove_unused_operations(code: PipelineIR) -> PipelineIR {
             ConstructVec4(a,b,c,d) => {usage.insert(ret_addr,vec![a,b,c,d]);},
 
             Jump(..) => (),
-            JumpIfElse(a, ..) => {usage.insert(ret_addr, vec![a]);},
+            JumpIfElse(a, ..) => {
+                usage.insert(ret_addr, vec![a]);
+                to_check.push(a);
+            },
             LoopMerge(..) => (),
             Invoke(op) => {usage.insert(ret_addr,op.deps());},
             Phi(PhiRecord{new, label, old, old_label}) =>{usage.insert(ret_addr, vec![new, old]);},
@@ -65,7 +69,6 @@ pub fn remove_unused_operations(code: PipelineIR) -> PipelineIR {
 
 
     let mut used = HashSet::new();
-    let mut to_check = Vec::new();
     to_check.push(code[code.len() -1].0);
     let usage = usage;
 
