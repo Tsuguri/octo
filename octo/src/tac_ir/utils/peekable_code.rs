@@ -1,4 +1,4 @@
-use super::ir::Op;
+use super::super::ir::Op;
 
 pub struct PeekableCode<'a, I: std::iter::Iterator<Item = &'a Op>> {
     iter: I,

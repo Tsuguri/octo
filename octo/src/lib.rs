@@ -72,6 +72,11 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     println!("after unused operation removal");
     println!("{:?}", tac);
 
+    let tac = tac_ir::unroll_synced_loop(tac);
+
+    println!("after loop reexport");
+    println!("{:?}", tac);
+
     let pipeline_definition = tac_ir::split_passes(tac);
 
     let module = tac_ir::emit_spirv(path, pipeline_definition);

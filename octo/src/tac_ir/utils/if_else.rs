@@ -1,4 +1,4 @@
-use super::ir::{Address, Op, Operation};
+use super::super::ir::{Address, Op, Operation};
 use super::PeekableCode;
 
 #[derive(Debug)]

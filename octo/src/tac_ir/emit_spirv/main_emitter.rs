@@ -1,15 +1,12 @@
 use std::collections::HashMap;
 
-use super::for_loop::{find_loop, LoopCode};
+use super::super::utils::{find_loop, LoopCode, PeekableCode, find_if_else, IfElseCode};
 use super::ids::SpirvIds;
-use super::if_else::{find_if_else, IfElseCode};
 
 use super::ir::{Address, Op, Operation, ValueType, StdFunction};
-use super::PeekableCode;
 
 use super::spirv;
 use super::Builder;
-use rspirv::mr::Error as Erro;
 use spirv_headers::Word as SpirvAddress;
 
 pub struct MainEmitter<'a, I: std::iter::Iterator<Item = &'a Op>> {
@@ -42,7 +39,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         // map.insert(1, current_block);
         Self {
             builder: module,
-            ids: ids,
+            ids,
             value_map: map,
             type_map: types,
             current_block,

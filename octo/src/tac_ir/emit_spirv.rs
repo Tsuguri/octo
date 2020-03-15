@@ -18,17 +18,11 @@ use shaderc::ShaderKind as Shader;
 
 static VERTEX: &str = include_str!("../basic_vertex.glsl");
 
-mod for_loop;
 mod ids;
-mod if_else;
 mod main_emitter;
-mod peekable_code;
 
-use for_loop::{find_loop, LoopCode};
 use ids::SpirvIds;
-use if_else::{find_if_else, IfElseCode};
 use main_emitter::MainEmitter;
-use peekable_code::PeekableCode;
 
 // TODO: move this to library compilation stage (build.rs)
 fn create_basic_vertex() -> Vec<u32> {
