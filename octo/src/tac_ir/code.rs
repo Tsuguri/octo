@@ -83,7 +83,7 @@ impl Code {
         //return;
         for index in range {
             let operation = &mut self.code[index];
-            replace(operation, old, new);
+            replace(operation, old, new, true);
         }
     }
 

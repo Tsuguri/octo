@@ -249,10 +249,50 @@ macro_rules! replace {
     };
 }
 
-pub fn replace(op: &mut (Address, Operation), from: Address, to: Address) {
-    op.0 = if op.0 == from { to } else {op.0};
+pub fn replace(op: &mut (Address, Operation), from: Address, to: Address, replace_result: bool) {
+    if replace_result {
+        op.0 = if op.0 == from { to } else {op.0};
+    }
 
     match &mut op.1 {
+        Operation::Arg(..)=>(),
+        Operation::Uniform(..)=>(),
+        Operation::StoreInt(..)=>(),
+        Operation::StoreFloat(..)=>(),
+        Operation::StoreVec2(..)=>(),
+        Operation::StoreVec3(..)=>(),
+        Operation::StoreVec4(..)=>(),
+        Operation::StoreBool(..)=>(),
+        Operation::Label => (),
+        Operation::ConstructVec2(a, b) => {
+            replace!(a, from, to);
+            replace!(b, from, to);
+        }
+        Operation::ConstructVec3(a, b, c) => {
+            replace!(a, from, to);
+            replace!(b, from, to);
+            replace!(c, from, to);
+        }
+        Operation::ConstructVec4(a, b, c, d) => {
+            replace!(a, from, to);
+            replace!(b, from, to);
+            replace!(c, from, to);
+            replace!(d, from, to);
+        }
+        Operation::ExtractComponent(a, b) => {
+            replace!(a, from, to);
+        }
+        Operation::StoreComponent(vec, id, float) => {
+            replace!(vec, from, to);
+            replace!(float, from, to);
+        }
+        Operation::Invoke(function) => {
+            // ignore for now,
+        }
+        Operation::LoopMerge(a, b) => {
+            replace!(a, from, to);
+            replace!(b, from, to);
+        }
         Operation::Add(l, r) => {
             replace!(l, from, to);
             replace!(r, from, to);
@@ -311,6 +351,7 @@ pub fn replace(op: &mut (Address, Operation), from: Address, to: Address) {
             replace!(a, from, to)
         },
         Operation::Exit(a, b) => {
+            println!("replacing in exit: {} into {} with a:{} and b:{}", from, to, a, b);
             replace!(a, from, to);
             replace!(b, from, to);
         },
@@ -326,7 +367,7 @@ pub fn replace(op: &mut (Address, Operation), from: Address, to: Address) {
             replace!(c, from, to);
         },
 
-        _ => (),
+        //_ => (),
     }
 
 }

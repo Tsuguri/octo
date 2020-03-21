@@ -40,11 +40,13 @@ pub fn propagate_constant_operation(
     label_map: &mut HashMap<Address, Address>,
     current_label: &mut Address,
     ) -> Option<Operation> {
+    println!("propagating {}", result_address);
     use Operation::*;
     let result_operation = match x {
         Arg(id) => Some(x),
         Uniform(id) => Some(x),
         StoreInt(val) => {
+            println!("storing int value into {}", result_address);
             ctx.store_const(result_address, ConstantValue::Int(val));
             Some(x)
         }

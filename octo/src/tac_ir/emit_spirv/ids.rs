@@ -160,7 +160,7 @@ impl SpirvIds {
     }
 
     pub fn map_type(&self, typ: ValueType) -> SpirvAddress {
-        // println!("mapping {:?}", typ);
+        println!("mapping {:?}", typ);
         self.type_addresses[&typ]
     }
 

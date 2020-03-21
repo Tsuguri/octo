@@ -10,6 +10,7 @@ pub fn unroll_synced_loop(code: PipelineIR) -> PipelineIR {
 
     let mut constants = ConstantPropagationContext::default();
     let mut max_id = code.iter().map(|x| x.0).max().unwrap();
+    println!("max id is {}", max_id);
 
     for (ret, op) in code.iter() {
         let ret = *ret;
@@ -50,21 +51,29 @@ pub fn unroll_synced_loop(code: PipelineIR) -> PipelineIR {
 
     let mut result_code = Vec::new();
 
+    let mut address_map = HashMap::new();
+
 
     let mut last_label = 0;
 
     while let Some((ret, op_code)) = peekable.next().copied() {
-        //println!("heheszki");
-        result_code.push((ret, op_code));
+        let mut orig = (ret, op_code);
+        let original = (ret, op_code);
+        for (from, to) in address_map.iter() {
+            replace(&mut orig, *from, *to, false);
+        }
+        println!("not unroll: mapped {:?} into {:?}", original, orig);
+        result_code.push(orig);
         match op_code {
             Operation::Label => last_label = ret,
             Operation::LoopMerge(..) => {
                 let loop_data = find_loop(ret, op_code, &mut peekable, last_label);
-                if !contains_sync(&loop_data) {
+                result_code.pop();
+                if false {//if !contains_sync(&loop_data) {
+                    result_code.extend(loop_data.emit());
                     continue;
                 }
                 // current op: LoopMerge
-                result_code.pop();
                 let mut phi_nodes = Vec::new();
                 while let Some((phi_ret, Operation::Phi(record))) = result_code.last() {
                     phi_nodes.push((*phi_ret, *record));
@@ -74,12 +83,14 @@ pub fn unroll_synced_loop(code: PipelineIR) -> PipelineIR {
                 result_code.pop();
 
                 let var_map = unroll_loop(&mut result_code, loop_data, phi_nodes, &mut constants, &mut max_id);
+                address_map.extend(var_map);
 
             }
             _ => (),
 
         }
     }
+    println!("final address map: {:?}", address_map);
 
     PipelineIR::construct(result_code, inputs, outputs, uniforms)
 }
@@ -112,14 +123,12 @@ fn unroll_loop(
 
     // emit first loop phi nodes
     for phi in &phi_nodes {
+        println!("Inserting phi: {} with value of {}, constant: {}", phi.0, phi.1.old, constants.get_const(&phi.1.old).is_some());
+
         address_map.insert(phi.0, phi.1.old);
     }
-        for op in &loop_data.body {
-            address_map.insert(op.0, op.0);
-        }
-        for op in &loop_data.continue_code {
-            address_map.insert(op.0, op.0);
-        }
+
+    let mut label = loop_data.entry_label;
 
     loop {
 
@@ -129,82 +138,83 @@ fn unroll_loop(
         }
 
         let mut condition_operations : Vec<_> = loop_data.condition.clone().into_iter().rev().collect();
-        let mut current_label = loop_data.condition_label;
 
         while let Some(op) = condition_operations.pop() {
             let mut op = op;
+
             for (from, to) in address_map.iter() {
-                replace(&mut op, *from, *to);
+                replace(&mut op, *from, *to, false);
             }
-            let result_operation = match propagate_constant_operation(constants, &mut condition_operations, op.1, op.0, &mut address_map, &mut current_label) {
-                Some(val) => val,
+            let new_addr = new_id();
+            address_map.insert(op.0, new_addr);
+            op.0 = new_addr;
+
+            let new_op = match propagate_constant_operation(constants, &mut condition_operations, op.1, op.0, &mut address_map, &mut label) {
                 None => continue,
+                Some(ops) => ops,
             };
-            result_code.push((op.0, result_operation));
+            result_code.push((new_addr, new_op));
         }
 
-        let condition_op = result_code.last();
-        let condition = match condition_op {
-            None => false,
-            Some(x) => {
-                match x.1 {
-                    Operation::StoreBool(value) => {
-                        !value
-                    },
-                    Operation::JumpIfElse(..) => {
-                        panic!("For loop with sync couldn't be unrolled");
-                    }
-                    _=> {
-                        //println!("iteration: {}", iter);
-                        //println!("result: {:#?}", result_code);
-                        panic!(format!("Unexpected operation: {:?}", x.1));
-                    },
-                }
+        let condition_op = result_code.last().unwrap();
+        let condition_met = match condition_op.1 {
+            Operation::StoreBool(value) => value,
+            Operation::JumpIfElse(..) => {
+                panic!("For loop with sync couldn't be unrolled");
             }
+            _=> {
+                println!("iteration: {}", iter);
+                println!("result: {:#?}", result_code);
+                panic!(format!("Unexpected operation: {:?}", condition_op.1));
+            },
         };
 
-        if condition {
+        if !condition_met {
             println!("Finished with {} iterations!", iter);
             break;
         }
 
-        for op in &loop_data.body {
-            address_map.insert(op.0, new_id());
-        }
-        for op in &loop_data.continue_code {
-            address_map.insert(op.0, new_id());
-        }
-        
-        // emit body and increment with mapped addresses
-        // extremely not efficient: should check only values that are actually in operation as they are known
-        let mut body: Vec<_> = loop_data.body.clone().into_iter().chain(loop_data.continue_code.clone().into_iter()).rev().collect();
-        let mut current_label = loop_data.body_label;
-        while let Some(op) = body.pop() {
+        let mut operations: Vec<_> = loop_data.body.clone().into_iter().chain(loop_data.continue_code.clone().into_iter()).rev().collect();
+        while let Some(op) = operations.pop() {
             let mut op = op;
-            for (from, to) in address_map.iter() {
-                replace(&mut op, *from, *to);
-            }
-            let result_operation = match propagate_constant_operation(constants, &mut body, op.1, op.0, &mut address_map, &mut current_label) {
-                Some(val) => val,
-                None => continue,
-            };
-            result_code.push((op.0, result_operation));
 
+            for (from, to) in address_map.iter() {
+                replace(&mut op, *from, *to, false);
+            }
+            let new_addr = new_id();
+            address_map.insert(op.0, new_addr);
+
+            let new_op = match propagate_constant_operation(constants, &mut operations, op.1, new_addr, &mut address_map, &mut label) {
+                None => continue, // should never happen here? maybe?
+                Some(ops) => ops,
+            };
+            result_code.push((new_addr, new_op));
         }
+
+        for phi in &phi_nodes {
+            let new_addr = address_map[&phi.1.new];
+            address_map.insert(phi.0, new_addr);
+        }
+
+
+
+        /*
 
         // emit phi and map in address_map
         for phi in &phi_nodes {
             let new_add = address_map[&phi.1.new];
+            println!("Phi {} is now {}", phi.0, new_add);
             address_map.insert(phi.0, new_add);
+            
         }
 
+        label = current_label;
+        */
         iter+=1;
     }
 
-
-
-    //result_code.extend(phi_nodes.into_iter().rev().map(|(x, y)| (x, Operation::Phi(y))));
-    //result_code.extend(loop_data.emit());
+    println!("label on exit: {} into {}", loop_data.exit_label, label);
+    address_map.insert(loop_data.exit_label, label);
 
     return address_map;
 }

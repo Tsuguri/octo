@@ -246,6 +246,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         let val_spirv = self.map(val);
 
         let return_type = self.get_single_type(vec_addr);
+        println!("checking type of: {}", vec_addr);
         let typ = self.ids.map_type(return_type);
 
         self.builder.composite_insert(typ, Some(ret_spirv), val_spirv, vec_spirv, &[id as u32]).unwrap();
