@@ -281,37 +281,37 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         let ret_type = self.ids.map_type(*return_type);
         match operation {
             MatVec=>{
-                self.builder.matrix_times_vector(ret_type, Some(result_address), left_address, right_address);
+                self.builder.matrix_times_vector(ret_type, Some(result_address), left_address, right_address).unwrap();
             },
             VecMat => {
-                self.builder.vector_times_matrix(ret_type, Some(result_address), left_address, right_address);
+                self.builder.vector_times_matrix(ret_type, Some(result_address), left_address, right_address).unwrap();
             },
             ScalMat =>{
-                self.builder.matrix_times_scalar(ret_type, Some(result_address), right_address, left_address);
+                self.builder.matrix_times_scalar(ret_type, Some(result_address), right_address, left_address).unwrap();
             },
             MatScal =>{
-                self.builder.matrix_times_scalar(ret_type, Some(result_address), left_address, right_address);
+                self.builder.matrix_times_scalar(ret_type, Some(result_address), left_address, right_address).unwrap();
             },
             VecScal=>{
-                self.builder.vector_times_scalar(ret_type, Some(result_address), left_address, right_address);
+                self.builder.vector_times_scalar(ret_type, Some(result_address), left_address, right_address).unwrap();
             },
             ScalVec=>{
                 // it's SCAL * VEC, so invert left and right
-                self.builder.vector_times_scalar(ret_type, Some(result_address), right_address, left_address);
+                self.builder.vector_times_scalar(ret_type, Some(result_address), right_address, left_address).unwrap();
             },
             MatMat=>{
-                self.builder.matrix_times_matrix(ret_type, Some(result_address), left_address, right_address);
+                self.builder.matrix_times_matrix(ret_type, Some(result_address), left_address, right_address).unwrap();
             },
             VecVec=>{
-                self.builder.fmul(ret_type, Some(result_address), left_address, right_address);
+                self.builder.fmul(ret_type, Some(result_address), left_address, right_address).unwrap();
             },
             ScalScal=>{
                 match return_type {
                     ValueType::Float => {
-                        self.builder.fmul(ret_type, Some(result_address), left_address, right_address);
+                        self.builder.fmul(ret_type, Some(result_address), left_address, right_address).unwrap();
                     },
                     ValueType::Int => {
-                        self.builder.imul(ret_type, Some(result_address), left_address, right_address);
+                        self.builder.imul(ret_type, Some(result_address), left_address, right_address).unwrap();
                     },
                     _=>{assert!(false);}
                 }

@@ -66,7 +66,7 @@ pub enum ConstantValue {
     Bool(bool),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct PhiRecord {
     pub new: Address,
     pub label: Address,
@@ -74,7 +74,7 @@ pub struct PhiRecord {
     pub old_label: Address,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum StdFunction {
     Round(Address),
     Trunc(Address),
@@ -156,7 +156,7 @@ impl StdFunction {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Operation {
     Arg(usize),
     Uniform(usize),
@@ -240,3 +240,94 @@ impl std::string::ToString for Operation {
         }
     }
 }
+
+macro_rules! replace {
+    ($i1:ident, $i2:ident, $i3:ident) => {
+        if *$i1 == $i2 {
+            *$i1 = $i3
+        }
+    };
+}
+
+pub fn replace(op: &mut (Address, Operation), from: Address, to: Address) {
+    op.0 = if op.0 == from { to } else {op.0};
+
+    match &mut op.1 {
+        Operation::Add(l, r) => {
+            replace!(l, from, to);
+            replace!(r, from, to);
+        }
+        Operation::Sub(l, r)=>{
+            replace!(l, from, to);
+            replace!(r, from, to);
+        },
+        Operation::Mul(l, r)=>{
+            replace!(l, from, to);
+            replace!(r, from, to);
+        },
+        Operation::Div(l, r)=>{
+            replace!(l, from, to);
+            replace!(r, from, to);
+        },
+        Operation::Less(l, r)=>{
+            replace!(l, from, to);
+            replace!(r, from, to);
+        },
+        Operation::LessEq(l, r)=>{
+            replace!(l, from, to);
+            replace!(r, from, to);
+        },
+        Operation::Eq(l, r)=>{
+            replace!(l, from, to);
+            replace!(r, from, to);
+        },
+        Operation::Neq(l, r)=>{
+            replace!(l, from, to);
+            replace!(r, from, to);
+        },
+        Operation::And(l, r)=>{
+            replace!(l, from, to);
+            replace!(r, from, to);
+        },
+        Operation::Or(l, r)=>{
+            replace!(l, from, to);
+            replace!(r, from, to);
+        },
+        Operation::Shift(l, r)=>{
+            replace!(l, from, to);
+            replace!(r, from, to);
+        },
+        Operation::Phi(l) => {
+            let left = &mut l.new;
+            let right = &mut l.old;
+
+            replace!(left, from, to);
+            replace!(right, from, to);
+        }
+        Operation::Jump(a) => {
+            replace!(a, from, to)
+        },
+        Operation::Neg(a) => {
+            replace!(a, from, to)
+        },
+        Operation::Exit(a, b) => {
+            replace!(a, from, to);
+            replace!(b, from, to);
+        },
+        Operation::Store(a) => {
+            replace!(a, from, to)
+        },
+        Operation::Sync(a) => {
+            replace!(a, from, to)
+        },
+        Operation::JumpIfElse(a, b, c) => {
+            replace!(a, from, to);
+            replace!(b, from, to);
+            replace!(c, from, to);
+        },
+
+        _ => (),
+    }
+
+}
+

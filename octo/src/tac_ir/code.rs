@@ -1,5 +1,5 @@
 
-use super::ir::{Address, ConstantValue, Op, Operation, PhiRecord, PipelineIR};
+use super::ir::{Address, ConstantValue, Op, Operation, PhiRecord, PipelineIR, replace};
 
 use std::collections::HashMap;
 
@@ -37,22 +37,6 @@ pub struct Code {
 
     counter: usize,
     last_label: Address,
-}
-
-macro_rules! replace {
-    ($i1:ident, $i2:ident, $i3:ident) => {
-        if $i1 == $i2 {
-            $i3
-        } else {
-            $i1
-        }
-    };
-}
-
-macro_rules! replace_two {
-    ($id1:path, $left:ident, $right:ident, $old:ident, $new:ident) => {
-        $id1(replace!($left, $old, $new), replace!($right, $old, $new))
-    };
 }
 
 impl Code {
@@ -98,54 +82,8 @@ impl Code {
         println!("replacing in {:#?}, from {} to {}", range, old, new);
         //return;
         for index in range {
-            let operation = self.code[index].1;
-            let op = match operation {
-                Operation::Add(l, r) => {
-                    let nl = replace!(l, old, new);
-                    let nr = replace!(r, old, new);
-                    println!("Add, replaced left {}->{}, right: {}->{}", l, nl, r, nr);
-
-                    Operation::Add(nl, nr)
-
-                    //replace_two!(Operation::Add, l, r, old, new),
-                }
-                Operation::Sub(l, r) => replace_two!(Operation::Sub, l, r, old, new),
-                Operation::Mul(l, r) => replace_two!(Operation::Mul, l, r, old, new),
-                Operation::Div(l, r) => replace_two!(Operation::Div, l, r, old, new),
-                Operation::Less(l, r) => replace_two!(Operation::Less, l, r, old, new),
-                Operation::LessEq(l, r) => replace_two!(Operation::LessEq, l, r, old, new),
-                Operation::Eq(l, r) => replace_two!(Operation::Eq, l, r, old, new),
-                Operation::Neq(l, r) => replace_two!(Operation::Neq, l, r, old, new),
-                Operation::And(l, r) => replace_two!(Operation::And, l, r, old, new),
-                Operation::Or(l, r) => replace_two!(Operation::Or, l, r, old, new),
-                Operation::Shift(l, r) => replace_two!(Operation::Shift, l, r, old, new),
-                Operation::Phi(l) => {
-                    let left = l.new;
-                    let right = l.old;
-
-                    let left = replace!(left, old, new);
-                    let right = replace!(right, old, new);
-
-                    Operation::Phi(PhiRecord {
-                        new: left,
-                        label: l.label,
-                        old: right,
-                        old_label: l.old_label,
-                    })
-                }
-                Operation::Jump(a) => Operation::Jump(replace!(a, old, new)),
-                Operation::Neg(a) => Operation::Neg(replace!(a, old, new)),
-                Operation::Exit(a, b) => replace_two!(Operation::Exit, a, b, old, new),
-                Operation::Store(a) => Operation::Store(replace!(a, old, new)),
-                Operation::Sync(a) => Operation::Sync(replace!(a, old, new)),
-                Operation::JumpIfElse(a, b, c) => Operation::JumpIfElse(
-                    replace!(a, old, new),
-                    replace!(b, old, new),
-                    replace!(c, old, new),
-                ),
-                x => x,
-            };
-            self.code[index].1 = op;
+            let operation = &mut self.code[index];
+            replace(operation, old, new);
         }
     }
 

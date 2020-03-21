@@ -53,7 +53,6 @@ pub fn find_loop<'b, I: std::iter::Iterator<Item = &'b Op>>(
             unreachable!();
         }
     };
-
     // jump to cond
 
     let (condition_label, cond_jump_label) = match code.peek() {
@@ -67,7 +66,7 @@ pub fn find_loop<'b, I: std::iter::Iterator<Item = &'b Op>>(
     code.next(); // skip label of cond
 
     let mut condition_code = vec![];
-    let mut body_label = Default::default();
+    let body_label;
     let condition_value;
     let condition_check_label;
     loop {
