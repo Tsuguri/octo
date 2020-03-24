@@ -96,14 +96,13 @@ pub fn split(program: PipelineIR) -> PipelineDef {
 
     let last_op = operations.last().unwrap();
     let exit_value = match last_op.1 {
-        Operation::Exit(val, label) => val,
+        Operation::Exit(val, _) => val,
         x => {
             panic!(format!("Last operation is not exit, but: {:?}", x));
         }
     };
 
     syncs.push((last_op.0, exit_value, operations.len()-1));
-    let syncs = syncs;
 
     let mut programs: Vec<Vec<(Address, Operation)>> = Vec::with_capacity(syncs.len() + 1);
 
@@ -130,6 +129,7 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         println!("program generating {}: {:?}", synced_value, new_program);
         programs.push(new_program);
     }
+    syncs.pop();
 
     let mut shaders: Vec<ShaderDef> = Vec::with_capacity(programs.len());
     let mut shader_passes: Vec<ShaderPass> = Vec::with_capacity(programs.len());
@@ -156,7 +156,7 @@ pub fn split(program: PipelineIR) -> PipelineDef {
                 _=> None
             }
         }).collect();
-        let (t, ret) = if id ==syncs.len()-1 {
+        let (t, ret) = if id ==syncs.len() {
             (*outputs.first().unwrap(), OutputTexture::Result)
         } else {
             let sc = syncs[id];
@@ -164,7 +164,6 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         };
 
         let shader_inputs: Vec<_> = program_inputs.iter().map(|x| x.1).collect();
-
 
 
         shaders.push(ShaderDef{
@@ -181,27 +180,16 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         });
 
     }
-    let inputs_num = inputs.len();
+
+    let textures = syncs.iter().map(|x| types[&x.1]).collect();
     let outputs_num = outputs.len();
 
-    let the_only_shader = ShaderDef {
-        code: operations,
-        input_type: inputs.iter().map(|x| x.0).collect(),
-        output_type: outputs,
-    };
-
     println!("outputs: {}", outputs_num);
-    let the_only_pass = ShaderPass {
-        shader_id: 0,
-        input: (0..inputs_num).map(|x| InputTexture::Arg(x)).collect(),
-        output: OutputTexture::Result,
-        dependencies: Option::None,
-    };
 
     return PipelineDef {
-        shaders: vec![the_only_shader],
-        passes: vec![the_only_pass],
-        textures: vec![],
+        shaders: shaders,
+        passes: shader_passes,
+        textures: textures,
         args: inputs,
         uniforms
     };
@@ -329,7 +317,66 @@ fn find_if_else_dependencies(program: &Vec<(Address, Operation)>, deps: &mut Has
 }
 
 fn check_types(operations: &Vec<(Address, Operation)>, input_types: &Vec<(ValueType, String)>, uniforms: &Vec<(ValueType, String)>) -> HashMap<Address, ValueType> {
-    let mut types = HashMap::new();
+    let mut types: HashMap<Address, ValueType> = HashMap::new();
+
+    for (ret_addr, op) in operations {
+        use Operation::*;
+        let typ = match op {
+            Arg(num) => input_types[*num].0,
+            Uniform(num) => uniforms[*num].0,
+            StoreInt(_) => ValueType::Int,
+            StoreFloat(_) => ValueType::Float,
+            StoreVec2(_) => ValueType::Vec2,
+            StoreVec3(_) => ValueType::Vec3,
+            StoreVec4(_) => ValueType::Vec4,
+            StoreBool(_) => ValueType::Bool,
+            Store(addr) => types[&addr],
+            ConstructVec2(..) => ValueType::Vec2,
+            ConstructVec3(..) => ValueType::Vec3,
+            ConstructVec4(..) => ValueType::Vec4,
+            StoreComponent(to, ..) => types[&to],
+            ExtractComponent(..) => ValueType::Float,
+            Add(a, b) => types[&a],
+            Sub(a, b) => types[&a],
+            Div(a, b) => types[&a],
+            Mul(a, b) => {
+                let a_type = types[&a];
+                let b_type = types[&b];
+                use ValueType::*;
+                match (a_type, b_type) {
+                    (a,b) if a == b => a,
+                    (Vec2, Float) => Vec2,
+                    (Vec3, Float) => Vec3,
+                    (Vec4, Float) => Vec4,
+                    (Mat3, Vec3) => Vec3,
+                    (Mat4, Vec4) => Vec4,
+                    _ => panic!(),
+                }
+            },
+            Less(..) => ValueType::Bool,
+            LessEq(..) => ValueType::Bool,
+            Eq(..) => ValueType::Bool,
+            Neq(..) => ValueType::Bool,
+            And(..) => ValueType::Bool,
+            Or(..) => ValueType::Bool,
+            Neg(val) => types[&val],
+            Label => continue,
+            Exit(val,..) => types[&val],
+            Sync(a) => types[&a],
+            Shift(a, ..) => types[&a],
+            Phi(record) => types[&record.old],
+            Jump(..) => continue,
+            JumpIfElse(..) => continue,
+            LoopMerge(..) => continue,
+            Invoke(func) => {
+                let deps = func.deps();
+                types[&deps[0]]
+            }
+
+        };
+        types.insert(*ret_addr, typ);
+
+    }
 
     types
 }
