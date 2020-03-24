@@ -12,7 +12,7 @@ pub struct PhiObserver {
 
 impl PhiObserver {
     pub fn store(&mut self, name: &str, new: Address, new_label: Address, old: Address) {
-        println!("storing assignment in label: {}", new_label);
+        //println!("storing assignment in label: {}", new_label);
         let record = PhiRecord {
             new,
             label: new_label,
@@ -79,7 +79,7 @@ impl Code {
     }
 
     pub fn replace_label(&mut self, range: std::ops::Range<usize>, old: Address, new: Address) {
-        println!("replacing in {:#?}, from {} to {}", range, old, new);
+        //println!("replacing in {:#?}, from {} to {}", range, old, new);
         //return;
         for index in range {
             let operation = &mut self.code[index];
@@ -91,7 +91,7 @@ impl Code {
         //let tmp = self.phi_assignments.take();
         let tmp2 = self.phi_observer.take();
         //self.phi_assignments = Some(HashMap::new());
-        println!("observing in label: {}", self.last_label);
+        //println!("observing in label: {}", self.last_label);
         self.phi_observer = Some(PhiObserver {
             outer_label: self.last_label,
             collection: HashMap::new(),

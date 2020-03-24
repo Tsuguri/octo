@@ -41,6 +41,8 @@ pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
     // analyze argument and result types here...
     // and uniforms types...
     for arg in &pip.arguments {
+
+
         program_scope
             .create_variable(&arg.identifier.val, arg.typ.clone(), arg.identifier.span)
             .unwrap();
@@ -54,8 +56,21 @@ pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
         }
     }
 
+    let mut return_value = None;
+
     for statement in &mut pip.block.statements {
-        analyze_statement(statement, &mut errs, &mut program_scope);
+        analyze_statement(statement, &mut errs, &mut program_scope, &mut return_value);
+    }
+
+    if return_value.is_none() && pip.results.len()>0{
+        let last = pip.results.last().unwrap();
+
+        errs.err(SemanticError::NotAssignedReturnVariable(last.span, last.val.to_string()));
+    }
+
+    if pip.results.len()>1 || pip.results.last().unwrap().val != return_value.unwrap().0 {
+        let ret = return_value.unwrap();
+        errs.err(SemanticError::TypeMismatch(ret.1, ret.0.to_string(), pip.results.last().unwrap().val.to_string()));
     }
 
     for var in program_scope.unused_variables() {
@@ -69,7 +84,7 @@ pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
     }
 }
 
-fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope: &mut Scope) {
+fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope: &mut Scope, return_value: &mut Option<(Type, super::ast::AstSpan)>) {
     match stat {
         Statement::Expression(ex) => {
             analyze_expression(ex, diagnostics, scope);
@@ -105,12 +120,15 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
         }
         Statement::Return(val) => {
             // TODO: do something here to check returned type
-            let _typ = analyze_expression(val, diagnostics, scope);
+            let sp = val.span();
+            
+            let typ = analyze_expression(val, diagnostics, scope);
+            *return_value = Some((typ,sp));
         }
         Statement::For(stat, exp1, exp2, block) => {
             let mut block_scope = Scope::child_scope(&scope);
 
-            analyze_statement(&mut *stat, diagnostics, &mut block_scope);
+            analyze_statement(&mut *stat, diagnostics, &mut block_scope, return_value);
 
             let cond_type = analyze_expression(&mut *exp1, diagnostics, &mut block_scope);
             match cond_type {
@@ -125,10 +143,10 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
                 }
             }
 
-            analyze_statement(&mut *exp2, diagnostics, &mut block_scope);
+            analyze_statement(&mut *exp2, diagnostics, &mut block_scope, return_value);
 
             for statement in block.statements.iter_mut() {
-                analyze_statement(statement, diagnostics, &mut block_scope);
+                analyze_statement(statement, diagnostics, &mut block_scope, return_value);
             }
             // todo
             // analyze shiftness of block. If there is one we must be able to compute const number of loops
@@ -149,7 +167,7 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
             let mut block_scope = Scope::child_scope(&scope);
 
             for statement in block1.statements.iter_mut() {
-                analyze_statement(statement, diagnostics, &mut block_scope);
+                analyze_statement(statement, diagnostics, &mut block_scope, return_value);
             }
 
             drop(block_scope);
@@ -157,7 +175,7 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
             if let Some(else_block) = block2 {
                 let mut else_scope = Scope::child_scope(&scope);
                 for statement in else_block.statements.iter_mut() {
-                    analyze_statement(statement, diagnostics, &mut else_scope);
+                    analyze_statement(statement, diagnostics, &mut else_scope, return_value);
                 }
             }
         }

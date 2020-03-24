@@ -19,8 +19,8 @@ pipeline main(one: vec4, two: vec4, three: vec4) -> (vec4)
 
     for(let i = 0; i<2; i = i + 1) {
         wut.x = wut.x + light_pos.x;
-        wut.x = wut.x * 2.0;
+        wut.x = shift(wut.x * 2.0, by);
     }
 
-    return wut;
+    return vec4(wut.x, wut.y, wut.z, 1.0);
 }

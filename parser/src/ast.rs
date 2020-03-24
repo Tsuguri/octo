@@ -2,6 +2,8 @@ use crate::lexer::span;
 pub use codespan::ByteIndex;
 pub use codespan::Span;
 
+pub type AstSpan = Span<ByteIndex>;
+
 #[derive(Debug, Clone)]
 pub struct Spanned<T> {
     pub span: Span<ByteIndex>,

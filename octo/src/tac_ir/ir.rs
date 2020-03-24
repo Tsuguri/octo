@@ -351,7 +351,7 @@ pub fn replace(op: &mut (Address, Operation), from: Address, to: Address, replac
             replace!(a, from, to)
         },
         Operation::Exit(a, b) => {
-            println!("replacing in exit: {} into {} with a:{} and b:{}", from, to, a, b);
+            //println!("replacing in exit: {} into {} with a:{} and b:{}", from, to, a, b);
             replace!(a, from, to);
             replace!(b, from, to);
         },

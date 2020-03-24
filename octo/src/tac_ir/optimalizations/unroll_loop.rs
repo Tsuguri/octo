@@ -10,7 +10,7 @@ pub fn unroll_synced_loop(code: PipelineIR) -> PipelineIR {
 
     let mut constants = ConstantPropagationContext::default();
     let mut max_id = code.iter().map(|x| x.0).max().unwrap();
-    println!("max id is {}", max_id);
+    //println!("max id is {}", max_id);
 
     for (ret, op) in code.iter() {
         let ret = *ret;
@@ -62,14 +62,14 @@ pub fn unroll_synced_loop(code: PipelineIR) -> PipelineIR {
         for (from, to) in address_map.iter() {
             replace(&mut orig, *from, *to, false);
         }
-        println!("not unroll: mapped {:?} into {:?}", original, orig);
+        //println!("not unroll: mapped {:?} into {:?}", original, orig);
         result_code.push(orig);
         match op_code {
             Operation::Label => last_label = ret,
             Operation::LoopMerge(..) => {
                 let loop_data = find_loop(ret, op_code, &mut peekable, last_label);
                 result_code.pop();
-                if false {//if !contains_sync(&loop_data) {
+                if !contains_sync(&loop_data) {
                     result_code.extend(loop_data.emit());
                     continue;
                 }
@@ -90,7 +90,7 @@ pub fn unroll_synced_loop(code: PipelineIR) -> PipelineIR {
 
         }
     }
-    println!("final address map: {:?}", address_map);
+    //println!("final address map: {:?}", address_map);
 
     PipelineIR::construct(result_code, inputs, outputs, uniforms)
 }
@@ -123,7 +123,7 @@ fn unroll_loop(
 
     // emit first loop phi nodes
     for phi in &phi_nodes {
-        println!("Inserting phi: {} with value of {}, constant: {}", phi.0, phi.1.old, constants.get_const(&phi.1.old).is_some());
+        //println!("Inserting phi: {} with value of {}, constant: {}", phi.0, phi.1.old, constants.get_const(&phi.1.old).is_some());
 
         address_map.insert(phi.0, phi.1.old);
     }
@@ -163,14 +163,14 @@ fn unroll_loop(
                 panic!("For loop with sync couldn't be unrolled");
             }
             _=> {
-                println!("iteration: {}", iter);
-                println!("result: {:#?}", result_code);
+                //println!("iteration: {}", iter);
+                //println!("result: {:#?}", result_code);
                 panic!(format!("Unexpected operation: {:?}", condition_op.1));
             },
         };
 
         if !condition_met {
-            println!("Finished with {} iterations!", iter);
+            //println!("Finished with {} iterations!", iter);
             break;
         }
 
@@ -213,7 +213,7 @@ fn unroll_loop(
         iter+=1;
     }
 
-    println!("label on exit: {} into {}", loop_data.exit_label, label);
+    //println!("label on exit: {} into {}", loop_data.exit_label, label);
     address_map.insert(loop_data.exit_label, label);
 
     return address_map;
