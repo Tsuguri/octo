@@ -73,7 +73,7 @@ pub fn split(program: PipelineIR) -> PipelineDef {
             output_type: outputs,
         };
 
-        println!("outputs: {}", outputs_num);
+        //println!("outputs: {}", outputs_num);
         let the_only_pass = ShaderPass {
             shader_id: 0,
             input: (0..inputs_num).map(|x| InputTexture::Arg(x)).collect(),
@@ -107,7 +107,7 @@ pub fn split(program: PipelineIR) -> PipelineDef {
     let mut programs: Vec<Vec<(Address, Operation)>> = Vec::with_capacity(syncs.len() + 1);
 
     for (sync_operation, synced_value, index) in &syncs {
-        println!("generating program for syncing {}", synced_value);
+        //println!("generating program for syncing {}", synced_value);
         let mut used = HashSet::new();
         let mut to_check = Vec::new();
         to_check.push(*synced_value);
@@ -126,10 +126,10 @@ pub fn split(program: PipelineIR) -> PipelineDef {
 
         let new_program = operations.iter().filter(|x| used.contains(&x.0)).cloned().collect();
 
-        println!("program generating {}: {:?}", synced_value, new_program);
+        //println!("program generating {}: {:?}", synced_value, new_program);
         programs.push(new_program);
     }
-    syncs.pop();
+    //syncs.pop();
 
     let mut shaders: Vec<ShaderDef> = Vec::with_capacity(programs.len());
     let mut shader_passes: Vec<ShaderPass> = Vec::with_capacity(programs.len());
@@ -164,10 +164,51 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         };
 
         let shader_inputs: Vec<_> = program_inputs.iter().map(|x| x.1).collect();
+        let program_in: Vec<_> = program_inputs.iter().map(|x| x.0).collect();
+        let mut last_label = 0;
+
+        let mut shader_code: Vec<_> = std::iter::once((1, Operation::Label)).chain(program.iter().map(|x| {
+            let op = match x.1 {
+                Operation::Label => {
+                    last_label = x.0;
+                    x.1
+                }
+                Operation::Arg(num)=>{
+                    let id = program_in.iter().enumerate().find(|(id, value)| {
+                        match value {
+                            InputTexture::Arg(num2) if num==*num2 => true,
+                            _ => false,
+                        }
+                    }).unwrap();
+                    Operation::Arg(id.0)
+
+                },
+                Operation::Sync(addr) =>{
+                    let sc = syncs.iter().enumerate().find(|(id, s)| s.1 == addr);
+                    let sc_id = match sc {
+                        None => panic!("Internal compiler error"),
+                        Some(t) => {
+                            t.0
+                        }
+                    };
+                    let id = program_in.iter().enumerate().find(|(id, value)| {
+                        match value {
+                            InputTexture::Generated(num2) if sc_id==*num2 => true,
+                            _ => false,
+                        }
+                    }).unwrap();
+                    Operation::Arg(id.0)
+                },
+                a => a
+            };
+            (x.0, op)
+        })).collect();
+        shader_code.push((shader_code.last().unwrap().0 + 1, Operation::Exit(syncs[id].1, last_label)));
+        
 
 
         shaders.push(ShaderDef{
-            code: vec![],// well. generate code. Syncs -> args and put proper ids.
+            code: shader_code,
             input_type: shader_inputs,
             output_type: vec![t],
         });
@@ -180,11 +221,12 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         });
 
     }
+    syncs.pop();
 
     let textures = syncs.iter().map(|x| types[&x.1]).collect();
     let outputs_num = outputs.len();
 
-    println!("outputs: {}", outputs_num);
+    //println!("outputs: {}", outputs_num);
 
     return PipelineDef {
         shaders: shaders,

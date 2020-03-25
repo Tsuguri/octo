@@ -111,6 +111,7 @@ impl SpirvIds {
         }
 
         let num_of_textures = info.input_type.len() as u32;
+        println!("num of texture: {}", num_of_textures);
         if num_of_textures > 0 {
             // textures array
             self.texture_type = module.type_image(
@@ -127,6 +128,7 @@ impl SpirvIds {
             let num_id = module.constant_u32(self.map_type(ValueType::Int), num_of_textures);
 
             let array_type_id = module.type_array(self.texture_type, num_id);
+            println!("emitting array type pointer: {}, for type: {}", array_type_id, self.texture_type);
 
             self.texture_array_type =
                 module.type_pointer(None, spirv::StorageClass::UniformConstant, array_type_id);
@@ -160,7 +162,7 @@ impl SpirvIds {
     }
 
     pub fn map_type(&self, typ: ValueType) -> SpirvAddress {
-        println!("mapping {:?}", typ);
+        //println!("mapping {:?}", typ);
         self.type_addresses[&typ]
     }
 
@@ -243,6 +245,7 @@ impl SpirvIds {
         self.textures_location = module.id();
         self.sampler_location = module.id();
         self.push_constants_location = module.id();
+        println!("uv: {}, tex: {}, sampler: {}, push_constants_location: {}", self.uv_location, self.textures_location, self.sampler_location, self.push_constants_location);
         self.output_locations = Vec::with_capacity(info.output_type.len());
         for _ret in &info.output_type {
             self.output_locations.push(module.id());
@@ -258,18 +261,22 @@ impl SpirvIds {
     }
 
     pub fn create_uniform_variables(&mut self, module: &mut Builder, info: &ShaderDef, uniforms: &Vec<(ValueType, String)>) {
-        module.variable(
-            self.texture_array_type,
-            Some(self.textures_location),
-            spirv::StorageClass::UniformConstant,
-            None,
-        );
-        module.variable(
-            self.sampler_pointer_type,
-            Some(self.sampler_location),
-            spirv::StorageClass::UniformConstant,
-            None,
-        );
+        println!("texture array type: {}, sampler pointer type: {}", self.texture_array_type, self.sampler_pointer_type);
+
+        if info.input_type.len() > 0{
+            module.variable(
+                self.texture_array_type,
+                Some(self.textures_location),
+                spirv::StorageClass::UniformConstant,
+                None,
+            );
+            module.variable(
+                self.sampler_pointer_type,
+                Some(self.sampler_location),
+                spirv::StorageClass::UniformConstant,
+                None,
+            );
+        }
         module.variable(
             self.pointer_types_locations[&(true, ValueType::Vec2)],
             Some(self.uv_location),
@@ -301,28 +308,31 @@ impl SpirvIds {
         for (id, loc) in self.output_locations.iter().enumerate() {
             module.decorate(*loc, spirv::Decoration::Location, &[(id as u32).into()]);
         }
+        if self.input_types.len()>0 {
+            module.decorate(
+                self.sampler_location,
+                spirv::Decoration::DescriptorSet,
+                &[0u32.into()],
+            );
+            module.decorate(
+                self.sampler_location,
+                spirv::Decoration::Binding,
+                &[0u32.into()],
+            );
 
-        module.decorate(
-            self.sampler_location,
-            spirv::Decoration::DescriptorSet,
-            &[0u32.into()],
-        );
-        module.decorate(
-            self.sampler_location,
-            spirv::Decoration::Binding,
-            &[0u32.into()],
-        );
+            module.decorate(
+                self.textures_location,
+                spirv::Decoration::DescriptorSet,
+                &[0u32.into()],
+            );
+            module.decorate(
+                self.textures_location,
+                spirv::Decoration::Binding,
+                &[1u32.into()],
+            );
+        }
 
-        module.decorate(
-            self.textures_location,
-            spirv::Decoration::DescriptorSet,
-            &[0u32.into()],
-        );
-        module.decorate(
-            self.textures_location,
-            spirv::Decoration::Binding,
-            &[1u32.into()],
-        );
+
 
         let mut offset = 0u32;
         for (id, member) in uniforms.iter().enumerate() {
@@ -449,19 +459,47 @@ impl SpirvIds {
         module.store(uniform_addr, addr, None, &[]).unwrap();
     }
 
-    pub fn sample_arg(&mut self, id: usize, addr: Address, module: &mut Builder) -> SpirvAddress {
+    pub fn sample_arg(&mut self, id: usize, addr: Address, typ: ValueType, module: &mut Builder) -> SpirvAddress {
+        let uv = self.access_uv(module);
+        self.sample_arg_at(id, addr, uv, typ, module)
+    }
+
+    pub fn sample_arg_at(&mut self, id: usize, addr: Address, uv: SpirvAddress, typ: ValueType, module: &mut Builder) -> SpirvAddress {
         let address = self.access_arg(id, addr, module);
         let sampler = self.access_sampler(module);
-        let uv = self.access_uv(module);
-        let typ = self.input_types[id];
+        let type_addr = self.input_types[id];
+        let vec4_type = self.map_type(ValueType::Vec4);
 
         let sampled = module
             .sampled_image(self.sampled_texture_type, None, address, sampler)
             .unwrap();
 
-        let result = module
-            .image_sample_implicit_lod(typ, None, sampled, uv, None, &[])
+        let mut result = module
+            .image_sample_implicit_lod(vec4_type, None, sampled, uv, None, &[])
             .unwrap();
+        if type_addr != vec4_type {
+            let float_type = self.map_type(ValueType::Float);
+            result = match typ{
+                ValueType::Float => {
+                    let x = module.composite_extract(float_type, None, result, &[0]).unwrap();
+                    x
+                },
+                ValueType::Vec2 => {
+                    let x = module.composite_extract(float_type, None, result, &[0]).unwrap();
+                    let y = module.composite_extract(float_type, None, result, &[1]).unwrap();
+                    let vec = module.composite_construct(self.map_type(ValueType::Vec2), None, &[x, y]).unwrap();
+                    vec
+                },
+                ValueType::Vec3 => {
+                    let x = module.composite_extract(float_type, None, result, &[0]).unwrap();
+                    let y = module.composite_extract(float_type, None, result, &[1]).unwrap();
+                    let z = module.composite_extract(float_type, None, result, &[2]).unwrap();
+                    let vec = module.composite_construct(self.map_type(ValueType::Vec3), None, &[x, y, z]).unwrap();
+                    vec
+                },
+                _ => panic!("can't store non-float in texture!"),
+            };
+        }
         result
     }
 

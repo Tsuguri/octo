@@ -84,7 +84,7 @@ fn map_type(typ: ir::ValueType) -> octo_runtime::ValueType {
 
 pub fn emit_spirv(module_name: &str, code: PipelineDef) -> OctoModule {
     let mut code = code;
-    println!("Emitting spirv module");
+    //println!("Emitting spirv module");
 
     let mut module = OctoModule::new();
     module.name = module_name.to_owned();
@@ -145,7 +145,7 @@ pub fn emit_spirv(module_name: &str, code: PipelineDef) -> OctoModule {
 }
 
 fn emit_single_shader(info: ShaderDef, uniforms: &Vec<(ValueType, String)>) -> Vec<u32> {
-    println!("Emitting single fragment shader\n\n");
+    //println!("Emitting single fragment shader\n\n");
 
     let mut module = Builder::new();
     module.capability(spirv::Capability::Shader);

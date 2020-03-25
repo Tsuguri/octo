@@ -16,6 +16,7 @@ pub struct MainEmitter<'a, I: std::iter::Iterator<Item = &'a Op>> {
     type_map: HashMap<Address, ValueType>,
     current_block: SpirvAddress,
     last_label: Address,
+    args: HashMap<Address, usize>,
 
     input_type: Vec<ValueType>,
     uniform_type: Vec<ValueType>,
@@ -44,6 +45,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             type_map: types,
             current_block,
             last_label: 1,
+            args: HashMap::new(),
             input_type,
             uniform_type,
             iter: Some(PeekableCode::new(iter)),
@@ -73,7 +75,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             None => {}
             Some(x) => {
                 if x != typ {
-                    println!("{:?} is not {:?}", x, typ);
+                    //println!("{:?} is not {:?}", x, typ);
                 }
                 assert!(x == typ);
             }
@@ -96,7 +98,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             (None, Some(x)) => *x,
             (Some(x), Some(y)) => {
                 // at this point in pipeline this should never happen and means compiler bug
-                println!("oops");
+                //println!("oops");
                 assert!(*x == *y);
                 *x
             }
@@ -172,9 +174,10 @@ lazy_static::lazy_static! {
 }
 impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
     fn emit_arg(&mut self, val_type: ValueType, id: usize, ret: Address) {
-        let access = self.ids.sample_arg(id, ret, self.builder);
+        let access = self.ids.sample_arg(id, ret, val_type, self.builder);
         self.insert(ret, access);
         self.set_type(ret, val_type);
+        self.args.insert(ret, id);
     }
 
     fn emit_uniform(&mut self, val_type: ValueType, id: usize, ret: Address) {
@@ -246,7 +249,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         let val_spirv = self.map(val);
 
         let return_type = self.get_single_type(vec_addr);
-        println!("checking type of: {}", vec_addr);
+        //println!("checking type of: {}", vec_addr);
         let typ = self.ids.map_type(return_type);
 
         self.builder.composite_insert(typ, Some(ret_spirv), val_spirv, vec_spirv, &[id as u32]).unwrap();
@@ -370,7 +373,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         }
     }
     fn emit_add(&mut self, left: Address, right: Address, ret: Address) {
-        println!("emit add for l:{} r:{} ret:{}", left, right, ret);
+        //println!("emit add for l:{} r:{} ret:{}", left, right, ret);
         self.emit_algebraic(
             left,
             right,
@@ -680,9 +683,9 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
 
 
     fn emit_selected_glsl(&mut self, int_id: SpirvAddress, float_id: SpirvAddress, args: &[Address], ret: Address)-> SpirvAddress {
-        println!("looking for type: {:?}", args[0]);
+        //println!("looking for type: {:?}", args[0]);
         let typ = self.get_single_type(args[0]);
-        println!("looking for type: {:?}", typ);
+        //println!("looking for type: {:?}", typ);
         let ret_type = self.ids.map_type(typ);
         let id = if typ == ValueType::Int {
             int_id
@@ -750,7 +753,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
     }
 
     fn emit_if_else(&mut self, data: IfElseCode) {
-        println!("starting if else");
+        //println!("starting if else");
 
         let true_label = self.map(data.if_label);
         let end_label = self.map(data.end_label);
@@ -767,7 +770,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             .selection_merge(end_label, spirv::SelectionControl::NONE).unwrap();
         self.builder
             .branch_conditional(cond_address, true_label, false_label, &[]).unwrap();
-        println!("starting true block");
+        //println!("starting true block");
         self.emit_block(Some(true_label));
 
         let block_code = data.true_block;
@@ -780,7 +783,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         self.builder.branch(end_label).unwrap();
 
         if data.false_block.is_some() {
-            println!("starting false block");
+            //println!("starting false block");
             self.emit_block(Some(false_label));
 
             let block_code = data.false_block.unwrap();
@@ -793,14 +796,14 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         // not used if else block was not emitted
         let post_false_block_label = self.current_block;
 
-        println!(
-            "blocks, pre: {}, postif: {}, postelse: {}",
-            pre_if_block_label, post_then_block_label, post_false_block_label
-        );
-        println!(
-            "labels, if: {}, else: {:?}, end: {}",
-            data.if_label, data.else_label, data.end_label
-        );
+        //println!(
+            //"blocks, pre: {}, postif: {}, postelse: {}",
+            //pre_if_block_label, post_then_block_label, post_false_block_label
+        //);
+        //println!(
+            //"labels, if: {}, else: {:?}, end: {}",
+            //data.if_label, data.else_label, data.end_label
+        //);
 
         self.emit_block(Some(end_label));
 
@@ -842,7 +845,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
 
             self.type_map.insert(ret, typ);
         }
-        println!("finished if else");
+        //println!("finished if else");
     }
 
     fn emit_loop(&mut self, data: LoopCode) {
@@ -1002,7 +1005,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             Operation::Phi(rec) => {
                 // emit phi
                 let phi_record = rec;
-                println!("phi for: {:#?}", phi_record);
+                //println!("phi for: {:#?}", phi_record);
 
                 let typ = self.get_type(phi_record.new, phi_record.old);
                 let spirv_type = self.ids.map_type(typ);
@@ -1030,8 +1033,18 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             Operation::StoreVec4(..) => (),
             Operation::StoreBool(..) => (),
 
-            Operation::Shift(..) => {
-                panic!("internal compiler error: not implemented");
+            Operation::Shift(what, by_how_much) => {
+                let uv = self.ids.access_uv(self.builder);
+                let shift = self.map(by_how_much);
+                let vec2type = self.ids.map_type(ValueType::Vec2);
+                let shifted_uv = self.builder.fadd(vec2type, None, shift, uv).unwrap();
+                let arg_id = self.args[&what];
+                let input_type = self.input_type[arg_id];
+
+                let value = self.ids.sample_arg_at(arg_id, ret, shifted_uv, input_type, self.builder);
+
+                self.insert(ret, value);
+                self.set_type(ret, self.input_type[arg_id]);
             }
             Operation::Sync(..) => {
                 panic!("internal compiler error: should never happen");
