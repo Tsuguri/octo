@@ -46,6 +46,12 @@ struct Prototype {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+enum SpirvCommand {
+    Single(u32),
+    Dual(u32, u32)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct Function {
     #[serde(default)]
     prototypes: Vec<Prototype>,
@@ -53,7 +59,21 @@ struct Function {
     pass_through: Vec<Type>,
     name: String,
     #[serde(default)]
-    special: bool
+    special: bool,
+    comm: SpirvCommand,
+}
+
+impl Function {
+    pub fn params(&self) -> u32 {
+        if self.pass_through.len() > 0{
+            return 1u32;
+        }
+        if self.prototypes.len()>0 {
+            let first = &self.prototypes[0];
+            return first.i.len() as u32;
+        }
+        return 0;
+    }
 
 }
 type Funcs = Vec<Function>;
@@ -71,8 +91,18 @@ struct PrototypesTemplate<'a> {
 struct BuiltinEmitTemplates<'a> {
     data: &'a Funcs,
 }
+
+#[derive(Template)]
+#[template(path = "builtin_spirv.rs", escape="none")]
+struct SpirvEmitTemplates<'a> {
+    data: &'a Funcs,
+}
+
 fn main() {
     let in_path = "src/prototypes/protos.yaml";
+
+    let en = SpirvCommand::Dual(2,3);
+    println!("{}",serde_yaml::to_string(&en).unwrap());
 
 
     let prototypes_list_data = std::fs::read_to_string(&in_path).unwrap();
@@ -84,6 +114,10 @@ fn main() {
 
     let out_path = "src/tac_ir/emit_builtins.rs";
     let template = BuiltinEmitTemplates{data: &protos};
+    std::fs::write(&out_path, &template.render().unwrap());
+
+    let out_path = "src/tac_ir/emit_spirv/emit_std.rs";
+    let template = SpirvEmitTemplates{data: &protos};
     std::fs::write(&out_path, &template.render().unwrap());
 
     println!("cargo:rerun-if-changed=src/prototypes/protos.yaml");

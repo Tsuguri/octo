@@ -20,6 +20,7 @@ static VERTEX: &str = include_str!("../basic_vertex.glsl");
 
 mod ids;
 mod main_emitter;
+mod emit_std;
 
 use ids::SpirvIds;
 use main_emitter::MainEmitter;

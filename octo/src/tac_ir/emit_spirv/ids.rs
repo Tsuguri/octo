@@ -211,6 +211,17 @@ impl SpirvIds {
                     self.const_addresses.insert(*addr, result_addr);
                     self.const_types.insert(*addr, ValueType::Vec3);
                 }
+                Operation::StoreVec4(x) => {
+                    let typ = self.map_type(ValueType::Float);
+                    let comps: Vec<_> = x
+                        .iter()
+                        .map(|y| module.constant_f32(typ, *y as f32))
+                        .collect();
+                    let result_addr =
+                        module.constant_composite(self.map_type(ValueType::Vec4), &comps);
+                    self.const_addresses.insert(*addr, result_addr);
+                    self.const_types.insert(*addr, ValueType::Vec4);
+                }
                 Operation::Arg(x) => {
                     let typ = self.map_type(ValueType::Int);
                     let res_addr = module.constant_u32(typ, *x as u32);

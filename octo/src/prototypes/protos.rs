@@ -536,15 +536,40 @@ const PASS_THROUGH_ATAN2: [Type; 0] = [
 
 ];
 
+lazy_static::lazy_static! {
+    static ref PROTOTYPES_ATAN2: Vec<(Type, Vec<Type>)> = {
+        let mut m = Vec::with_capacity(1);
+
+        {
+            let p = vec![
+                Type::Float,Type::Float,
+            ];
+            m.push((Type::Float, p));
+}
+        m
+    };
+}
+
 fn match_atan2(args: &Vec<Type>)-> Result<Type, PrototypeMatchError> {
     if args.len() == 1 && PASS_THROUGH_ATAN2.iter().find(|x| **x==args[0]).is_some() {
         return Result::Ok(args[0]);
+    }
+
+    'outer: for proto in PROTOTYPES_ATAN2.iter() {
+        if args.len() == proto.1.len() {
+            if args.iter().zip(proto.1.iter()).any(|(x, y)| x!=y){
+                continue 'outer;
+            }
+            return Result::Ok(proto.0);
+        }
     }
 
     Result::Err(PrototypeMatchError::NoMatchingPrototype)
 }
 fn prototypes_atan2() -> Vec<Vec<Type>> {
     let tmp =PASS_THROUGH_ATAN2.iter().map(|x| vec![*x]);
+
+    let tmp = tmp.chain(PROTOTYPES_ATAN2.iter().map(|x| x.1.clone()));
 
     tmp.collect()
 }
@@ -553,15 +578,58 @@ const PASS_THROUGH_POW: [Type; 0] = [
 
 ];
 
+lazy_static::lazy_static! {
+    static ref PROTOTYPES_POW: Vec<(Type, Vec<Type>)> = {
+        let mut m = Vec::with_capacity(4);
+
+        {
+            let p = vec![
+                Type::Float,Type::Float,
+            ];
+            m.push((Type::Float, p));
+}
+        {
+            let p = vec![
+                Type::Vec2,Type::Float,
+            ];
+            m.push((Type::Vec2, p));
+}
+        {
+            let p = vec![
+                Type::Vec3,Type::Float,
+            ];
+            m.push((Type::Vec3, p));
+}
+        {
+            let p = vec![
+                Type::Vec4,Type::Float,
+            ];
+            m.push((Type::Vec4, p));
+}
+        m
+    };
+}
+
 fn match_pow(args: &Vec<Type>)-> Result<Type, PrototypeMatchError> {
     if args.len() == 1 && PASS_THROUGH_POW.iter().find(|x| **x==args[0]).is_some() {
         return Result::Ok(args[0]);
+    }
+
+    'outer: for proto in PROTOTYPES_POW.iter() {
+        if args.len() == proto.1.len() {
+            if args.iter().zip(proto.1.iter()).any(|(x, y)| x!=y){
+                continue 'outer;
+            }
+            return Result::Ok(proto.0);
+        }
     }
 
     Result::Err(PrototypeMatchError::NoMatchingPrototype)
 }
 fn prototypes_pow() -> Vec<Vec<Type>> {
     let tmp =PASS_THROUGH_POW.iter().map(|x| vec![*x]);
+
+    let tmp = tmp.chain(PROTOTYPES_POW.iter().map(|x| x.1.clone()));
 
     tmp.collect()
 }
@@ -771,15 +839,46 @@ const PASS_THROUGH_CLAMP: [Type; 0] = [
 
 ];
 
+lazy_static::lazy_static! {
+    static ref PROTOTYPES_CLAMP: Vec<(Type, Vec<Type>)> = {
+        let mut m = Vec::with_capacity(2);
+
+        {
+            let p = vec![
+                Type::Int,Type::Int,Type::Int,
+            ];
+            m.push((Type::Int, p));
+}
+        {
+            let p = vec![
+                Type::Float,Type::Float,Type::Float,
+            ];
+            m.push((Type::Float, p));
+}
+        m
+    };
+}
+
 fn match_clamp(args: &Vec<Type>)-> Result<Type, PrototypeMatchError> {
     if args.len() == 1 && PASS_THROUGH_CLAMP.iter().find(|x| **x==args[0]).is_some() {
         return Result::Ok(args[0]);
+    }
+
+    'outer: for proto in PROTOTYPES_CLAMP.iter() {
+        if args.len() == proto.1.len() {
+            if args.iter().zip(proto.1.iter()).any(|(x, y)| x!=y){
+                continue 'outer;
+            }
+            return Result::Ok(proto.0);
+        }
     }
 
     Result::Err(PrototypeMatchError::NoMatchingPrototype)
 }
 fn prototypes_clamp() -> Vec<Vec<Type>> {
     let tmp =PASS_THROUGH_CLAMP.iter().map(|x| vec![*x]);
+
+    let tmp = tmp.chain(PROTOTYPES_CLAMP.iter().map(|x| x.1.clone()));
 
     tmp.collect()
 }
@@ -838,22 +937,56 @@ fn prototypes_dot() -> Vec<Vec<Type>> {
     tmp.collect()
 }
 
-const PASS_THROUGH_LENGTH: [Type; 3] = [
+const PASS_THROUGH_LENGTH: [Type; 0] = [
 
-        Type::Vec2,
-        Type::Vec3,
-        Type::Vec4,
 ];
+
+lazy_static::lazy_static! {
+    static ref PROTOTYPES_LENGTH: Vec<(Type, Vec<Type>)> = {
+        let mut m = Vec::with_capacity(3);
+
+        {
+            let p = vec![
+                Type::Vec2,
+            ];
+            m.push((Type::Float, p));
+}
+        {
+            let p = vec![
+                Type::Vec3,
+            ];
+            m.push((Type::Float, p));
+}
+        {
+            let p = vec![
+                Type::Vec4,
+            ];
+            m.push((Type::Float, p));
+}
+        m
+    };
+}
 
 fn match_length(args: &Vec<Type>)-> Result<Type, PrototypeMatchError> {
     if args.len() == 1 && PASS_THROUGH_LENGTH.iter().find(|x| **x==args[0]).is_some() {
         return Result::Ok(args[0]);
     }
 
+    'outer: for proto in PROTOTYPES_LENGTH.iter() {
+        if args.len() == proto.1.len() {
+            if args.iter().zip(proto.1.iter()).any(|(x, y)| x!=y){
+                continue 'outer;
+            }
+            return Result::Ok(proto.0);
+        }
+    }
+
     Result::Err(PrototypeMatchError::NoMatchingPrototype)
 }
 fn prototypes_length() -> Vec<Vec<Type>> {
     let tmp =PASS_THROUGH_LENGTH.iter().map(|x| vec![*x]);
+
+    let tmp = tmp.chain(PROTOTYPES_LENGTH.iter().map(|x| x.1.clone()));
 
     tmp.collect()
 }
@@ -862,15 +995,40 @@ const PASS_THROUGH_CROSS: [Type; 0] = [
 
 ];
 
+lazy_static::lazy_static! {
+    static ref PROTOTYPES_CROSS: Vec<(Type, Vec<Type>)> = {
+        let mut m = Vec::with_capacity(1);
+
+        {
+            let p = vec![
+                Type::Vec3,Type::Vec3,
+            ];
+            m.push((Type::Vec3, p));
+}
+        m
+    };
+}
+
 fn match_cross(args: &Vec<Type>)-> Result<Type, PrototypeMatchError> {
     if args.len() == 1 && PASS_THROUGH_CROSS.iter().find(|x| **x==args[0]).is_some() {
         return Result::Ok(args[0]);
+    }
+
+    'outer: for proto in PROTOTYPES_CROSS.iter() {
+        if args.len() == proto.1.len() {
+            if args.iter().zip(proto.1.iter()).any(|(x, y)| x!=y){
+                continue 'outer;
+            }
+            return Result::Ok(proto.0);
+        }
     }
 
     Result::Err(PrototypeMatchError::NoMatchingPrototype)
 }
 fn prototypes_cross() -> Vec<Vec<Type>> {
     let tmp =PASS_THROUGH_CROSS.iter().map(|x| vec![*x]);
+
+    let tmp = tmp.chain(PROTOTYPES_CROSS.iter().map(|x| x.1.clone()));
 
     tmp.collect()
 }

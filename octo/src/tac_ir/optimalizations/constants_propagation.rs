@@ -343,11 +343,12 @@ pub fn propagate_constant_operation(
         Neg(addr) => {
             match ctx.get_const(&addr) {
                 Some(v) => {
-                    match v {
+                    let val = match v {
                         ConstantValue::Bool(val) => ConstantValue::Bool(!val),
+                        ConstantValue::Float(val) => ConstantValue::Float(-val),
                         _ => unreachable!(),
                     };
-                    Some(ctx.copy_const(result_address, v))
+                    Some(ctx.copy_const(result_address, val))
                 },
                 _ => Some(x),
             }

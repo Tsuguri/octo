@@ -139,7 +139,8 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         let program_inputs: Vec<_> = program.iter().filter_map(|x| {
             match x.1 {
                 Operation::Arg(y) => {
-                    let t = types[&y];
+                    println!("looking for type for: {}", y);
+                    let t = types[&x.0];
                     Some((InputTexture::Arg(y), t))
                 },
                 Operation::Sync(val) => {
@@ -156,7 +157,7 @@ pub fn split(program: PipelineIR) -> PipelineDef {
                 _=> None
             }
         }).collect();
-        let (t, ret) = if id ==syncs.len() {
+        let (t, ret) = if id ==syncs.len()-1 {
             (*outputs.first().unwrap(), OutputTexture::Result)
         } else {
             let sc = syncs[id];
@@ -204,6 +205,8 @@ pub fn split(program: PipelineIR) -> PipelineDef {
             (x.0, op)
         })).collect();
         shader_code.push((shader_code.last().unwrap().0 + 1, Operation::Exit(syncs[id].1, last_label)));
+
+        println!("Generated shader: {:#?}", shader_code);
         
 
 

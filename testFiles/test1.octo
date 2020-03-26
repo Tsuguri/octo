@@ -1,26 +1,14 @@
-pipeline main(one: vec4, two: vec4, three: vec4) -> (vec4)
-    with {
-        camera_pos: vec3,
-        light_color: vec3,
-        light_pos: vec3,
-        roman_pos: vec2,
-        wutss: mat4,
-        wotc1: mat3,
-    }
+pipeline main(position: vec4, normal: vec4, albedo: vec4) -> (vec4)
+with {
+    camera_pos: vec3,
+    lightDir: vec3,
+    lightColor: vec3,
+    view_size: vec2,
+}
 {
-    let wut = sin(camera_pos);
-    let by = vec2(0.01, 0.01);
-    let som = by * by + by;
-    let somens = wut;
+    let b = position.xyz;
 
-    if (som.x > by.y) {
-        by.x = 12.0;
-    }
+    let a = shift(position, vec2(1.0, 0.0)/view_size).xyz;
 
-    for(let i = 0; i<2; i = i + 1) {
-        wut.x = wut.x + light_pos.x;
-        wut.x = shift(wut, by).x;
-    }
-
-    return vec4(wut.x, wut.y, wut.z, 1.0);
+    return vec4(a.x, a.y, a.z, 1.0);
 }

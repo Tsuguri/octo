@@ -2,10 +2,12 @@ use std::collections::HashMap;
 
 use super::super::utils::{find_loop, LoopCode, PeekableCode, find_if_else, IfElseCode};
 use super::ids::SpirvIds;
+use super::emit_std::emit_std_function;
 
 use super::ir::{Address, Op, Operation, ValueType, StdFunction};
 
 use super::spirv;
+use super::emit_std::*;
 use super::Builder;
 use spirv_headers::Word as SpirvAddress;
 
@@ -82,7 +84,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         }
     }
 
-    fn get_single_type(&self, addr1: Address) -> ValueType {
+    pub fn get_single_type(&self, addr1: Address) -> ValueType {
         match self.type_map.get(&addr1) {
             None => ValueType::Unknown,
             Some(x) => *x,
@@ -99,6 +101,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             (Some(x), Some(y)) => {
                 // at this point in pipeline this should never happen and means compiler bug
                 //println!("oops");
+                println!("types are: {:?} and {:?}", x, y);
                 assert!(*x == *y);
                 *x
             }
@@ -668,9 +671,10 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         ret_addr
     }
 
-    fn emit_glsl_ext_instruction(&mut self, id: SpirvAddress, arg: Address, ret: Address) -> SpirvAddress{
+    pub fn emit_passthrough(&mut self, id: SpirvAddress, arg: Address, ret: Address) -> SpirvAddress {
         self.emit_glsl_ext_many(id, &[arg], ret)
     }
+
     fn emit_glsl_ext_many(&mut self, id: SpirvAddress, args: &[Address], ret: Address) -> SpirvAddress{
         let typ = self.get_single_type(args[0]);
         let ret_type = self.ids.map_type(typ);
@@ -681,11 +685,19 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         ret
     }
 
+    pub fn emit_prototyped(&mut self, id: SpirvAddress, args: &[Address], ret: Address, ret_type: ValueType) -> SpirvAddress {
+        self.type_map.insert(ret, ret_type);
+        let ret_type = self.ids.map_type(ret_type);
 
-    fn emit_selected_glsl(&mut self, int_id: SpirvAddress, float_id: SpirvAddress, args: &[Address], ret: Address)-> SpirvAddress {
-        //println!("looking for type: {:?}", args[0]);
+        let spirv_addresses: Vec<_> = args.iter().map(|x| self.map(*x)).collect();
+        let ret = self.map(ret);
+        let ret = self.builder.ext_inst(ret_type, Some(ret), self.glsl_id, id, &spirv_addresses).unwrap();
+        ret
+    }
+
+
+    pub fn emit_selected_glsl(&mut self, int_id: SpirvAddress, float_id: SpirvAddress, args: &[Address], ret: Address)-> SpirvAddress {
         let typ = self.get_single_type(args[0]);
-        //println!("looking for type: {:?}", typ);
         let ret_type = self.ids.map_type(typ);
         let id = if typ == ValueType::Int {
             int_id
@@ -700,7 +712,8 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
 
     }
     fn emit_invoke(&mut self, function: StdFunction, ret: Address) -> SpirvAddress {
-        use StdFunction as sf;
+        let id = emit_std_function(function, ret, self);
+        /*use StdFunction as sf;
         let id = match function{
             sf::Round(addr) => self.emit_glsl_ext_instruction(1, addr, ret),
             sf::Trunc(addr)=> self.emit_glsl_ext_instruction(3, addr, ret),
@@ -748,7 +761,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             sf::Pow(addr, addr2)=>{
                 self.emit_glsl_ext_many(26, &[addr, addr2], ret)
             },
-        };
+        };*/
         return id;
     }
 

@@ -1,17 +1,25 @@
 ---
 - name: "round"
+  comm:
+      Single: 1
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "trunc"
+  comm:
+      Single: 3
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "abs"
+  comm:
+    Dual:
+        - 5 # int
+        - 4 # float
   pass_through:
     - Float
     - Vec2
@@ -19,6 +27,10 @@
     - Vec4
     - Int
 - name: "sign"
+  comm:
+    Dual:
+        - 7 # int
+        - 6 # float
   pass_through:
     - Float
     - Vec2
@@ -26,140 +38,214 @@
     - Vec4
     - Int
 - name: "floor"
+  comm:
+    Single: 8
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "ceil"
+  comm:
+    Single: 9
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "fract"
+  comm:
+    Single: 10
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "radians"
+  comm:
+    Single: 11
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "degrees"
+  comm:
+    Single: 12
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "sin"
+  comm:
+    Single: 13
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "cos"
+  comm:
+    Single: 14
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "tan"
+  comm:
+    Single: 15
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "asin"
+  comm:
+    Single: 16
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "acos"
+  comm:
+    Single: 17
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "atan"
+  comm:
+    Single: 18
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "sinh"
+  comm:
+    Single: 19
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "cosh"
+  comm:
+    Single: 20
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "tanh"
+  comm:
+    Single: 21
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "asinh"
+  comm:
+    Single: 22
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "acosh"
+  comm:
+    Single: 23
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "atanh"
+  comm:
+    Single: 24
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "atan2"
+  comm:
+    Single: 25
+  prototypes:
+    - o: Float
+      i:
+        - Float
+        - Float
 - name: "pow"
+  comm:
+    Single: 26
+  prototypes:
+    - o: Float
+      i:
+        - Float
+        - Float
+    - o: Vec2
+      i:
+        - Vec2
+        - Float
+    - o: Vec3
+      i:
+        - Vec3
+        - Float
+    - o: Vec4
+      i:
+        - Vec4
+        - Float
 - name: "exp"
+  comm:
+    Single: 27
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "log"
+  comm:
+    Single: 28
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "exp2"
+  comm:
+    Single: 29
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "log2"
+  comm:
+    Single: 30
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "sqrt"
+  comm:
+    Single: 31
   pass_through:
     - Float
     - Vec2
     - Vec3
     - Vec4
 - name: "min"
+  comm:
+    Dual:
+        - 39
+        - 37
   prototypes:
     - o: Int
       i:
@@ -170,6 +256,10 @@
         - Float
         - Float
 - name: "max"
+  comm:
+    Dual:
+        - 42
+        - 40
   prototypes:
     - o: Int
       i:
@@ -180,7 +270,24 @@
         - Float
         - Float
 - name: "clamp"
+  comm:
+    Dual:
+        - 45
+        - 43
+  prototypes:
+    - o: Int
+      i:
+        - Int
+        - Int
+        - Int
+    - o: Float
+      i:
+        - Float
+        - Float
+        - Float
 - name: "dot"
+  comm:
+    Single: 0
   prototypes:
     - o: Float
       i:
@@ -195,12 +302,31 @@
         - Vec2
         - Vec2
 - name: "length"
-  pass_through:
-    - Vec2
-    - Vec3
-    - Vec4
+  comm:
+    Single: 66
+  prototypes:
+    - o: Float
+      i: 
+        - Vec2
+    - o: Float
+      i:
+        - Vec3
+    - o: Float
+      i:
+        - Vec4
 - name: "cross"
+  comm:
+    Dual:
+        - 45
+        - 43
+  prototypes:
+    - o: Vec3
+      i:
+        - Vec3
+        - Vec3
 - name: "normalize"
+  comm:
+    Single: 69
   pass_through:
     - Float
     - Vec2

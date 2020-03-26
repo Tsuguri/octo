@@ -330,6 +330,13 @@ fn emit_atan2(args: &Vec<Address>, code: &mut Code)-> Result<Address, BuiltinEmi
     
         
         
+        
+        if args.len() == 2 {
+           return Result::Ok(code.push(Operation::Invoke(StdFunction::Atan2(
+               args[0],args[1],
+           ))))
+        }
+        
     
     Result::Err(BuiltinEmitError::CompilerError)
 }
@@ -338,6 +345,13 @@ fn emit_atan2(args: &Vec<Address>, code: &mut Code)-> Result<Address, BuiltinEmi
 fn emit_pow(args: &Vec<Address>, code: &mut Code)-> Result<Address, BuiltinEmitError> {
     
         
+        
+        
+        if args.len() == 2 {
+           return Result::Ok(code.push(Operation::Invoke(StdFunction::Pow(
+               args[0],args[1],
+           ))))
+        }
         
     
     Result::Err(BuiltinEmitError::CompilerError)
@@ -445,6 +459,13 @@ fn emit_clamp(args: &Vec<Address>, code: &mut Code)-> Result<Address, BuiltinEmi
     
         
         
+        
+        if args.len() == 3 {
+           return Result::Ok(code.push(Operation::Invoke(StdFunction::Clamp(
+               args[0],args[1],args[2],
+           ))))
+        }
+        
     
     Result::Err(BuiltinEmitError::CompilerError)
 }
@@ -469,10 +490,13 @@ fn emit_dot(args: &Vec<Address>, code: &mut Code)-> Result<Address, BuiltinEmitE
 fn emit_length(args: &Vec<Address>, code: &mut Code)-> Result<Address, BuiltinEmitError> {
     
         
-        if args.len() == 1 {
-            return Result::Ok(code.push(Operation::Invoke(StdFunction::Length(args[0]))))
-        }
         
+        
+        if args.len() == 1 {
+           return Result::Ok(code.push(Operation::Invoke(StdFunction::Length(
+               args[0],
+           ))))
+        }
         
     
     Result::Err(BuiltinEmitError::CompilerError)
@@ -482,6 +506,13 @@ fn emit_length(args: &Vec<Address>, code: &mut Code)-> Result<Address, BuiltinEm
 fn emit_cross(args: &Vec<Address>, code: &mut Code)-> Result<Address, BuiltinEmitError> {
     
         
+        
+        
+        if args.len() == 2 {
+           return Result::Ok(code.push(Operation::Invoke(StdFunction::Cross(
+               args[0],args[1],
+           ))))
+        }
         
     
     Result::Err(BuiltinEmitError::CompilerError)
