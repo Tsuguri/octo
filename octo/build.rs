@@ -74,6 +74,12 @@ impl Function {
         }
         return 0;
     }
+    pub fn is_dot(&self) -> bool {
+        match self.comm {
+            SpirvCommand::Dual(..) => false,
+            SpirvCommand::Single(x) => x==0,
+        }
+    }
 
 }
 type Funcs = Vec<Function>;

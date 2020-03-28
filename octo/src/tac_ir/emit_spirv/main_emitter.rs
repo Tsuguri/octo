@@ -99,11 +99,12 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             (Some(x), None) => *x,
             (None, Some(x)) => *x,
             (Some(x), Some(y)) => {
-                // at this point in pipeline this should never happen and means compiler bug
-                //println!("oops");
-                println!("types are: {:?} and {:?}", x, y);
-                assert!(*x == *y);
-                *x
+                match (*x,*y) {
+                    (ValueType::Float, z) => z,
+                    (z, ValueType::Float) => z,
+                    (a, b) if a==b => a,
+                    _ => panic!("hope will not happen")
+                }
             }
         }
     }
@@ -121,6 +122,12 @@ enum PossibleMulOp {
     MatMat,
     ScalMat,
     MatScal,
+    VecVec,
+    ScalScal,
+}
+
+enum PossibleDivOp {
+    VecScal,
     VecVec,
     ScalScal,
 }
@@ -161,19 +168,20 @@ lazy_static::lazy_static! {
         m
     };
 
-    // static ref ALLOWED_DIV_OPERATIONS: HashMap<(Type, Type), Type> = {
-    //     use Type::*;
-    //     let mut m = HashMap::new();
-    //     m.insert((Vec3, Vec3), Vec3);
-    //     m.insert((Vec2, Vec2), Vec2);
-    //     m.insert((Vec4, Vec4), Vec4);
-    //     m.insert((Float, Float), Float);
-    //     m.insert((Int, Int), Int);
-    //     m.insert((Vec2, Float), Vec2);
-    //     m.insert((Vec3, Float), Vec3);
-    //     m.insert((Vec4, Float), Vec4);
-    //     m
-    // };
+     static ref ALLOWED_DIV_OPERATIONS: HashMap<(ValueType, ValueType), (PossibleDivOp,ValueType)> = {
+         use ValueType::*;
+         use PossibleDivOp::*;
+         let mut m = HashMap::new();
+         m.insert((Vec3, Vec3), (VecVec, Vec3));
+         m.insert((Vec2, Vec2), (VecVec, Vec2));
+         m.insert((Vec4, Vec4), (VecVec, Vec4));
+         m.insert((Float, Float), (ScalScal, Float));
+         m.insert((Int, Int), (ScalScal, Int));
+         m.insert((Vec2, Float), (VecScal, Vec2));
+         m.insert((Vec3, Float), (VecScal, Vec3));
+         m.insert((Vec4, Float), (VecScal, Vec4));
+         m
+     };
 }
 impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
     fn emit_arg(&mut self, val_type: ValueType, id: usize, ret: Address) {
@@ -260,6 +268,56 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         self.set_type(ret, return_type);
     }
 
+    fn promote_scalar_to_vector(&mut self, value_address: SpirvAddress, vec_type: ValueType) -> SpirvAddress {
+        let num_components = match vec_type {
+            ValueType::Vec2 => 2,
+            ValueType::Vec3 => 3,
+            ValueType::Vec4 => 4,
+            _ => panic!(),
+        };
+        let tp = self.ids.map_type(vec_type);
+        let ret = self.builder.composite_construct(tp, None, &std::iter::repeat(value_address).take(num_components).collect::<Vec<_>>()).unwrap();
+        ret
+    }
+
+    fn emit_div_experimental(
+        &mut self,
+        left: Address,
+        right: Address,
+        ret: Address,
+    ) {
+        let left_address = self.map(left);
+        let right_address = self.map(right);
+        let result_address = self.map(ret);
+
+        let left_type = self.type_map.get(&left).expect("type should be known at this point");
+        let right_type = self.type_map.get(&right).expect("type should be known at this point");
+
+        let types = (left_type.clone(), right_type.clone());
+
+        if !ALLOWED_DIV_OPERATIONS.contains_key(&types) {
+            // well...
+            assert!(false);
+
+        }
+
+        let (operation, return_type) = &ALLOWED_DIV_OPERATIONS[&types];
+
+        let ret_type = self.ids.map_type(*return_type);
+        match operation {
+            PossibleDivOp::ScalScal =>{
+                self.builder.fdiv(ret_type, Some(result_address), left_address, right_address).unwrap();
+            },
+            PossibleDivOp::VecScal =>{
+                let new_right = self.promote_scalar_to_vector(right_address, *return_type);
+                self.builder.fdiv(ret_type, Some(result_address), left_address, new_right).unwrap();
+            },
+            PossibleDivOp::VecVec =>{
+                self.builder.fdiv(ret_type, Some(result_address), left_address, right_address).unwrap();
+            },
+        }
+
+    }
 
     fn emit_mul_experimental(
         &mut self,
@@ -420,7 +478,8 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
     }
 
     fn emit_div(&mut self, left: Address, right: Address, ret: Address) {
-        self.emit_algebraic(
+        self.emit_div_experimental(left, right, ret);
+        /*self.emit_algebraic(
             left,
             right,
             ret,
@@ -430,7 +489,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             |x, a, b, c, d| {
                 x.fdiv(a, b, c, d).unwrap();
             },
-        );
+        );*/
     }
 
     pub fn emit_less(&mut self, left: Address, right: Address, ret: Address) {
@@ -564,6 +623,38 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             _ => {}
         }
     }
+    pub fn emit_neg(&mut self, value: Address, ret: Address) {
+        let value_address = self.map(value);
+        let value_type = self.get_single_type(value);
+        let result_address = self.map(ret);
+
+        let return_type = self.ids.map_type(value_type);
+
+        let float_negation = |builder: &mut rspirv::mr::Builder, map: &mut HashMap<Address, ValueType>|{
+            builder.fnegate(return_type, Some(result_address), value_address).unwrap();
+            map.insert(ret, value_type);
+        };
+
+        let int_negation = |builder: &mut rspirv::mr::Builder, map: &mut HashMap<Address, ValueType>|{
+            builder.snegate(return_type, Some(result_address), value_address).unwrap();
+            map.insert(ret, value_type);
+        };
+
+        match value_type {
+            ValueType::Bool => {
+                self.builder.logical_not(return_type, Some(result_address), value_address).unwrap();
+            },
+            ValueType::Float => float_negation(self.builder, &mut self.type_map),
+            ValueType::Vec2 => float_negation(self.builder, &mut self.type_map),
+            ValueType::Vec3 => float_negation(self.builder, &mut self.type_map),
+            ValueType::Vec4 => float_negation(self.builder, &mut self.type_map),
+            ValueType::Mat3 => float_negation(self.builder, &mut self.type_map),
+            ValueType::Mat4 => float_negation(&mut self.builder, &mut self.type_map),
+            ValueType::Int =>int_negation(&mut self.builder, &mut self.type_map),
+            _ => panic!("unknown type on stage of spirv emitting ... Compiler bug."),
+        }
+    }
+
     pub fn emit_neq(&mut self, left: Address, right: Address, ret: Address) {
         let left_address = self.map(left);
         let right_address = self.map(right);
@@ -661,7 +752,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         self.current_block
     }
 
-    fn emit_dot_instruction(&mut self, arg1: Address, arg2: Address, ret: Address) -> SpirvAddress {
+    pub fn emit_dot_instruction(&mut self, arg1: Address, arg2: Address, ret: Address) -> SpirvAddress {
         let typ = self.ids.map_type(ValueType::Float);
         let ret_addr = self.map(ret);
         let arg1_addr = self.map(arg1);
@@ -943,6 +1034,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
     }
 
     fn emit_operation(&mut self, ret: Address, operation: Operation) {
+        //println!("emitting op: {}", ret);
         match operation {
             Operation::Arg(x) => {
                 self.emit_arg(self.input_type[x], x, ret);
@@ -981,9 +1073,8 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             Operation::Div(left, right) => {
                 self.emit_div(left, right, ret);
             }
-            Operation::Neg(..) => {
-                // TODO: do
-                panic!();
+            Operation::Neg(val) => {
+                self.emit_neg(val, ret);
             }
             Operation::Less(left, right) => {
                 self.emit_less(left, right, ret);

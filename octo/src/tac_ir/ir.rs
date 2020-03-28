@@ -249,6 +249,46 @@ macro_rules! replace {
     };
 }
 
+pub fn replace_invoke(op: &mut StdFunction, from: Address, to: Address) {
+    match op {
+        StdFunction::Abs(x) =>{replace!(x, from, to);}
+        StdFunction::Sin(x) =>{replace!(x, from, to);}
+        StdFunction::Cos(x) =>{replace!(x, from, to);}
+        StdFunction::Tan(x) =>{replace!(x, from, to);}
+        StdFunction::Round(x) =>{replace!(x, from, to);}
+        StdFunction::Trunc(x) =>{replace!(x, from, to);}
+        StdFunction::Sign(x) =>{replace!(x, from, to);}
+        StdFunction::Sinh(x) =>{replace!(x, from, to);}
+        StdFunction::Cosh(x) =>{replace!(x, from, to);}
+        StdFunction::Tanh(x) =>{replace!(x, from, to);}
+        StdFunction::Floor(x) =>{replace!(x, from, to);}
+        StdFunction::Ceil(x) =>{replace!(x, from, to);}
+        StdFunction::Fract(x) =>{replace!(x, from, to);}
+        StdFunction::Radians(x) =>{replace!(x, from, to);}
+        StdFunction::Degrees(x) =>{replace!(x, from, to);}
+        StdFunction::Asin(x) =>{replace!(x, from, to);}
+        StdFunction::Acos(x) =>{replace!(x, from, to);}
+        StdFunction::Asinh(x) =>{replace!(x, from, to);}
+        StdFunction::Acosh(x) =>{replace!(x, from, to);}
+        StdFunction::Atan(x) =>{replace!(x, from, to);}
+        StdFunction::Atanh(x) =>{replace!(x, from, to);}
+        StdFunction::Atan2(x,y) =>{replace!(x, from, to); replace!(y, from, to);}
+        StdFunction::Pow(x,y) =>{replace!(x, from, to); replace!(y, from, to);}
+        StdFunction::Exp(x) =>{replace!(x, from, to);}
+        StdFunction::Log(x) =>{replace!(x, from, to);}
+        StdFunction::Exp2(x) =>{replace!(x, from, to);}
+        StdFunction::Log2(x) =>{replace!(x, from, to);}
+        StdFunction::Sqrt(x) =>{replace!(x, from, to);}
+        StdFunction::Dot(x,y) =>{replace!(x, from, to); replace!(y, from, to);}
+        StdFunction::Min(x,y) =>{replace!(x, from, to); replace!(y, from, to);}
+        StdFunction::Max(x,y) =>{replace!(x, from, to); replace!(y, from, to);}
+        StdFunction::Clamp(x,y,z) =>{replace!(x, from, to); replace!(y, from, to); replace!(z, from, to)}
+        StdFunction::Length(x) =>{replace!(x, from, to);}
+        StdFunction::Cross(x,y) =>{replace!(x, from, to); replace!(y, from, to);}
+        StdFunction::Normalize(x) =>{replace!(x, from, to);}
+    }
+}
+
 pub fn replace(op: &mut (Address, Operation), from: Address, to: Address, replace_result: bool) {
     if replace_result {
         op.0 = if op.0 == from { to } else {op.0};
@@ -287,6 +327,7 @@ pub fn replace(op: &mut (Address, Operation), from: Address, to: Address, replac
             replace!(float, from, to);
         }
         Operation::Invoke(function) => {
+            replace_invoke(function, from, to);
             // ignore for now,
         }
         Operation::LoopMerge(a, b) => {

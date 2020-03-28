@@ -78,8 +78,11 @@ fn emit_{{func.name}}<'a, I: std::iter::Iterator<Item=&'a Op>>({% for i in 0..pa
                 {{float_id}}
             };
         {% endmatch %}
+        {% if func.is_dot() %}
+        return emitter.emit_dot_instruction(data_0, data_1, ret_addr);
+        {% else %}
         return emitter.emit_prototyped(id, &[{% for i in 0..params%}data_{{i}},{%endfor%}],ret_addr, result_type);
-
+        {% endif%}
     }
     panic!();
     {% endif %}

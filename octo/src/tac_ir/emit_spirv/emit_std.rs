@@ -749,8 +749,9 @@ fn emit_atan2<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: A
             
             25;
         
+        
         return emitter.emit_prototyped(id, &[data_0,data_1,],ret_addr, result_type);
-
+        
     }
     panic!();
     
@@ -817,8 +818,9 @@ fn emit_pow<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: Add
             
             26;
         
+        
         return emitter.emit_prototyped(id, &[data_0,data_1,],ret_addr, result_type);
-
+        
     }
     panic!();
     
@@ -1032,8 +1034,9 @@ fn emit_min<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: Add
                 37
             };
         
+        
         return emitter.emit_prototyped(id, &[data_0,data_1,],ret_addr, result_type);
-
+        
     }
     panic!();
     
@@ -1092,8 +1095,9 @@ fn emit_max<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: Add
                 40
             };
         
+        
         return emitter.emit_prototyped(id, &[data_0,data_1,],ret_addr, result_type);
-
+        
     }
     panic!();
     
@@ -1153,8 +1157,9 @@ fn emit_clamp<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: A
                 43
             };
         
+        
         return emitter.emit_prototyped(id, &[data_0,data_1,data_2,],ret_addr, result_type);
-
+        
     }
     panic!();
     
@@ -1215,8 +1220,9 @@ fn emit_dot<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: Add
             
             0;
         
-        return emitter.emit_prototyped(id, &[data_0,data_1,],ret_addr, result_type);
-
+        
+        return emitter.emit_dot_instruction(data_0, data_1, ret_addr);
+        
     }
     panic!();
     
@@ -1276,8 +1282,9 @@ fn emit_length<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_add
             
             66;
         
+        
         return emitter.emit_prototyped(id, &[data_0,],ret_addr, result_type);
-
+        
     }
     panic!();
     
@@ -1330,8 +1337,9 @@ fn emit_cross<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: A
                 43
             };
         
+        
         return emitter.emit_prototyped(id, &[data_0,data_1,],ret_addr, result_type);
-
+        
     }
     panic!();
     

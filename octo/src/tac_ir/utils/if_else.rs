@@ -10,6 +10,8 @@ pub struct IfElseCode {
     pub if_label: Address,
     pub else_label: Option<Address>,
     pub end_label: Address,
+    pub if_jump_end_label: Address,
+    pub else_jump_end_label: Option<Address>,
 }
 
 pub fn find_if_else<'b, I: std::iter::Iterator<Item = &'b Op>>(
@@ -57,11 +59,14 @@ pub fn find_if_else<'b, I: std::iter::Iterator<Item = &'b Op>>(
             panic!();
         }
     };
+    let if_jump_end_label = true_code[true_code.len()-1].0;
     true_code.pop();
     println!(
         "labels: start: {}, else: {}, end: {}",
         if_label, else_label, end_label
     );
+
+    let mut else_jump_end_label = None;
 
     let false_code = if end_label != else_label {
         let mut false_code: Vec<(Address, Operation)> = vec![];
@@ -79,6 +84,7 @@ pub fn find_if_else<'b, I: std::iter::Iterator<Item = &'b Op>>(
                 }
             }
         }
+        else_jump_end_label = Some(false_code.last().unwrap().0);
         false_code.pop();
         Some(false_code)
     } else {
@@ -120,6 +126,8 @@ pub fn find_if_else<'b, I: std::iter::Iterator<Item = &'b Op>>(
             Some(else_label)
         },
         end_label,
+        if_jump_end_label,
+        else_jump_end_label,
     };
     println!("{:#?}", ret);
     ret

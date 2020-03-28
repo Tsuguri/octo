@@ -2,7 +2,7 @@ use octo_runtime as or;
 use std::collections::{HashMap, HashSet};
 
 use super::ir::{Address, Op, Operation, PipelineIR, ValueType, PhiRecord};
-use super::utils::{find_loop, LoopCode, PeekableCode};
+use super::utils::{find_loop, LoopCode, PeekableCode, find_if_else, IfElseCode};
 
 #[derive(Debug, Clone)]
 pub struct ShaderDef {
@@ -206,7 +206,7 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         })).collect();
         shader_code.push((shader_code.last().unwrap().0 + 1, Operation::Exit(syncs[id].1, last_label)));
 
-        println!("Generated shader: {:#?}", shader_code);
+        println!("Generated shader: {:?}", shader_code);
         
 
 
@@ -281,7 +281,6 @@ fn prepare_dependencies(program: &Vec<(Address, Operation)>) -> HashMap<Address,
             ConstructVec4(a,b,c,d) => {usage.insert(ret_addr,vec![a,b,c,d]);},
             Jump(..) => (),
             JumpIfElse(a, ..) => {
-                
                 usage.insert(ret_addr, vec![a]);
             },
             LoopMerge(..) => {
@@ -304,8 +303,6 @@ fn prepare_dependencies(program: &Vec<(Address, Operation)>) -> HashMap<Address,
     }
 
     find_loops_dependencies(program, &mut usage);
-    find_if_else_dependencies(program, &mut usage);
-
     usage
 }
 
@@ -317,6 +314,10 @@ fn find_loops_dependencies(program: &Vec<(Address, Operation)>, deps: &mut HashM
         result_code.push((ret, op_code));
         match op_code {
             Operation::Label => last_label = ret,
+            Operation::JumpIfElse(..) => {
+                let conditional_data = find_if_else(ret, op_code, &mut peekable);
+                mark_conditional_dependencies(ret, &conditional_data, deps);
+            }
             Operation::LoopMerge(..) => {
                 let loop_data = find_loop(ret, op_code, &mut peekable, last_label);
 
@@ -340,6 +341,28 @@ fn find_loops_dependencies(program: &Vec<(Address, Operation)>, deps: &mut HashM
     }
 }
 
+fn mark_conditional_dependencies(condition_address: Address, if_else_data: &IfElseCode, deps: &mut HashMap<Address, Vec<Address>>) {
+    if_else_data.phi_nodes.iter().for_each(|elem| {
+        deps.get_mut(&elem.0).unwrap().push(condition_address);
+    });
+
+    deps.get_mut(&condition_address).unwrap().extend(&[if_else_data.if_label, if_else_data.end_label, if_else_data.if_jump_end_label]);
+    match if_else_data.else_label {
+        None => {},
+        Some(x) => {
+            deps.get_mut(&condition_address).unwrap().extend(&[x]);
+        }
+    }
+    match if_else_data.else_jump_end_label {
+        None => {},
+        Some(x) => {
+            deps.get_mut(&condition_address).unwrap().extend(&[x]);
+        }
+    }
+
+
+}
+
 fn mark_loop_dependencies(loop_address: Address, loop_data: &LoopCode, deps: &mut HashMap<Address, Vec<Address>>) {
 
     let dependencies = vec![
@@ -356,9 +379,6 @@ fn mark_loop_dependencies(loop_address: Address, loop_data: &LoopCode, deps: &mu
     ];
     
     deps.insert(loop_address, dependencies);
-}
-
-fn find_if_else_dependencies(program: &Vec<(Address, Operation)>, deps: &mut HashMap<Address, Vec<Address>>) {
 }
 
 fn check_types(operations: &Vec<(Address, Operation)>, input_types: &Vec<(ValueType, String)>, uniforms: &Vec<(ValueType, String)>) -> HashMap<Address, ValueType> {
@@ -415,6 +435,7 @@ fn check_types(operations: &Vec<(Address, Operation)>, input_types: &Vec<(ValueT
             LoopMerge(..) => continue,
             Invoke(func) => {
                 let deps = func.deps();
+                //println!("checking deps: {:?}", deps);
                 types[&deps[0]]
             }
 
