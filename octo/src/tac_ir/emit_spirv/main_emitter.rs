@@ -306,7 +306,15 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         let ret_type = self.ids.map_type(*return_type);
         match operation {
             PossibleDivOp::ScalScal =>{
-                self.builder.fdiv(ret_type, Some(result_address), left_address, right_address).unwrap();
+                match return_type {
+                    ValueType::Float => {
+                        self.builder.fdiv(ret_type, Some(result_address), left_address, right_address).unwrap();
+                    },
+                    ValueType::Int => {
+                        self.builder.sdiv(ret_type, Some(result_address), left_address, right_address).unwrap();
+                    },
+                    _=>{assert!(false);}
+                }
             },
             PossibleDivOp::VecScal =>{
                 let new_right = self.promote_scalar_to_vector(right_address, *return_type);
@@ -464,17 +472,6 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
 
     fn emit_mul(&mut self, left: Address, right: Address, ret: Address) {
         self.emit_mul_experimental(left, right, ret);
-        // self.emit_algebraic(
-        //     left,
-        //     right,
-        //     ret,
-        //     |x, a, b, c, d| {
-        //         x.imul(a, b, c, d).unwrap();
-        //     },
-        //     |x, a, b, c, d| {
-        //         x.fmul(a, b, c, d).unwrap();
-        //     },
-        // );
     }
 
     fn emit_div(&mut self, left: Address, right: Address, ret: Address) {
