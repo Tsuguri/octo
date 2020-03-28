@@ -72,6 +72,12 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     println!("after unused operation removal");
     println!("{:?}", tac);
 
+    let tac = tac_ir::move_sync_operations(tac);
+
+    println!("after sync movement");
+    println!("{:?}", tac);
+
+
     let tac = tac_ir::unroll_synced_loop(tac);
 
     println!("after loop reexport");

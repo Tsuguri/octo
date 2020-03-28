@@ -39,6 +39,7 @@ fn emit_{{func.name}}<'a, I: std::iter::Iterator<Item=&'a Op>>({% for i in 0..pa
     let data_{{i}}_type = emitter.get_single_type(data_{{i}});{% endfor %}
     
     let args =[{% for i in 0..params %}data_{{i}}_type, {% endfor %} ];
+    println!("emitting {{func.name}} of {:?}", data_0_type);
 
 
     {% if func.pass_through.len() > 0  && params == 1 %}

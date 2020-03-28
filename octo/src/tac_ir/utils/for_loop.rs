@@ -19,6 +19,7 @@ pub struct LoopCode {
     pub condition_check_label: Address,
     pub jump_cont_label: Address,
     pub jump_start_label: Address,
+    pub entry_label_jump: Address,
 }
 
 impl LoopCode {
@@ -28,7 +29,7 @@ impl LoopCode {
         ops.push((self.condition_jump_label, Operation::Jump(self.condition_label)));
         ops.push((self.condition_label, Operation::Label));
         ops.extend(self.condition.into_iter());
-        ops.push((self.condition_check_label, Operation::JumpIfElse(self.condition_label, self.body_label, self.exit_label)));
+        ops.push((self.condition_check_label, Operation::JumpIfElse(self.condition_value, self.body_label, self.exit_label)));
         ops.push((self.body_label, Operation::Label));
         ops.extend(self.body.into_iter());
         ops.push((self.jump_cont_label, Operation::Jump(self.continue_label)));
@@ -176,6 +177,7 @@ pub fn find_loop<'b, I: std::iter::Iterator<Item = &'b Op>>(
         condition_check_label,
         jump_cont_label,
         jump_start_label,
+        entry_label_jump: 0,
     };
     //println!("{:#?}", ret);
 

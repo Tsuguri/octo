@@ -146,7 +146,13 @@ pub fn emit_spirv(module_name: &str, code: PipelineDef) -> OctoModule {
 }
 
 fn emit_single_shader(info: ShaderDef, uniforms: &Vec<(ValueType, String)>) -> Vec<u32> {
-    //println!("Emitting single fragment shader for: {:?}\n\n", info.code);
+
+    if true {
+        println!("Emitting single fragment shader for:\n\n");
+        for c in &info.code {
+            println!("{:?}", c);
+        }
+    }
 
     let mut module = Builder::new();
     module.capability(spirv::Capability::Shader);

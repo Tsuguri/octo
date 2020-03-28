@@ -92,6 +92,11 @@ pub fn split(program: PipelineIR) -> PipelineDef {
 
     let dependencies = prepare_dependencies(&operations);
 
+    for (op, val, index, block) in &syncs {
+        if dependencies.contains_key(op) {
+        }
+    }
+
     let types = check_types(&operations, &inputs, &uniforms);
 
     let last_op = operations.last().unwrap();
@@ -102,11 +107,13 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         }
     };
 
-    syncs.push((last_op.0, exit_value, operations.len()-1));
+    syncs.push((last_op.0, exit_value, operations.len()-1, 100000));
+
 
     let mut programs: Vec<Vec<(Address, Operation)>> = Vec::with_capacity(syncs.len() + 1);
 
-    for (sync_operation, synced_value, index) in &syncs {
+
+    for (sync_operation, synced_value, index, block_label_at_split) in &syncs {
         //println!("generating program for syncing {}", synced_value);
         let mut used = HashSet::new();
         let mut to_check = Vec::new();
@@ -167,10 +174,21 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         let shader_inputs: Vec<_> = program_inputs.iter().map(|x| x.1).collect();
         let program_in: Vec<_> = program_inputs.iter().map(|x| x.0).collect();
         let mut last_label = 0;
+        let mut label_stack = Vec::new();
+
+        let mut labels = HashSet::new();
+
+        program.iter().for_each(|a| {
+            match a.1 {
+                Operation::Label => {labels.insert(a.0);},
+                _=>(),
+            }
+        });
 
         let mut shader_code: Vec<_> = std::iter::once((1, Operation::Label)).chain(program.iter().map(|x| {
             let op = match x.1 {
                 Operation::Label => {
+                    label_stack.push(x.0);
                     last_label = x.0;
                     x.1
                 }
@@ -200,6 +218,14 @@ pub fn split(program: PipelineIR) -> PipelineDef {
                     }).unwrap();
                     Operation::Arg(id.0)
                 },
+                Operation::Phi(record) => {
+                    let mut record = record;
+                    if !labels.contains(&record.old_label) {
+                        record.old_label = 1;
+                    }
+
+                    Operation::Phi(record)
+                }
                 a => a
             };
             (x.0, op)
@@ -207,6 +233,14 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         shader_code.push((shader_code.last().unwrap().0 + 1, Operation::Exit(syncs[id].1, last_label)));
 
         println!("Generated shader: {:?}", shader_code);
+
+        let mut pp_ir = PipelineIR::new(shader_code);
+        pp_ir.inputs = shader_inputs.iter().map(|x| (*x, "".to_owned())).collect();
+        pp_ir.outputs = vec![t];
+        pp_ir.uniforms = uniforms.clone();
+
+        let pp_ir = super::optimalizations::remove_unused_operations(pp_ir);
+        let (shader_code, ..) = pp_ir.take();
         
 
 
@@ -240,11 +274,13 @@ pub fn split(program: PipelineIR) -> PipelineDef {
     };
 }
 
-// Address of operation, address of synced value and index in operations vector
-fn find_syncs(program: &Vec<(Address, Operation)>) -> Vec<(Address, Address, usize)> {
+// Address of operation, address of synced value and index in operations vector, label at which split happened
+fn find_syncs(program: &Vec<(Address, Operation)>) -> Vec<(Address, Address, usize, Address)> {
+    let mut current_label = 0;
     program.iter().enumerate().filter_map(|(id, elem)| {
         match elem.1 {
-            Operation::Sync(x) => Some((elem.0, x, id)),
+            Operation::Label => {current_label = elem.0; None},
+            Operation::Sync(x) => Some((elem.0, x, id, current_label)),
             _ => None
         }
     }).collect()
@@ -309,23 +345,28 @@ fn prepare_dependencies(program: &Vec<(Address, Operation)>) -> HashMap<Address,
 fn find_loops_dependencies(program: &Vec<(Address, Operation)>, deps: &mut HashMap<Address, Vec<Address>>) {
     let mut peekable = PeekableCode::new(program.iter());
     let mut last_label = 0;
+    let mut last_jump = 0;
     let mut result_code = Vec::new();
     while let Some((ret, op_code)) = peekable.next().copied() {
         result_code.push((ret, op_code));
         match op_code {
+            Operation::Jump(lab) => last_jump = ret,
             Operation::Label => last_label = ret,
             Operation::JumpIfElse(..) => {
                 let conditional_data = find_if_else(ret, op_code, &mut peekable);
                 mark_conditional_dependencies(ret, &conditional_data, deps);
             }
             Operation::LoopMerge(..) => {
-                let loop_data = find_loop(ret, op_code, &mut peekable, last_label);
+                let mut loop_data = find_loop(ret, op_code, &mut peekable, last_label);
+                loop_data.entry_label_jump = last_jump;
+                result_code.pop();
 
                 let mut phi_nodes = Vec::new();
                 while let Some((phi_ret, Operation::Phi(record))) = result_code.last() {
                     phi_nodes.push((*phi_ret, *record));
                     result_code.pop();
                 }
+                println!("op before phi: {:?}", result_code.last());
                 assert!(*result_code.last().unwrap() == (loop_data.entry_label, Operation::Label));
                 result_code.pop();
                 phi_nodes.iter().for_each(|elem| {
@@ -366,6 +407,7 @@ fn mark_conditional_dependencies(condition_address: Address, if_else_data: &IfEl
 fn mark_loop_dependencies(loop_address: Address, loop_data: &LoopCode, deps: &mut HashMap<Address, Vec<Address>>) {
 
     let dependencies = vec![
+        loop_data.entry_label_jump,
         loop_data.entry_label,
         loop_data.exit_label,
         loop_data.condition_jump_label,

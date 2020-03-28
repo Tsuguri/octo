@@ -62,6 +62,7 @@ fn emit_round<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting round of {:?}", data_0_type);
 
 
     
@@ -93,6 +94,7 @@ fn emit_trunc<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting trunc of {:?}", data_0_type);
 
 
     
@@ -125,6 +127,7 @@ fn emit_abs<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr: 
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting abs of {:?}", data_0_type);
 
 
     
@@ -161,6 +164,7 @@ fn emit_sign<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr:
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting sign of {:?}", data_0_type);
 
 
     
@@ -196,6 +200,7 @@ fn emit_floor<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting floor of {:?}", data_0_type);
 
 
     
@@ -227,6 +232,7 @@ fn emit_ceil<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr:
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting ceil of {:?}", data_0_type);
 
 
     
@@ -258,6 +264,7 @@ fn emit_fract<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting fract of {:?}", data_0_type);
 
 
     
@@ -289,6 +296,7 @@ fn emit_radians<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_ad
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting radians of {:?}", data_0_type);
 
 
     
@@ -320,6 +328,7 @@ fn emit_degrees<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_ad
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting degrees of {:?}", data_0_type);
 
 
     
@@ -351,6 +360,7 @@ fn emit_sin<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr: 
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting sin of {:?}", data_0_type);
 
 
     
@@ -382,6 +392,7 @@ fn emit_cos<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr: 
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting cos of {:?}", data_0_type);
 
 
     
@@ -413,6 +424,7 @@ fn emit_tan<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr: 
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting tan of {:?}", data_0_type);
 
 
     
@@ -444,6 +456,7 @@ fn emit_asin<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr:
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting asin of {:?}", data_0_type);
 
 
     
@@ -475,6 +488,7 @@ fn emit_acos<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr:
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting acos of {:?}", data_0_type);
 
 
     
@@ -506,6 +520,7 @@ fn emit_atan<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr:
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting atan of {:?}", data_0_type);
 
 
     
@@ -537,6 +552,7 @@ fn emit_sinh<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr:
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting sinh of {:?}", data_0_type);
 
 
     
@@ -568,6 +584,7 @@ fn emit_cosh<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr:
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting cosh of {:?}", data_0_type);
 
 
     
@@ -599,6 +616,7 @@ fn emit_tanh<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr:
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting tanh of {:?}", data_0_type);
 
 
     
@@ -630,6 +648,7 @@ fn emit_asinh<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting asinh of {:?}", data_0_type);
 
 
     
@@ -661,6 +680,7 @@ fn emit_acosh<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting acosh of {:?}", data_0_type);
 
 
     
@@ -692,6 +712,7 @@ fn emit_atanh<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting atanh of {:?}", data_0_type);
 
 
     
@@ -730,6 +751,7 @@ fn emit_atan2<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: A
     let data_1_type = emitter.get_single_type(data_1);
     
     let args =[data_0_type, data_1_type,  ];
+    println!("emitting atan2 of {:?}", data_0_type);
 
 
     
@@ -799,6 +821,7 @@ fn emit_pow<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: Add
     let data_1_type = emitter.get_single_type(data_1);
     
     let args =[data_0_type, data_1_type,  ];
+    println!("emitting pow of {:?}", data_0_type);
 
 
     
@@ -843,6 +866,7 @@ fn emit_exp<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr: 
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting exp of {:?}", data_0_type);
 
 
     
@@ -874,6 +898,7 @@ fn emit_log<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr: 
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting log of {:?}", data_0_type);
 
 
     
@@ -905,6 +930,7 @@ fn emit_exp2<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr:
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting exp2 of {:?}", data_0_type);
 
 
     
@@ -936,6 +962,7 @@ fn emit_log2<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr:
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting log2 of {:?}", data_0_type);
 
 
     
@@ -967,6 +994,7 @@ fn emit_sqrt<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_addr:
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting sqrt of {:?}", data_0_type);
 
 
     
@@ -1011,6 +1039,7 @@ fn emit_min<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: Add
     let data_1_type = emitter.get_single_type(data_1);
     
     let args =[data_0_type, data_1_type,  ];
+    println!("emitting min of {:?}", data_0_type);
 
 
     
@@ -1072,6 +1101,7 @@ fn emit_max<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: Add
     let data_1_type = emitter.get_single_type(data_1);
     
     let args =[data_0_type, data_1_type,  ];
+    println!("emitting max of {:?}", data_0_type);
 
 
     
@@ -1134,6 +1164,7 @@ fn emit_clamp<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: A
     let data_2_type = emitter.get_single_type(data_2);
     
     let args =[data_0_type, data_1_type, data_2_type,  ];
+    println!("emitting clamp of {:?}", data_0_type);
 
 
     
@@ -1201,6 +1232,7 @@ fn emit_dot<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: Add
     let data_1_type = emitter.get_single_type(data_1);
     
     let args =[data_0_type, data_1_type,  ];
+    println!("emitting dot of {:?}", data_0_type);
 
 
     
@@ -1263,6 +1295,7 @@ fn emit_length<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_add
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting length of {:?}", data_0_type);
 
 
     
@@ -1314,6 +1347,7 @@ fn emit_cross<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address,data_1: A
     let data_1_type = emitter.get_single_type(data_1);
     
     let args =[data_0_type, data_1_type,  ];
+    println!("emitting cross of {:?}", data_0_type);
 
 
     
@@ -1362,6 +1396,7 @@ fn emit_normalize<'a, I: std::iter::Iterator<Item=&'a Op>>(data_0: Address, ret_
     let data_0_type = emitter.get_single_type(data_0);
     
     let args =[data_0_type,  ];
+    println!("emitting normalize of {:?}", data_0_type);
 
 
     

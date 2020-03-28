@@ -324,7 +324,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
                 self.builder.fdiv(ret_type, Some(result_address), left_address, right_address).unwrap();
             },
         }
-
+        self.set_type(ret, *return_type);
     }
 
     fn emit_mul_experimental(
@@ -625,6 +625,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         let value_type = self.get_single_type(value);
         let result_address = self.map(ret);
 
+        println!("negating type: {:?}", value_type);
         let return_type = self.ids.map_type(value_type);
 
         let float_negation = |builder: &mut rspirv::mr::Builder, map: &mut HashMap<Address, ValueType>|{
@@ -745,6 +746,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
     }
 
     fn emit_block(&mut self, id: Option<SpirvAddress>) -> SpirvAddress {
+        println!("emitting block {:?}", id);
         self.current_block = self.builder.begin_basic_block(id).unwrap();
         self.current_block
     }
@@ -766,6 +768,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
     fn emit_glsl_ext_many(&mut self, id: SpirvAddress, args: &[Address], ret: Address) -> SpirvAddress{
         let typ = self.get_single_type(args[0]);
         let ret_type = self.ids.map_type(typ);
+        println!("{:?} is now of type {:?}", ret, typ);
         let spirv_addresses: Vec<_> = args.iter().map(|x| self.map(*x)).collect();
         self.type_map.insert(ret, typ);
         let ret = self.map(ret);
@@ -775,6 +778,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
 
     pub fn emit_prototyped(&mut self, id: SpirvAddress, args: &[Address], ret: Address, ret_type: ValueType) -> SpirvAddress {
         self.type_map.insert(ret, ret_type);
+        println!("{:?} is now of type {:?}", ret, ret_type);
         let ret_type = self.ids.map_type(ret_type);
 
         let spirv_addresses: Vec<_> = args.iter().map(|x| self.map(*x)).collect();
@@ -1092,6 +1096,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
                 self.emit_or(left, right, ret);
             }
             Operation::Label => {
+                println!("emitting label: {}", ret);
                 self.last_label = ret;
                 let id = self.map(ret);
                 self.emit_block(Some(id));
