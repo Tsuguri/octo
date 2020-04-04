@@ -198,6 +198,23 @@ pub enum Operation {
     Label,
 }
 
+impl Operation {
+    pub fn is_phi(&self) -> bool {
+        match self {
+            Operation::Phi(..) => true,
+            _ => false,
+        }
+    }
+    pub fn is_jump_if_else(&self) -> bool {
+        match self {
+            Operation::JumpIfElse(..) => true,
+            _ => false,
+        }
+    }
+
+    
+}
+
 impl std::string::ToString for Operation {
     fn to_string(&self) -> String {
         use Operation::*;

@@ -67,7 +67,7 @@ pub fn unroll_synced_loop(code: PipelineIR) -> PipelineIR {
         match op_code {
             Operation::Label => last_label = ret,
             Operation::LoopMerge(..) => {
-                let loop_data = find_loop(ret, op_code, &mut peekable, last_label);
+                let mut loop_data = find_loop(ret, op_code, &mut peekable, last_label);
                 result_code.pop();
                 if !contains_sync(&loop_data) {
                     result_code.extend(loop_data.emit());
@@ -75,9 +75,17 @@ pub fn unroll_synced_loop(code: PipelineIR) -> PipelineIR {
                 }
                 // current op: LoopMerge
                 let mut phi_nodes = Vec::new();
-                while let Some((phi_ret, Operation::Phi(record))) = result_code.last() {
-                    phi_nodes.push((*phi_ret, *record));
-                    result_code.pop();
+                loop {
+                    while let Some((phi_ret, Operation::Phi(record))) = result_code.last() {
+                        phi_nodes.push((*phi_ret, *record));
+                        result_code.pop();
+                    }
+                    if let Some((sync_ret, Operation::Sync(val))) = result_code.last() {
+                        loop_data.body.insert(1, (*sync_ret, Operation::Sync(*val)));
+                        result_code.pop();
+                    } else {
+                        break;
+                    }
                 }
                 assert!(*result_code.last().unwrap() == (loop_data.entry_label, Operation::Label));
                 result_code.pop();

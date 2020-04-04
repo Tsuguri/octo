@@ -1,0 +1,25 @@
+pipeline main(position: vec4, normal: vec4, albedo: vec4) -> (vec4)
+with {
+    camera_pos: vec3,
+    lightDir: vec3,
+    lightColor: vec3,
+    view_size: vec2,
+}
+{
+    let b = view_size;
+
+    // black if not bright enough
+    let color = albedo.xyz;
+
+    for(let j = 0; j< 5; j = j+1) {
+        let result = vec3(0.0, 0.0, 0.0);
+        for (let i = -3.0; i<=3.0; i = i + 1.0) {
+            result = result + result;
+        }
+        color = result;
+    }
+    
+
+
+    return vec4(color.x, color.y, color.z, 1.0);
+}

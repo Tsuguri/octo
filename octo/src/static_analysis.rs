@@ -95,7 +95,7 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
 
             match storage {
                 ValueStorage::Creation(name)=> {
-                    println!("creating {} with type {:?}", name.val, typ);
+                    //println!("creating {} with type {:?}", name.val, typ);
                     match scope.create_variable(&name.val, typ, name.span) {
                         Result::Ok(()) => {}
                         Err(err) => {
@@ -407,13 +407,13 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
 
 fn analyze_access_path(path: &Vec<Spanned<String>>, diagnostics: &mut Diagnostics, scope: &Scope) {
 
-    println!("{:#?}", path);
+    //println!("{:#?}", path);
     let first = path[0].val.clone();
 
     let variable = scope.use_variable(&first);
     let mut typ = match variable {
         Some(x) => {
-            println!("type of {} is {:?}", first, x);
+            //println!("type of {} is {:?}", first, x);
             x
         }
         None => {
@@ -597,7 +597,7 @@ fn analyze_invocation(name: &str, name_span: Sp, args: &mut Vec<Box<Expression>>
         types.push(typ);
     }
     if TYPE_SET.contains(name){
-        println!("lolz");
+        //println!("lolz");
         return match_constructor(name, name_span, &types, diagnostics, scope);
     }
     match match_prototype(name, &types) {

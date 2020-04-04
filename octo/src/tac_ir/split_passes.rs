@@ -362,9 +362,17 @@ fn find_loops_dependencies(program: &Vec<(Address, Operation)>, deps: &mut HashM
                 result_code.pop();
 
                 let mut phi_nodes = Vec::new();
-                while let Some((phi_ret, Operation::Phi(record))) = result_code.last() {
-                    phi_nodes.push((*phi_ret, *record));
-                    result_code.pop();
+                loop {
+                    while let Some((phi_ret, Operation::Phi(record))) = result_code.last() {
+                        phi_nodes.push((*phi_ret, *record));
+                        result_code.pop();
+                    }
+                    if let Some((ret, Operation::Sync(val))) = result_code.last() {
+                        loop_data.body.insert(0, (*ret, Operation::Sync(*val)));
+                        result_code.pop();
+                    } else {
+                        break;
+                    }
                 }
                 println!("op before phi: {:?}", result_code.last());
                 assert!(*result_code.last().unwrap() == (loop_data.entry_label, Operation::Label));
@@ -427,6 +435,7 @@ fn check_types(operations: &Vec<(Address, Operation)>, input_types: &Vec<(ValueT
     let mut types: HashMap<Address, ValueType> = HashMap::new();
 
     for (ret_addr, op) in operations {
+        println!("adding {} to type map", *ret_addr);
         use Operation::*;
         let typ = match op {
             Arg(num) => input_types[*num].0,

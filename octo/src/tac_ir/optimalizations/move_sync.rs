@@ -20,6 +20,10 @@ pub fn move_sync_operations(ir: PipelineIR) -> PipelineIR{
             code.swap(id, id-1);
             id-=1;
         }
+        if id == 0 {
+            panic!("synced value was not found... Internal compiler error");
+        }
+
         println!("finished at line: {}", id);
     }
 

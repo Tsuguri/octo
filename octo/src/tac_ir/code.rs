@@ -13,6 +13,12 @@ pub struct PhiObserver {
 impl PhiObserver {
     pub fn store(&mut self, name: &str, new: Address, new_label: Address, old: Address) {
         //println!("storing assignment in label: {}", new_label);
+        if self.collection.contains_key(name) {
+            let record = self.collection.get_mut(name).unwrap();
+            record.new = new;
+            record.label = new_label;
+            return;
+        }
         let record = PhiRecord {
             new,
             label: new_label,
@@ -25,11 +31,20 @@ impl PhiObserver {
     pub fn get(&self, name: &str) -> Option<&PhiRecord> {
         self.collection.get(name)
     }
+
+    pub fn readdress(&mut self, old_addr: Address, new_addr: Address) {
+        for (name, rec) in self.collection.iter_mut() {
+            if rec.new == old_addr {
+                rec.new = new_addr;
+            }
+        }
+
+    }
 }
 
 pub struct Code {
     pub code: Vec<Op>,
-    variables: HashMap<String, Address>,
+    variables: Vec<HashMap<String, Address>>,
     constants: HashMap<Address, ConstantValue>,
 
     phi_observer: Option<PhiObserver>,
@@ -49,7 +64,7 @@ impl Code {
     pub fn empty() -> Self {
         Code {
             code: vec![],
-            variables: HashMap::new(),
+            variables: vec![HashMap::new()],
             constants: HashMap::new(),
             counter: 0,
             phi_observer: None,
@@ -96,6 +111,7 @@ impl Code {
             outer_label: self.last_label,
             collection: HashMap::new(),
         });
+        self.variables.push(HashMap::new());
         tmp2
     }
 
@@ -104,6 +120,7 @@ impl Code {
         let ret = self.phi_observer.take();
         //self.phi_assignments = old;
         self.phi_observer = old;
+        self.variables.pop();
         ret.map(|x| x.collection)
     }
 
@@ -136,30 +153,61 @@ impl Code {
         self.code.push((label, op));
     }
 
-    pub fn store(&mut self, name: &str, add: Address, create: bool) {
-        if let Some(assignments) = &mut self.phi_observer {
-            // if we create new variable then it doesn't go into phi assignemts (local variable).
-            if !create {
-                let old = self.variables[name];
-                //assignments.insert(name.to_owned(), (add, old));
-                assignments.store(name, add, self.last_label, old);
-
-                return;
+    fn lookup_address(&self, name: &str) -> Option<Address> {
+        for scope in self.variables.iter().rev() {
+            if scope.contains_key(name) {
+                return Some(scope[name]);
             }
         }
-        self.variables.insert(name.to_owned(), add);
+        return None;
     }
-    pub fn get(&self, name: &str) -> Address {
-        if let Some(assignments) = &self.phi_observer {
-            //println!("Getting phi val for {}", name);
-            match assignments.get(name) {
-                None => {}
-                Some(x) => {
-                    return x.new;
+
+    fn store_new_address(&mut self, name: String, add: Address) {
+        for scope in self.variables.iter_mut().rev() {
+            if scope.contains_key(&name) {
+                scope.insert(name, add);
+                break;
+            }
+        }
+    }
+
+    pub fn store(&mut self, name: &str, add: Address, create: bool) {
+        let old = self.lookup_address(name);
+        if let Some(assignments) = &mut self.phi_observer {
+            match &self.variables.last() {
+                None => unreachable!(),
+                Some(locals) => {
+                    // if we create new variable then it doesn't go into phi assignemts (local variable).
+                    if !create && !locals.contains_key(name) {
+                        //assignments.insert(name.to_owned(), (add, old));
+                        assignments.store(name, add, self.last_label, old.unwrap());
+                    }
                 }
             }
-        };
-        *self.variables.get(name).unwrap()
+        }
+        //println!("storing {} into {}", name, add);
+        if create {
+            self.variables.last_mut().unwrap().insert(name.to_owned(), add);
+        } else {
+            self.store_new_address(name.to_owned(), add);
+        }
+    }
+    pub fn get(&self, name: &str) -> Address {
+        //println!("lookup of {}", name);
+        return self.lookup_address(name).unwrap();
+    }
+
+    pub fn update_variable_by_address(&mut self, old_addr: Address, new_addr: Address) {
+        use std::iter::*;
+        let name = self.variables.iter().flatten().find(|(_key, value)| if **value == old_addr {return true;} else {return false;}).map(|(key, value)| (key.clone(), *value));
+        match name {
+            Some((name_string, current_address)) => {
+                assert!(current_address == old_addr);
+                self.store(&name_string, new_addr, false);
+
+            },
+            None => (),
+        }
     }
 
     pub fn synchronize(&mut self, address: Address) -> Address {

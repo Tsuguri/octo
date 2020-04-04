@@ -17,21 +17,21 @@ pub fn emit(ast: ast::Pipeline) -> PipelineIR {
 
     for arg in ast.arguments.iter().enumerate() {
         let addr = code.push(Operation::Arg(arg.0));
-        code.store(&arg.1.identifier.val, addr, false);
+        code.store(&arg.1.identifier.val, addr, true);
         arguments.push((arg.1.typ, arg.1.identifier.val.clone()));
     }
     if ast.uniforms.is_some() {
         for uni in ast.uniforms.unwrap().entries.iter().enumerate() {
             let addr = code.push(Operation::Uniform(uni.0));
-            code.store(&uni.1.identifier.val, addr, false);
+            code.store(&uni.1.identifier.val, addr, true);
             uniforms.push((uni.1.typ, uni.1.identifier.val.clone()));
         }
     }
 
-    println!("inputs: {}", ast.arguments.len());
-    println!("inputs2: {}", arguments.len());
-    println!("outputs: {}", ast.results.len());
-    println!("uniforms: {}", uniforms.len());
+    //println!("inputs: {}", ast.arguments.len());
+    //println!("inputs2: {}", arguments.len());
+    //println!("outputs: {}", ast.results.len());
+    //println!("uniforms: {}", uniforms.len());
 
     emit_block(ast.block, &mut code);
 
@@ -39,7 +39,7 @@ pub fn emit(ast: ast::Pipeline) -> PipelineIR {
     output.inputs = arguments;
     output.outputs = ast.results.iter().map(|x| x.val).collect();
     output.uniforms = uniforms;
-    println!("outputs2: {}", output.outputs.len());
+    //println!("outputs2: {}", output.outputs.len());
     output
 }
 
@@ -110,7 +110,8 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             code.push(Operation::Jump(loop_def_label));
             code.push_with_label(Operation::Label, loop_def_label);
             let phi_insert_index = code.code_size();
-            // phi nodes go here?
+            // phi nodes go here
+
             code.push(Operation::LoopMerge(continue_label, end_label));
             code.push(Operation::Jump(condition_label));
 
@@ -147,6 +148,9 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
                 rec.old_label = post_init_label;
 
                 let address = code.insert_at(Operation::Phi(rec), phi_insert_index);
+                println!("renaming {} to {}", phi.1.old, address);
+                code.update_variable_by_address(phi.1.old, address);
+
                 code.store(&phi.0, address, false);
                 //old, new
                 code.replace_label(
@@ -155,6 +159,7 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
                     address,
                 );
             }
+            println!("\tfor renaming finished");
         }
         ast::Statement::IfElse(condition, true_block, false_block) => {
             let cond = emit_expression(*condition, code);
@@ -393,7 +398,7 @@ fn emit_constructor(name: &str, addresses: &Vec<Address>, code: &mut Code) -> Ad
 }
 fn emit_invocation(name: &str, addresses: &Vec<Address>, code: &mut Code) -> Address{
     if TYPE_SET.contains(name) {
-        println!("hehe");
+        //println!("hehe");
         emit_constructor(name, addresses, code)
     } else {
         emit_builtin(name, addresses, code).unwrap()

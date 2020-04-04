@@ -59,12 +59,12 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     };
 
     let tac = tac_ir::emit_ir(valid_ast);
-    tac_ir::emit_graph(&tac, &(path.to_owned() + "1"));
+    //tac_ir::emit_graph(&tac, &(path.to_owned() + "1"));
     println!("before constant propagation");
     println!("{:?}", tac);
 
     let tac = tac_ir::propagate_constants(tac);
-    tac_ir::emit_graph(&tac,&(path.to_owned() + "2"));
+    //tac_ir::emit_graph(&tac,&(path.to_owned() + "2"));
     println!("after constant propagation");
     println!("{:?}", tac);
 
@@ -82,6 +82,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
 
     println!("after loop reexport");
     println!("{:?}", tac);
+
 
     let pipeline_definition = tac_ir::split_passes(tac);
 

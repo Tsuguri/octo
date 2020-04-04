@@ -91,6 +91,7 @@ pub fn find_loop<'b, I: std::iter::Iterator<Item = &'b Op>>(
     let body_label = body_label;
 
     let v = code.next().unwrap();
+    println!("v: {:?}, body_label: {}",v, body_label);
     match v.1 {
         Operation::Label => {
             assert!(v.0 == body_label);
