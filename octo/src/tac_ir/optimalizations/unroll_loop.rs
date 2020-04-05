@@ -183,20 +183,26 @@ fn unroll_loop(
         }
 
         let mut operations: Vec<_> = loop_data.body.clone().into_iter().chain(loop_data.continue_code.clone().into_iter()).rev().collect();
+
+        for op in operations.iter_mut() {
+            let new_addr = new_id();
+            address_map.insert(op.0, new_addr);
+            op.0 = new_addr;
+        }
+
+
         while let Some(op) = operations.pop() {
             let mut op = op;
 
             for (from, to) in address_map.iter() {
                 replace(&mut op, *from, *to, false);
             }
-            let new_addr = new_id();
-            address_map.insert(op.0, new_addr);
 
-            let new_op = match propagate_constant_operation(constants, &mut operations, op.1, new_addr, &mut address_map, &mut label) {
+            let new_op = match propagate_constant_operation(constants, &mut operations, op.1, op.0, &mut address_map, &mut label) {
                 None => continue, // should never happen here? maybe?
                 Some(ops) => ops,
             };
-            result_code.push((new_addr, new_op));
+            result_code.push((op.0, new_op));
         }
 
         for phi in &phi_nodes {
