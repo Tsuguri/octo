@@ -12,7 +12,7 @@ pub struct Function {
 #[derive(Debug, Clone)]
 pub struct Variable {
     pub name: String,
-    pub span: Span<ByteIndex>,
+    pub span: Span,
     pub typ: Type,
     pub used: bool,
 }
@@ -37,7 +37,7 @@ impl<'a> Scope<'a> {
             parent: Some(self),
         }
     }
-    pub fn variable_exists(&self, name: &str) -> Option<Span<ByteIndex>> {
+    pub fn variable_exists(&self, name: &str) -> Option<Span> {
         match self.variables.borrow().iter().find(|x| x.name == name) {
             None => match self.parent {
                 None => None,
@@ -47,12 +47,7 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub fn create_variable(
-        &mut self,
-        name: &str,
-        typ: Type,
-        span: Span<ByteIndex>,
-    ) -> Result<(), Span<ByteIndex>> {
+    pub fn create_variable(&mut self, name: &str, typ: Type, span: Span) -> Result<(), Span> {
         match self.variable_exists(name) {
             Some(span) => return Result::Err(span),
             None => {}

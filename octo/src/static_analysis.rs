@@ -1,15 +1,15 @@
 use super::ast::Pipeline as IncomingIR;
 use super::ast::Pipeline as OutgoingIR;
 use errors::{SemanticError, SemanticWarning, Sp};
-use parser::ast::{Expression, Statement, Spanned, ValueStorage};
+use parser::ast::{Expression, Spanned, Statement, ValueStorage};
 
 use super::semantics::env::Scope;
-use parser::ast::Type;
 use lazy_static::lazy_static;
+use parser::ast::{Span, Type};
 
 use std::collections::{HashMap, HashSet};
 
-use super::prototypes::{match_prototype, PrototypeMatchError, get_prototypes};
+use super::prototypes::{get_prototypes, match_prototype, PrototypeMatchError};
 
 pub struct Diagnostics {
     pub errors: Vec<SemanticError>,
@@ -41,17 +41,19 @@ pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
     // analyze argument and result types here...
     // and uniforms types...
     for arg in &pip.arguments {
-
-
         program_scope
             .create_variable(&arg.identifier.val, arg.typ.clone(), arg.identifier.span)
             .unwrap();
     }
 
-    if pip.uniforms.is_some(){
+    if pip.uniforms.is_some() {
         for uniform in &pip.uniforms.as_ref().unwrap().entries {
             program_scope
-                .create_variable(&uniform.identifier.val, uniform.typ.clone(), uniform.identifier.span)
+                .create_variable(
+                    &uniform.identifier.val,
+                    uniform.typ.clone(),
+                    uniform.identifier.span,
+                )
                 .unwrap();
         }
     }
@@ -62,15 +64,22 @@ pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
         analyze_statement(statement, &mut errs, &mut program_scope, &mut return_value);
     }
 
-    if return_value.is_none() && pip.results.len()>0{
+    if return_value.is_none() && pip.results.len() > 0 {
         let last = pip.results.last().unwrap();
 
-        errs.err(SemanticError::NotAssignedReturnVariable(last.span, last.val.to_string()));
+        errs.err(SemanticError::NotAssignedReturnVariable(
+            last.span,
+            last.val.to_string(),
+        ));
     }
 
-    if pip.results.len()>1 || pip.results.last().unwrap().val != return_value.unwrap().0 {
+    if pip.results.len() > 1 || pip.results.last().unwrap().val != return_value.unwrap().0 {
         let ret = return_value.unwrap();
-        errs.err(SemanticError::TypeMismatch(ret.1, ret.0.to_string(), pip.results.last().unwrap().val.to_string()));
+        errs.err(SemanticError::TypeMismatch(
+            ret.1,
+            ret.0.to_string(),
+            pip.results.last().unwrap().val.to_string(),
+        ));
     }
 
     for var in program_scope.unused_variables() {
@@ -84,17 +93,21 @@ pub fn analyze(pip: IncomingIR) -> (Option<OutgoingIR>, Diagnostics) {
     }
 }
 
-fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope: &mut Scope, return_value: &mut Option<(Type, super::ast::AstSpan)>) {
+fn analyze_statement(
+    stat: &mut Statement,
+    diagnostics: &mut Diagnostics,
+    scope: &mut Scope,
+    return_value: &mut Option<(Type, Span)>,
+) {
     match stat {
         Statement::Expression(ex) => {
             analyze_expression(ex, diagnostics, scope);
         }
         Statement::Assignment(storage, exp) => {
-
             let typ = analyze_expression(exp, diagnostics, scope);
 
             match storage {
-                ValueStorage::Creation(name)=> {
+                ValueStorage::Creation(name) => {
                     //println!("creating {} with type {:?}", name.val, typ);
                     match scope.create_variable(&name.val, typ, name.span) {
                         Result::Ok(()) => {}
@@ -107,8 +120,8 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
                         }
                     }
                     return;
-                },
-                ValueStorage::Existing(path)=>{
+                }
+                ValueStorage::Existing(path) => {
                     analyze_access_path(path, diagnostics, scope);
                 }
             }
@@ -121,9 +134,9 @@ fn analyze_statement(stat: &mut Statement, diagnostics: &mut Diagnostics, scope:
         Statement::Return(val) => {
             // TODO: do something here to check returned type
             let sp = val.span();
-            
+
             let typ = analyze_expression(val, diagnostics, scope);
-            *return_value = Some((typ,sp));
+            *return_value = Some((typ, sp));
         }
         Statement::For(stat, exp1, exp2, block) => {
             let mut block_scope = Scope::child_scope(&scope);
@@ -244,16 +257,16 @@ fn analyze_mul_operation(
         return allowed[&(left_type, right_type)];
     }
     if match (left_type.clone(), right_type.clone()) {
-            (Type::Unknown, _) => false,
-            (_, Type::Unknown) => false,
-            (_, _) => true,
+        (Type::Unknown, _) => false,
+        (_, Type::Unknown) => false,
+        (_, _) => true,
     } {
-            diagnostics.err(SemanticError::OperationTypeMismatch(
-                left_type.to_string(),
-                left.span(),
-                right_type.to_string(),
-                right.span(),
-            ));
+        diagnostics.err(SemanticError::OperationTypeMismatch(
+            left_type.to_string(),
+            left.span(),
+            right_type.to_string(),
+            right.span(),
+        ));
     }
     return Type::Unknown;
 }
@@ -307,8 +320,12 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
             super::ast::Literal::Int(_) => Type::Int,
         },
         Negation(exp) => analyze_expression(exp, diagnostics, scope),
-        Mul(left, right) => analyze_mul_operation(left, right, scope, diagnostics, &ALLOWED_MUL_OPERATIONS),
-        Div(left, right) => analyze_mul_operation(left, right, scope, diagnostics, &ALLOWED_DIV_OPERATIONS),
+        Mul(left, right) => {
+            analyze_mul_operation(left, right, scope, diagnostics, &ALLOWED_MUL_OPERATIONS)
+        }
+        Div(left, right) => {
+            analyze_mul_operation(left, right, scope, diagnostics, &ALLOWED_DIV_OPERATIONS)
+        }
         Add(left, right) => analyze_binary_operation(left, right, scope, diagnostics),
         Sub(left, right) => analyze_binary_operation(left, right, scope, diagnostics),
         Less(left, right) => {
@@ -394,19 +411,15 @@ fn analyze_expression(exp: &mut Expression, diagnostics: &mut Diagnostics, scope
             }
             value_type
         }
-        Scale(_left, _right)=> {Type::Unknown},
+        Scale(_left, _right) => Type::Unknown,
         Invocation(name, args) => {
-
             analyze_invocation(&name.val, name.span, args, diagnostics, scope)
         }
-        Access(val, field) => {
-            analyze_access(val, field, diagnostics, scope)
-        }
+        Access(val, field) => analyze_access(val, field, diagnostics, scope),
     }
 }
 
 fn analyze_access_path(path: &Vec<Spanned<String>>, diagnostics: &mut Diagnostics, scope: &Scope) {
-
     //println!("{:#?}", path);
     let first = path[0].val.clone();
 
@@ -431,105 +444,99 @@ fn analyze_access_path(path: &Vec<Spanned<String>>, diagnostics: &mut Diagnostic
                 diagnostics.err(SemanticError::NoField(
                     typ.to_string(),
                     name.span,
-                    name.val.clone()
+                    name.val.clone(),
                 ));
                 return;
             }
-            Ok(new_typ) =>{
+            Ok(new_typ) => {
                 typ = new_typ;
             }
         }
     }
-
 }
-fn analyze_field_access(typ: Type, field: &Spanned<String>)-> Result<Type, ()>{
+fn analyze_field_access(typ: Type, field: &Spanned<String>) -> Result<Type, ()> {
     let ret = match typ {
         Type::Unknown => Type::Unknown,
-        Type::Float =>{
+        Type::Float => {
             // float has no fields
             Type::Unknown
-        },
+        }
         Type::Int => {
             // int has no fields
             Type::Unknown
         }
-        Type::Bool => {
-            Type::Unknown
-        }
-        Type::Vec2 => {
-            match field.val.as_str() {
-                "x"=> Type::Float,
-                "y"=> Type::Float,
-                "r" => Type::Float,
-                "g" => Type::Float,
-                "u" => Type::Float,
-                "v" => Type::Float,
-                _=> Type::Unknown
-            }
-        }
-        Type::Vec3 => {
-            match field.val.as_str() {
-                "x"=> Type::Float,
-                "y"=> Type::Float,
-                "z"=> Type::Float,
-                "r" => Type::Float,
-                "g" => Type::Float,
-                "b" => Type::Float,
-                "xy"=>Type::Vec2,
-                "yx"=>Type::Vec2,
-                "xz"=>Type::Vec2,
-                "zx"=>Type::Vec2,
-                "yz"=>Type::Vec2,
-                "zy"=>Type::Vec2,
-                "rg"=>Type::Vec2,
-                "gr"=>Type::Vec2,
-                "rb"=>Type::Vec2,
-                "br"=>Type::Vec2,
-                "gb"=>Type::Vec2,
-                "bg"=>Type::Vec2,
-                _=> Type::Unknown
-            }
-        }
-        Type::Vec4 => {
-            match field.val.as_str() {
-                "x"=> Type::Float,
-                "y"=> Type::Float,
-                "z"=> Type::Float,
-                "w"=> Type::Float,
-                "r" => Type::Float,
-                "g" => Type::Float,
-                "b" => Type::Float,
-                "a" => Type::Float,
-                "xy"=>Type::Vec2,
-                "yx"=>Type::Vec2,
-                "xz"=>Type::Vec2,
-                "zx"=>Type::Vec2,
-                "yz"=>Type::Vec2,
-                "zy"=>Type::Vec2,
-                "rg"=>Type::Vec2,
-                "gr"=>Type::Vec2,
-                "rb"=>Type::Vec2,
-                "br"=>Type::Vec2,
-                "gb"=>Type::Vec2,
-                "bg"=>Type::Vec2,
-                "xyz"=>Type::Vec3,
-                "rgb"=>Type::Vec3,
-                _=> Type::Unknown
-            }
-        }
+        Type::Bool => Type::Unknown,
+        Type::Vec2 => match field.val.as_str() {
+            "x" => Type::Float,
+            "y" => Type::Float,
+            "r" => Type::Float,
+            "g" => Type::Float,
+            "u" => Type::Float,
+            "v" => Type::Float,
+            _ => Type::Unknown,
+        },
+        Type::Vec3 => match field.val.as_str() {
+            "x" => Type::Float,
+            "y" => Type::Float,
+            "z" => Type::Float,
+            "r" => Type::Float,
+            "g" => Type::Float,
+            "b" => Type::Float,
+            "xy" => Type::Vec2,
+            "yx" => Type::Vec2,
+            "xz" => Type::Vec2,
+            "zx" => Type::Vec2,
+            "yz" => Type::Vec2,
+            "zy" => Type::Vec2,
+            "rg" => Type::Vec2,
+            "gr" => Type::Vec2,
+            "rb" => Type::Vec2,
+            "br" => Type::Vec2,
+            "gb" => Type::Vec2,
+            "bg" => Type::Vec2,
+            _ => Type::Unknown,
+        },
+        Type::Vec4 => match field.val.as_str() {
+            "x" => Type::Float,
+            "y" => Type::Float,
+            "z" => Type::Float,
+            "w" => Type::Float,
+            "r" => Type::Float,
+            "g" => Type::Float,
+            "b" => Type::Float,
+            "a" => Type::Float,
+            "xy" => Type::Vec2,
+            "yx" => Type::Vec2,
+            "xz" => Type::Vec2,
+            "zx" => Type::Vec2,
+            "yz" => Type::Vec2,
+            "zy" => Type::Vec2,
+            "rg" => Type::Vec2,
+            "gr" => Type::Vec2,
+            "rb" => Type::Vec2,
+            "br" => Type::Vec2,
+            "gb" => Type::Vec2,
+            "bg" => Type::Vec2,
+            "xyz" => Type::Vec3,
+            "rgb" => Type::Vec3,
+            _ => Type::Unknown,
+        },
         Type::Mat3 => Type::Unknown,
         Type::Mat4 => Type::Unknown,
-        Type::Void => {
-            Type::Unknown
-        }
+        Type::Void => Type::Unknown,
     };
     match ret {
         Type::Unknown => Result::Err(()),
-        _ => Result::Ok(ret)
+        _ => Result::Ok(ret),
     }
 }
 
-fn analyze_access(exp: &mut Box<Expression>, field: &mut Spanned<String>, diagnostics: &mut Diagnostics, scope: &Scope) -> Type{
+fn analyze_access(
+    exp: &mut Box<Expression>,
+    field: &mut Spanned<String>,
+    diagnostics: &mut Diagnostics,
+    scope: &Scope,
+) -> Type {
     let value_type = analyze_expression(exp, diagnostics, scope);
     //let name = field.val.clone();
 
@@ -540,12 +547,12 @@ fn analyze_access(exp: &mut Box<Expression>, field: &mut Spanned<String>, diagno
             diagnostics.err(SemanticError::NoField(
                 value_type.to_string(),
                 exp.span(),
-                field.val.clone()
+                field.val.clone(),
             ));
             Type::Unknown
         }
-        Ok(x)=>{x},
-        _=> Type::Unknown,
+        Ok(x) => x,
+        _ => Type::Unknown,
     }
 }
 
@@ -558,45 +565,66 @@ lazy_static::lazy_static! {
         m
     };
 }
- 
-fn match_constructor(name: &str, name_span: Sp, args: &Vec<Type>, diagnostics: &mut Diagnostics, scope: &Scope)-> Type {
+
+fn match_constructor(
+    name: &str,
+    name_span: Sp,
+    args: &Vec<Type>,
+    diagnostics: &mut Diagnostics,
+    scope: &Scope,
+) -> Type {
     match name {
-        "vec2"=> {
-            if args.len() ==2 && args[0] == Type::Float && args[1] ==Type::Float {
+        "vec2" => {
+            if args.len() == 2 && args[0] == Type::Float && args[1] == Type::Float {
                 Type::Vec2
             } else {
                 // error
                 Type::Unknown
             }
-        },
-        "vec3"=> {
-            if args.len() ==3 && args[0] == Type::Float && args[1] ==Type::Float && args[2] == Type::Float {
+        }
+        "vec3" => {
+            if args.len() == 3
+                && args[0] == Type::Float
+                && args[1] == Type::Float
+                && args[2] == Type::Float
+            {
                 Type::Vec3
             } else {
                 // error
                 Type::Unknown
             }
-        },
+        }
         "vec4" => {
-            if args.len() ==4 && args[0] == Type::Float && args[1] ==Type::Float && args[2] == Type::Float && args[3] == Type::Float {
+            if args.len() == 4
+                && args[0] == Type::Float
+                && args[1] == Type::Float
+                && args[2] == Type::Float
+                && args[3] == Type::Float
+            {
                 Type::Vec4
             } else {
                 // error
                 Type::Unknown
             }
         }
-        _=>{unreachable!()}
+        _ => {
+            unreachable!()
+        }
     }
-
 }
-fn analyze_invocation(name: &str, name_span: Sp, args: &mut Vec<Box<Expression>>, diagnostics: &mut Diagnostics, scope: &Scope)-> Type {
-
+fn analyze_invocation(
+    name: &str,
+    name_span: Sp,
+    args: &mut Vec<Box<Expression>>,
+    diagnostics: &mut Diagnostics,
+    scope: &Scope,
+) -> Type {
     let mut types = Vec::with_capacity(args.len());
     for arg in args {
         let typ = analyze_expression(arg, diagnostics, scope);
         types.push(typ);
     }
-    if TYPE_SET.contains(name){
+    if TYPE_SET.contains(name) {
         //println!("lolz");
         return match_constructor(name, name_span, &types, diagnostics, scope);
     }
@@ -604,18 +632,17 @@ fn analyze_invocation(name: &str, name_span: Sp, args: &mut Vec<Box<Expression>>
         Ok(val) => return val,
         Err(e) => {
             match e {
-                PrototypeMatchError::NameNotFound =>{
-                    diagnostics.err(SemanticError::UnknownFunction(
-                        name.to_owned(),
-                        name_span
-                    ));
-
-                },
-                PrototypeMatchError::NoMatchingPrototype =>{
+                PrototypeMatchError::NameNotFound => {
+                    diagnostics.err(SemanticError::UnknownFunction(name.to_owned(), name_span));
+                }
+                PrototypeMatchError::NoMatchingPrototype => {
                     diagnostics.err(SemanticError::ArgumentsMismatch(
                         name.to_owned(),
                         name_span,
-                        get_prototypes(name).iter().map(|x| x.iter().map(|y| y.to_string()).collect()).collect()
+                        get_prototypes(name)
+                            .iter()
+                            .map(|x| x.iter().map(|y| y.to_string()).collect())
+                            .collect(),
                     ));
 
                     //emit error

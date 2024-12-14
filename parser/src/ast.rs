@@ -2,16 +2,14 @@ use crate::lexer::span;
 pub use codespan::ByteIndex;
 pub use codespan::Span;
 
-pub type AstSpan = Span<ByteIndex>;
-
 #[derive(Debug, Clone)]
 pub struct Spanned<T> {
-    pub span: Span<ByteIndex>,
+    pub span: Span,
     pub val: T,
 }
 
 impl<T> Spanned<T> {
-    pub fn new(val: T, span: Span<ByteIndex>) -> Spanned<T> {
+    pub fn new(val: T, span: Span) -> Spanned<T> {
         Spanned { span, val }
     }
     pub fn from_loc(val: T, from: usize, to: usize) -> Spanned<T> {
@@ -136,25 +134,18 @@ pub enum Statement {
     IfElse(Box<Expression>, Block, Option<Block>),
 }
 
-
-pub fn extract_access_chain(exp: Box<Expression>)-> Result<Vec<Spanned<String>>, ()> {
+pub fn extract_access_chain(exp: Box<Expression>) -> Result<Vec<Spanned<String>>, ()> {
     let mut exp = *exp;
     match exp {
-        Expression::Access(exp2, field)=> {
+        Expression::Access(exp2, field) => {
             let mut path = extract_access_chain(exp2)?;
             path.push(field);
             Result::Ok(path)
         }
-        Expression::Variable(var) => {
-            Result::Ok(vec![var.identifier])
-        }
-        _=>{
-            Result::Err(())
-        }
-
+        Expression::Variable(var) => Result::Ok(vec![var.identifier]),
+        _ => Result::Err(()),
     }
 }
-
 
 #[derive(Debug)]
 pub enum Expression {
@@ -179,12 +170,12 @@ pub enum Expression {
     Access(Box<Expression>, Spanned<String>),
 }
 
-fn concat_spans(span1: Span<ByteIndex>, span2: Span<ByteIndex>) -> Span<ByteIndex> {
-    Span::new(span1.start().into(), span2.end().into())
+fn concat_spans(span1: Span, span2: Span) -> Span {
+    Span::new(span1.start(), span2.end())
 }
 
 impl Expression {
-    pub fn span(&self) -> Span<ByteIndex> {
+    pub fn span(&self) -> Span {
         use Expression::*;
         match self {
             Expression::Variable(var) => var.identifier.span,
@@ -217,7 +208,7 @@ pub enum Literal {
 }
 
 impl Literal {
-    pub fn span(&self) -> Span<ByteIndex> {
+    pub fn span(&self) -> Span {
         match self {
             Literal::Int(x) => x.span,
             Literal::Float(x) => x.span,

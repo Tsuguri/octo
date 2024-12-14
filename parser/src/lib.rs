@@ -4,9 +4,9 @@ extern crate lalrpop_util;
 use std::convert::Into;
 
 pub use codespan;
-use codespan::CodeMap;
 pub use codespan_reporting;
-use codespan_reporting::Diagnostic;
+type Diagnostic = codespan_reporting::diagnostic::Diagnostic<usize>;
+use codespan_reporting::diagnostic::Label;
 use lalrpop_util::ParseError;
 
 pub mod ast;
@@ -46,11 +46,14 @@ macro_rules! error {
         error!($message, lexer::span($from, $to))
     };
     ($message:expr, $span:expr) => {
-        Diagnostic::new_error($message).with_label(codespan_reporting::Label::new_primary($span))
+        Diagnostic::error()
+            .with_message($message)
+            .with_labels(vec![Label::primary(0, $span)])
     };
     ($message:expr, $span:expr, $label:expr) => {
-        Diagnostic::new_error($message)
-            .with_label(codespan_reporting::Label::new_primary($span).with_message($label))
+        Diagnostic::error()
+            .with_message($message)
+            .with_labels(vec![Label::primary(0, $span).with_message($label)])
     };
 }
 
@@ -64,7 +67,7 @@ impl<'a> From<ErrWrap<'a>> for Diagnostic {
                 let mut expected = exp.clone();
                 remove_extra_quotes(&mut expected);
                 match token {
-                    None => Diagnostic::new_error(format!(
+                    None => Diagnostic::error().with_message(format!(
                         "Unexpected end of file. Expected one of: {:?}",
                         expected
                     )),
@@ -75,15 +78,19 @@ impl<'a> From<ErrWrap<'a>> for Diagnostic {
                             BraceClose => "unexpected block delimiter: '}'".to_owned(),
                             x => format!("Expected one of: {:?}, found \"{}\"", expected, x),
                         };
-                        Diagnostic::new_error(message).with_label(
-                            codespan_reporting::Label::new_primary(lexer::span(*start, *end + 1))
-                                .with_message("Problem occurs here"),
-                        )
+                        Diagnostic::error()
+                            .with_message(message)
+                            .with_labels(vec![Label::primary(0, *start..*end + 1)
+                                .with_message("Problem occurs here")])
                     }
                 }
             }
-            ParseError::InvalidToken { location } => error!("Parser found invalid token."; *location, *location + 1),
-            ParseError::ExtraToken { token } => error!(format!("Parser found unexpected token: {}", token.1);token.0, token.2),
+            ParseError::InvalidToken { location } => {
+                error!("Parser found invalid token."; *location, *location + 1)
+            }
+            ParseError::ExtraToken { token } => {
+                error!(format!("Parser found unexpected token: {}", token.1);token.0, token.2)
+            }
             ParseError::User { error } => match error {
                 errors::LexicalError::LiteralFloatOverflow(span) => error!(
                     "Float literal overflow",

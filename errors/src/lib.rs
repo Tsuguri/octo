@@ -2,7 +2,7 @@ use std::fmt;
 
 use codespan::Span;
 
-pub type Sp = Span<codespan::ByteIndex>;
+pub type Sp = Span;
 
 #[derive(Debug)]
 pub enum LexicalError {

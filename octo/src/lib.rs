@@ -1,18 +1,20 @@
 //extern crate lalrpop_util;
+#![allow(warnings)]
 
+mod prototypes;
 pub mod semantics;
 mod static_analysis;
 mod tac_ir;
-mod prototypes;
 
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use codespan_reporting::Diagnostic;
+use codespan_reporting::diagnostic::Diagnostic;
 use parser::ast;
-use parser::codespan::CodeMap;
 use parser::codespan_reporting;
+use parser::codespan_reporting::files::SimpleFiles;
+use parser::codespan_reporting::term::termcolor::ColorChoice;
 
 use std::borrow::ToOwned;
 
@@ -40,7 +42,7 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     let static_analysis_res = static_analysis::analyze(ast);
     let Diagnostics { errors, warnings } = static_analysis_res.1;
     let error_happened = errors.len() > 0;
-    let mut diagnostics: Vec<Diagnostic> = warnings
+    let mut diagnostics: Vec<Diagnostic<usize>> = warnings
         .into_iter()
         .map(|x| semantics::WarningWrap::new(x).into())
         .collect();
@@ -77,12 +79,10 @@ pub fn process_file(path: &str) -> Result<(), ()> {
     println!("after sync movement");
     println!("{:?}", tac);
 
-
     let tac = tac_ir::unroll_synced_loop(tac);
 
     println!("after loop reexport");
     println!("{:?}", tac);
-
 
     let pipeline_definition = tac_ir::split_passes(tac);
 
@@ -142,14 +142,18 @@ fn parse_data(data: &str, path: &str) -> Result<ast::Pipeline, ()> {
     }
 }
 
-fn report_errors(src: &str, location: &str, messages: &[codespan_reporting::Diagnostic]) {
-    let mut map = CodeMap::new();
+fn report_errors(
+    src: &str,
+    location: &str,
+    messages: &[codespan_reporting::diagnostic::Diagnostic<usize>],
+) {
     let src2 = src.to_owned();
-    map.add_filemap(location.to_owned().into(), src2);
-    use codespan_reporting::termcolor::StandardStream;
-    let writer = StandardStream::stderr(codespan_reporting::termcolor::ColorChoice::Auto);
+    let mut files = SimpleFiles::new();
+    files.add(location.to_owned(), src2);
+    let writer = codespan_reporting::term::termcolor::StandardStream::stderr(ColorChoice::Auto);
+    let config = codespan_reporting::term::Config::default();
     for message in messages {
         let wr = &mut writer.lock();
-        codespan_reporting::emit(wr, &map, message).unwrap();
+        codespan_reporting::term::emit(wr, &config, &files, message).unwrap();
     }
 }

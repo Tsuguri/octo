@@ -105,7 +105,7 @@ impl fmt::Display for Token {
 }
 
 pub fn span(from: usize, to: usize) -> Sp {
-    Sp::new(((from + 1) as u32).into(), ((to + 1) as u32).into())
+    Sp::new((from + 1) as u32, (to + 1) as u32)
 }
 
 pub struct Lexer<'input> {
@@ -389,7 +389,7 @@ impl<'input> Iterator for Lexer<'input> {
                             "shift" => return ok_m!(Shift, i, i + 5),
                             "scale" => return ok_m!(Scale, i, i + 5),
                             "return" => return ok_m!(Return, i, i + 6),
-                            "with" => return ok_m!(With, i, i+ 4),
+                            "with" => return ok_m!(With, i, i + 4),
                             x => {
                                 return Some(Result::Ok((
                                     i,

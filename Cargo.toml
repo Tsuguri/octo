@@ -3,5 +3,7 @@ members = [
         "octo",
         "parser",
         "octo_runtime",
-        "errors"
+        "errors",
+        "showcase",
+        "just_renderer"
 ]

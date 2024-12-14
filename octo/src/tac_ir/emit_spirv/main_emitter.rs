@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
-use super::super::utils::{find_loop, LoopCode, PeekableCode, find_if_else, IfElseCode};
-use super::ids::SpirvIds;
+use super::super::utils::{find_if_else, find_loop, IfElseCode, LoopCode, PeekableCode};
 use super::emit_std::emit_std_function;
+use super::ids::SpirvIds;
 
-use super::ir::{Address, Op, Operation, ValueType, StdFunction};
+use super::ir::{Address, Op, Operation, StdFunction, ValueType};
 
-use super::spirv;
 use super::emit_std::*;
-use super::Builder;
+use super::spirv;
+use rspirv::dr::Builder;
 use spirv_headers::Word as SpirvAddress;
 
 pub struct MainEmitter<'a, I: std::iter::Iterator<Item = &'a Op>> {
@@ -98,14 +98,12 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             (None, None) => ValueType::Unknown,
             (Some(x), None) => *x,
             (None, Some(x)) => *x,
-            (Some(x), Some(y)) => {
-                match (*x,*y) {
-                    (ValueType::Float, z) => z,
-                    (z, ValueType::Float) => z,
-                    (a, b) if a==b => a,
-                    _ => panic!("hope will not happen")
-                }
-            }
+            (Some(x), Some(y)) => match (*x, *y) {
+                (ValueType::Float, z) => z,
+                (z, ValueType::Float) => z,
+                (a, b) if a == b => a,
+                _ => panic!("hope will not happen"),
+            },
         }
     }
 
@@ -204,22 +202,31 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         let ret_type = self.ids.map_type(typ);
 
         self.builder
-            .copy_object(ret_type, Some(ret_addr), spirv_addr).unwrap();
+            .copy_object(ret_type, Some(ret_addr), spirv_addr)
+            .unwrap();
         self.set_type(ret, typ);
     }
 
-    fn emit_construct_vec2(&mut self, addr1: Address, addr2: Address, ret: Address){
+    fn emit_construct_vec2(&mut self, addr1: Address, addr2: Address, ret: Address) {
         let ret_spirv = self.map(ret);
         let x_spirv = self.map(addr1);
         let y_spirv = self.map(addr2);
 
         let typ = self.ids.map_type(ValueType::Vec2);
 
-        self.builder.composite_construct(typ, Some(ret_spirv), &[x_spirv, y_spirv]).unwrap();
+        self.builder
+            .composite_construct(typ, Some(ret_spirv), [x_spirv, y_spirv])
+            .unwrap();
         self.set_type(ret, ValueType::Vec2);
     }
 
-    fn emit_construct_vec3(&mut self, addr1: Address, addr2: Address, addr3: Address, ret: Address){
+    fn emit_construct_vec3(
+        &mut self,
+        addr1: Address,
+        addr2: Address,
+        addr3: Address,
+        ret: Address,
+    ) {
         let ret_spirv = self.map(ret);
         let x_spirv = self.map(addr1);
         let y_spirv = self.map(addr2);
@@ -227,11 +234,20 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
 
         let typ = self.ids.map_type(ValueType::Vec3);
 
-        self.builder.composite_construct(typ, Some(ret_spirv), &[x_spirv, y_spirv, z_spirv]).unwrap();
+        self.builder
+            .composite_construct(typ, Some(ret_spirv), [x_spirv, y_spirv, z_spirv])
+            .unwrap();
         self.set_type(ret, ValueType::Vec3);
     }
 
-    fn emit_construct_vec4(&mut self, addr1: Address, addr2: Address, addr3: Address, addr4: Address, ret: Address){
+    fn emit_construct_vec4(
+        &mut self,
+        addr1: Address,
+        addr2: Address,
+        addr3: Address,
+        addr4: Address,
+        ret: Address,
+    ) {
         let ret_spirv = self.map(ret);
         let x_spirv = self.map(addr1);
         let y_spirv = self.map(addr2);
@@ -240,7 +256,9 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
 
         let typ = self.ids.map_type(ValueType::Vec4);
 
-        self.builder.composite_construct(typ, Some(ret_spirv), &[x_spirv, y_spirv, z_spirv, w_spirv]).unwrap();
+        self.builder
+            .composite_construct(typ, Some(ret_spirv), [x_spirv, y_spirv, z_spirv, w_spirv])
+            .unwrap();
         self.set_type(ret, ValueType::Vec4);
     }
 
@@ -249,7 +267,9 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         let vec_spirv = self.map(vec_addr);
         let typ = self.ids.map_type(ValueType::Float);
 
-        self.builder.composite_extract(typ, Some(ret_spirv), vec_spirv, &[id as u32]).unwrap();
+        self.builder
+            .composite_extract(typ, Some(ret_spirv), vec_spirv, [id as u32])
+            .unwrap();
 
         self.set_type(ret, ValueType::Float);
     }
@@ -263,12 +283,18 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         //println!("checking type of: {}", vec_addr);
         let typ = self.ids.map_type(return_type);
 
-        self.builder.composite_insert(typ, Some(ret_spirv), val_spirv, vec_spirv, &[id as u32]).unwrap();
+        self.builder
+            .composite_insert(typ, Some(ret_spirv), val_spirv, vec_spirv, [id as u32])
+            .unwrap();
 
         self.set_type(ret, return_type);
     }
 
-    fn promote_scalar_to_vector(&mut self, value_address: SpirvAddress, vec_type: ValueType) -> SpirvAddress {
+    fn promote_scalar_to_vector(
+        &mut self,
+        value_address: SpirvAddress,
+        vec_type: ValueType,
+    ) -> SpirvAddress {
         let num_components = match vec_type {
             ValueType::Vec2 => 2,
             ValueType::Vec3 => 3,
@@ -276,76 +302,93 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             _ => panic!(),
         };
         let tp = self.ids.map_type(vec_type);
-        let ret = self.builder.composite_construct(tp, None, &std::iter::repeat(value_address).take(num_components).collect::<Vec<_>>()).unwrap();
+        let ret = self
+            .builder
+            .composite_construct(
+                tp,
+                None,
+                std::iter::repeat(value_address)
+                    .take(num_components)
+                    .collect::<Vec<_>>(),
+            )
+            .unwrap();
         ret
     }
 
-    fn emit_div_experimental(
-        &mut self,
-        left: Address,
-        right: Address,
-        ret: Address,
-    ) {
+    fn emit_div_experimental(&mut self, left: Address, right: Address, ret: Address) {
         let left_address = self.map(left);
         let right_address = self.map(right);
         let result_address = self.map(ret);
 
-        let left_type = self.type_map.get(&left).expect("type should be known at this point");
-        let right_type = self.type_map.get(&right).expect("type should be known at this point");
+        let left_type = self
+            .type_map
+            .get(&left)
+            .expect("type should be known at this point");
+        let right_type = self
+            .type_map
+            .get(&right)
+            .expect("type should be known at this point");
 
         let types = (left_type.clone(), right_type.clone());
 
         if !ALLOWED_DIV_OPERATIONS.contains_key(&types) {
             // well...
             assert!(false);
-
         }
 
         let (operation, return_type) = &ALLOWED_DIV_OPERATIONS[&types];
 
         let ret_type = self.ids.map_type(*return_type);
         match operation {
-            PossibleDivOp::ScalScal =>{
-                match return_type {
-                    ValueType::Float => {
-                        self.builder.fdiv(ret_type, Some(result_address), left_address, right_address).unwrap();
-                    },
-                    ValueType::Int => {
-                        self.builder.sdiv(ret_type, Some(result_address), left_address, right_address).unwrap();
-                    },
-                    _=>{assert!(false);}
+            PossibleDivOp::ScalScal => match return_type {
+                ValueType::Float => {
+                    self.builder
+                        .f_div(ret_type, Some(result_address), left_address, right_address)
+                        .unwrap();
+                }
+                ValueType::Int => {
+                    self.builder
+                        .s_div(ret_type, Some(result_address), left_address, right_address)
+                        .unwrap();
+                }
+                _ => {
+                    assert!(false);
                 }
             },
-            PossibleDivOp::VecScal =>{
+            PossibleDivOp::VecScal => {
                 let new_right = self.promote_scalar_to_vector(right_address, *return_type);
-                self.builder.fdiv(ret_type, Some(result_address), left_address, new_right).unwrap();
-            },
-            PossibleDivOp::VecVec =>{
-                self.builder.fdiv(ret_type, Some(result_address), left_address, right_address).unwrap();
-            },
+                self.builder
+                    .f_div(ret_type, Some(result_address), left_address, new_right)
+                    .unwrap();
+            }
+            PossibleDivOp::VecVec => {
+                self.builder
+                    .f_div(ret_type, Some(result_address), left_address, right_address)
+                    .unwrap();
+            }
         }
         self.set_type(ret, *return_type);
     }
 
-    fn emit_mul_experimental(
-        &mut self,
-        left: Address,
-        right: Address,
-        ret: Address,
-    ) {
+    fn emit_mul_experimental(&mut self, left: Address, right: Address, ret: Address) {
         let left_address = self.map(left);
         let right_address = self.map(right);
         let result_address = self.map(ret);
 
-        let left_type = self.type_map.get(&left).expect("type should be known at this point");
-        let right_type = self.type_map.get(&right).expect("type should be known at this point");
+        let left_type = self
+            .type_map
+            .get(&left)
+            .expect("type should be known at this point");
+        let right_type = self
+            .type_map
+            .get(&right)
+            .expect("type should be known at this point");
 
         let types = (left_type.clone(), right_type.clone());
 
         if !ALLOWED_MUL_OPERATIONS.contains_key(&types) {
             // well...
             assert!(false);
-
         }
 
         let (operation, return_type) = &ALLOWED_MUL_OPERATIONS[&types];
@@ -353,45 +396,98 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         use PossibleMulOp::*;
         let ret_type = self.ids.map_type(*return_type);
         match operation {
-            MatVec=>{
-                self.builder.matrix_times_vector(ret_type, Some(result_address), left_address, right_address).unwrap();
-            },
+            MatVec => {
+                self.builder
+                    .matrix_times_vector(
+                        ret_type,
+                        Some(result_address),
+                        left_address,
+                        right_address,
+                    )
+                    .unwrap();
+            }
             VecMat => {
-                self.builder.vector_times_matrix(ret_type, Some(result_address), left_address, right_address).unwrap();
-            },
-            ScalMat =>{
-                self.builder.matrix_times_scalar(ret_type, Some(result_address), right_address, left_address).unwrap();
-            },
-            MatScal =>{
-                self.builder.matrix_times_scalar(ret_type, Some(result_address), left_address, right_address).unwrap();
-            },
-            VecScal=>{
-                self.builder.vector_times_scalar(ret_type, Some(result_address), left_address, right_address).unwrap();
-            },
-            ScalVec=>{
+                self.builder
+                    .vector_times_matrix(
+                        ret_type,
+                        Some(result_address),
+                        left_address,
+                        right_address,
+                    )
+                    .unwrap();
+            }
+            ScalMat => {
+                self.builder
+                    .matrix_times_scalar(
+                        ret_type,
+                        Some(result_address),
+                        right_address,
+                        left_address,
+                    )
+                    .unwrap();
+            }
+            MatScal => {
+                self.builder
+                    .matrix_times_scalar(
+                        ret_type,
+                        Some(result_address),
+                        left_address,
+                        right_address,
+                    )
+                    .unwrap();
+            }
+            VecScal => {
+                self.builder
+                    .vector_times_scalar(
+                        ret_type,
+                        Some(result_address),
+                        left_address,
+                        right_address,
+                    )
+                    .unwrap();
+            }
+            ScalVec => {
                 // it's SCAL * VEC, so invert left and right
-                self.builder.vector_times_scalar(ret_type, Some(result_address), right_address, left_address).unwrap();
-            },
-            MatMat=>{
-                self.builder.matrix_times_matrix(ret_type, Some(result_address), left_address, right_address).unwrap();
-            },
-            VecVec=>{
-                self.builder.fmul(ret_type, Some(result_address), left_address, right_address).unwrap();
-            },
-            ScalScal=>{
-                match return_type {
-                    ValueType::Float => {
-                        self.builder.fmul(ret_type, Some(result_address), left_address, right_address).unwrap();
-                    },
-                    ValueType::Int => {
-                        self.builder.imul(ret_type, Some(result_address), left_address, right_address).unwrap();
-                    },
-                    _=>{assert!(false);}
+                self.builder
+                    .vector_times_scalar(
+                        ret_type,
+                        Some(result_address),
+                        right_address,
+                        left_address,
+                    )
+                    .unwrap();
+            }
+            MatMat => {
+                self.builder
+                    .matrix_times_matrix(
+                        ret_type,
+                        Some(result_address),
+                        left_address,
+                        right_address,
+                    )
+                    .unwrap();
+            }
+            VecVec => {
+                self.builder
+                    .f_mul(ret_type, Some(result_address), left_address, right_address)
+                    .unwrap();
+            }
+            ScalScal => match return_type {
+                ValueType::Float => {
+                    self.builder
+                        .f_mul(ret_type, Some(result_address), left_address, right_address)
+                        .unwrap();
+                }
+                ValueType::Int => {
+                    self.builder
+                        .i_mul(ret_type, Some(result_address), left_address, right_address)
+                        .unwrap();
+                }
+                _ => {
+                    assert!(false);
                 }
             },
-
         }
-
 
         self.set_type(ret, *return_type);
     }
@@ -448,10 +544,10 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             right,
             ret,
             |x, a, b, c, d| {
-                x.iadd(a, b, c, d).unwrap();
+                x.i_add(a, b, c, d).unwrap();
             },
             |x, a, b, c, d| {
-                x.fadd(a, b, c, d).unwrap();
+                x.f_add(a, b, c, d).unwrap();
             },
         );
     }
@@ -462,10 +558,10 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             right,
             ret,
             |x, a, b, c, d| {
-                x.isub(a, b, c, d).unwrap();
+                x.i_sub(a, b, c, d).unwrap();
             },
             |x, a, b, c, d| {
-                x.fsub(a, b, c, d).unwrap();
+                x.f_sub(a, b, c, d).unwrap();
             },
         );
     }
@@ -502,16 +598,15 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             ValueType::Int => {
                 let ret_type = self.ids.map_type(ValueType::Bool);
                 self.builder
-                    .sless_than(ret_type, Some(result_address), left_address, right_address)
+                    .s_less_than(ret_type, Some(result_address), left_address, right_address)
                     .unwrap();
                 self.type_map.insert(ret, ValueType::Bool);
             }
             ValueType::Float => {
                 // all other types are floats for spir-v
                 let ret_type = self.ids.map_type(ValueType::Bool);
-                self
-                    .builder
-                    .ford_less_than(ret_type, Some(result_address), left_address, right_address)
+                self.builder
+                    .f_ord_less_than(ret_type, Some(result_address), left_address, right_address)
                     .unwrap();
                 self.type_map.insert(ret, ValueType::Bool);
             }
@@ -535,14 +630,14 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             ValueType::Int => {
                 let ret_type = self.ids.map_type(ValueType::Bool);
                 self.builder
-                    .sless_than_equal(ret_type, Some(result_address), left_address, right_address)
+                    .s_less_than_equal(ret_type, Some(result_address), left_address, right_address)
                     .unwrap();
                 self.type_map.insert(ret, ValueType::Bool);
             }
             ValueType::Float => {
                 let ret_type = self.ids.map_type(ValueType::Bool);
                 self.builder
-                    .ford_less_than_equal(
+                    .f_ord_less_than_equal(
                         ret_type,
                         Some(result_address),
                         left_address,
@@ -574,13 +669,13 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             }
             ValueType::Int => {
                 self.builder
-                    .iequal(ret_type, Some(result_address), left_address, right_address)
+                    .i_equal(ret_type, Some(result_address), left_address, right_address)
                     .unwrap();
                 self.type_map.insert(ret, ValueType::Bool);
             }
             ValueType::Float => {
                 self.builder
-                    .ford_equal(ret_type, Some(result_address), left_address, right_address)
+                    .f_ord_equal(ret_type, Some(result_address), left_address, right_address)
                     .unwrap();
                 self.type_map.insert(ret, ValueType::Bool);
             }
@@ -588,7 +683,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
                 let temp_ret_type = self.ids.bool2;
                 let ret_addr = self
                     .builder
-                    .ford_equal(temp_ret_type, None, left_address, right_address)
+                    .f_ord_equal(temp_ret_type, None, left_address, right_address)
                     .unwrap();
                 self.builder
                     .all(ret_type, Some(result_address), ret_addr)
@@ -599,7 +694,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
                 let temp_ret_type = self.ids.bool3;
                 let ret_addr = self
                     .builder
-                    .ford_equal(temp_ret_type, None, left_address, right_address)
+                    .f_ord_equal(temp_ret_type, None, left_address, right_address)
                     .unwrap();
                 self.builder
                     .all(ret_type, Some(result_address), ret_addr)
@@ -610,7 +705,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
                 let temp_ret_type = self.ids.bool4;
                 let ret_addr = self
                     .builder
-                    .ford_equal(temp_ret_type, None, left_address, right_address)
+                    .f_ord_equal(temp_ret_type, None, left_address, right_address)
                     .unwrap();
                 self.builder
                     .all(ret_type, Some(result_address), ret_addr)
@@ -628,27 +723,35 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         println!("negating type: {:?}", value_type);
         let return_type = self.ids.map_type(value_type);
 
-        let float_negation = |builder: &mut rspirv::mr::Builder, map: &mut HashMap<Address, ValueType>|{
-            builder.fnegate(return_type, Some(result_address), value_address).unwrap();
+        let float_negation = |builder: &mut rspirv::dr::Builder,
+                              map: &mut HashMap<Address, ValueType>| {
+            builder
+                .f_negate(return_type, Some(result_address), value_address)
+                .unwrap();
             map.insert(ret, value_type);
         };
 
-        let int_negation = |builder: &mut rspirv::mr::Builder, map: &mut HashMap<Address, ValueType>|{
-            builder.snegate(return_type, Some(result_address), value_address).unwrap();
+        let int_negation = |builder: &mut rspirv::dr::Builder,
+                            map: &mut HashMap<Address, ValueType>| {
+            builder
+                .s_negate(return_type, Some(result_address), value_address)
+                .unwrap();
             map.insert(ret, value_type);
         };
 
         match value_type {
             ValueType::Bool => {
-                self.builder.logical_not(return_type, Some(result_address), value_address).unwrap();
-            },
+                self.builder
+                    .logical_not(return_type, Some(result_address), value_address)
+                    .unwrap();
+            }
             ValueType::Float => float_negation(self.builder, &mut self.type_map),
             ValueType::Vec2 => float_negation(self.builder, &mut self.type_map),
             ValueType::Vec3 => float_negation(self.builder, &mut self.type_map),
             ValueType::Vec4 => float_negation(self.builder, &mut self.type_map),
             ValueType::Mat3 => float_negation(self.builder, &mut self.type_map),
             ValueType::Mat4 => float_negation(&mut self.builder, &mut self.type_map),
-            ValueType::Int =>int_negation(&mut self.builder, &mut self.type_map),
+            ValueType::Int => int_negation(&mut self.builder, &mut self.type_map),
             _ => panic!("unknown type on stage of spirv emitting ... Compiler bug."),
         }
     }
@@ -670,13 +773,13 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             }
             ValueType::Int => {
                 self.builder
-                    .inot_equal(ret_type, Some(result_address), left_address, right_address)
+                    .i_not_equal(ret_type, Some(result_address), left_address, right_address)
                     .unwrap();
                 self.type_map.insert(ret, ValueType::Bool);
             }
             ValueType::Float => {
                 self.builder
-                    .ford_not_equal(ret_type, Some(result_address), left_address, right_address)
+                    .f_ord_not_equal(ret_type, Some(result_address), left_address, right_address)
                     .unwrap();
                 self.type_map.insert(ret, ValueType::Bool);
             }
@@ -684,7 +787,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
                 let temp_ret_type = self.ids.bool2;
                 let ret_addr = self
                     .builder
-                    .ford_not_equal(temp_ret_type, None, left_address, right_address)
+                    .f_ord_not_equal(temp_ret_type, None, left_address, right_address)
                     .unwrap();
                 self.builder
                     .any(ret_type, Some(result_address), ret_addr)
@@ -695,7 +798,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
                 let temp_ret_type = self.ids.bool3;
                 let ret_addr = self
                     .builder
-                    .ford_not_equal(temp_ret_type, None, left_address, right_address)
+                    .f_ord_not_equal(temp_ret_type, None, left_address, right_address)
                     .unwrap();
                 self.builder
                     .any(ret_type, Some(result_address), ret_addr)
@@ -706,7 +809,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
                 let temp_ret_type = self.ids.bool4;
                 let ret_addr = self
                     .builder
-                    .ford_not_equal(temp_ret_type, None, left_address, right_address)
+                    .f_ord_not_equal(temp_ret_type, None, left_address, right_address)
                     .unwrap();
                 self.builder
                     .any(ret_type, Some(result_address), ret_addr)
@@ -747,48 +850,88 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
 
     fn emit_block(&mut self, id: Option<SpirvAddress>) -> SpirvAddress {
         println!("emitting block {:?}", id);
-        self.current_block = self.builder.begin_basic_block(id).unwrap();
+        self.current_block = self.builder.begin_block(id).unwrap();
         self.current_block
     }
 
-    pub fn emit_dot_instruction(&mut self, arg1: Address, arg2: Address, ret: Address) -> SpirvAddress {
+    pub fn emit_dot_instruction(
+        &mut self,
+        arg1: Address,
+        arg2: Address,
+        ret: Address,
+    ) -> SpirvAddress {
         let typ = self.ids.map_type(ValueType::Float);
         let ret_addr = self.map(ret);
         let arg1_addr = self.map(arg1);
         let arg2_addr = self.map(arg2);
         self.type_map.insert(ret, ValueType::Float);
-        self.builder.dot(typ,Some(ret_addr),arg1_addr, arg2_addr).unwrap();
+        self.builder
+            .dot(typ, Some(ret_addr), arg1_addr, arg2_addr)
+            .unwrap();
         ret_addr
     }
 
-    pub fn emit_passthrough(&mut self, id: SpirvAddress, arg: Address, ret: Address) -> SpirvAddress {
+    pub fn emit_passthrough(
+        &mut self,
+        id: SpirvAddress,
+        arg: Address,
+        ret: Address,
+    ) -> SpirvAddress {
         self.emit_glsl_ext_many(id, &[arg], ret)
     }
 
-    fn emit_glsl_ext_many(&mut self, id: SpirvAddress, args: &[Address], ret: Address) -> SpirvAddress{
+    fn emit_glsl_ext_many(
+        &mut self,
+        id: SpirvAddress,
+        args: &[Address],
+        ret: Address,
+    ) -> SpirvAddress {
         let typ = self.get_single_type(args[0]);
         let ret_type = self.ids.map_type(typ);
         println!("{:?} is now of type {:?}", ret, typ);
-        let spirv_addresses: Vec<_> = args.iter().map(|x| self.map(*x)).collect();
+        let spirv_addresses: Vec<_> = args
+            .iter()
+            .map(|x| rspirv::dr::Operand::IdRef(self.map(*x)))
+            .collect();
         self.type_map.insert(ret, typ);
         let ret = self.map(ret);
-        let ret = self.builder.ext_inst(ret_type, Some(ret), self.glsl_id, id, &spirv_addresses).unwrap();
+        let ret = self
+            .builder
+            .ext_inst(ret_type, Some(ret), self.glsl_id, id, spirv_addresses)
+            .unwrap();
         ret
     }
 
-    pub fn emit_prototyped(&mut self, id: SpirvAddress, args: &[Address], ret: Address, ret_type: ValueType) -> SpirvAddress {
+    pub fn emit_prototyped(
+        &mut self,
+        id: SpirvAddress,
+        args: &[Address],
+        ret: Address,
+        ret_type: ValueType,
+    ) -> SpirvAddress {
         self.type_map.insert(ret, ret_type);
         println!("{:?} is now of type {:?}", ret, ret_type);
         let ret_type = self.ids.map_type(ret_type);
 
-        let spirv_addresses: Vec<_> = args.iter().map(|x| self.map(*x)).collect();
+        let spirv_addresses: Vec<_> = args
+            .iter()
+            .map(|x| rspirv::dr::Operand::IdRef(self.map(*x)))
+            .collect();
         let ret = self.map(ret);
-        let ret = self.builder.ext_inst(ret_type, Some(ret), self.glsl_id, id, &spirv_addresses).unwrap();
+        let ret = self
+            .builder
+            .ext_inst(ret_type, Some(ret), self.glsl_id, id, spirv_addresses)
+            .unwrap();
         ret
     }
 
-
-    pub fn emit_selected_glsl(&mut self, int_id: SpirvAddress, float_id: SpirvAddress, args: &[Address], ret: Address)-> SpirvAddress {
+    pub fn emit_selected_glsl(
+        &mut self,
+        int_id: SpirvAddress,
+        float_id: SpirvAddress,
+        args: &[Address],
+        ret: Address,
+    ) -> SpirvAddress {
         let typ = self.get_single_type(args[0]);
         let ret_type = self.ids.map_type(typ);
         let id = if typ == ValueType::Int {
@@ -796,12 +939,17 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         } else {
             float_id
         };
-        let spirv_addresses: Vec<_> = args.iter().map(|x| self.map(*x)).collect();
+        let spirv_addresses: Vec<_> = args
+            .iter()
+            .map(|x| rspirv::dr::Operand::IdRef(self.map(*x)))
+            .collect();
         self.type_map.insert(ret, typ);
         let ret = self.map(ret);
-        let ret = self.builder.ext_inst(ret_type, Some(ret), self.glsl_id, id, &spirv_addresses).unwrap();
+        let ret = self
+            .builder
+            .ext_inst(ret_type, Some(ret), self.glsl_id, id, spirv_addresses)
+            .unwrap();
         ret
-
     }
     fn emit_invoke(&mut self, function: StdFunction, ret: Address) -> SpirvAddress {
         let id = emit_std_function(function, ret, self);
@@ -836,7 +984,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             sf::Dot(addr1, addr2)=>self.emit_dot_instruction(addr1, addr2, ret),
             sf::Cross(addr, addr2)=>self.emit_selected_glsl(45, 43, &[addr, addr2], ret),
             sf::Normalize(addr)=>self.emit_glsl_ext_instruction(69, addr, ret),
-            sf::Length(addr)=> self.emit_glsl_ext_instruction(66, addr, ret), 
+            sf::Length(addr)=> self.emit_glsl_ext_instruction(66, addr, ret),
 
             sf::Clamp(clamped, min, max)=>{
                 self.emit_selected_glsl(45, 43, &[clamped, min, max], ret)
@@ -872,9 +1020,11 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
 
         let pre_if_block_label = self.current_block;
         self.builder
-            .selection_merge(end_label, spirv::SelectionControl::NONE).unwrap();
+            .selection_merge(end_label, rspirv::spirv::SelectionControl::NONE)
+            .unwrap();
         self.builder
-            .branch_conditional(cond_address, true_label, false_label, &[]).unwrap();
+            .branch_conditional(cond_address, true_label, false_label, [])
+            .unwrap();
         //println!("starting true block");
         self.emit_block(Some(true_label));
 
@@ -902,12 +1052,12 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         let post_false_block_label = self.current_block;
 
         //println!(
-            //"blocks, pre: {}, postif: {}, postelse: {}",
-            //pre_if_block_label, post_then_block_label, post_false_block_label
+        //"blocks, pre: {}, postif: {}, postelse: {}",
+        //pre_if_block_label, post_then_block_label, post_false_block_label
         //);
         //println!(
-            //"labels, if: {}, else: {:?}, end: {}",
-            //data.if_label, data.else_label, data.end_label
+        //"labels, if: {}, else: {:?}, end: {}",
+        //data.if_label, data.else_label, data.end_label
         //);
 
         self.emit_block(Some(end_label));
@@ -939,12 +1089,11 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
 
             let ret_addr = self.map(ret);
 
-            self
-                .builder
+            self.builder
                 .phi(
                     spirv_type,
                     Some(ret_addr),
-                    &[(new_address, first), (old_address, second)],
+                    [(new_address, first), (old_address, second)],
                 )
                 .unwrap();
 
@@ -965,7 +1114,12 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         let end_label = self.map(data.exit_label);
 
         self.builder
-            .loop_merge(end_label, continue_label, spirv::LoopControl::NONE, &[])
+            .loop_merge(
+                end_label,
+                continue_label,
+                rspirv::spirv::LoopControl::NONE,
+                [],
+            )
             .unwrap();
         self.builder.branch(condition_label).unwrap();
 
@@ -978,7 +1132,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
         let condition = self.map(data.condition_value);
 
         self.builder
-            .branch_conditional(condition, body_label, end_label, &[])
+            .branch_conditional(condition, body_label, end_label, [])
             .unwrap();
 
         self.emit_block(Some(body_label));
@@ -1126,7 +1280,7 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
                     .phi(
                         spirv_type,
                         Some(ret_address),
-                        &[(new_address, first), (old_address, second)],
+                        [(new_address, first), (old_address, second)],
                     )
                     .unwrap();
 
@@ -1143,11 +1297,13 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
                 let uv = self.ids.access_uv(self.builder);
                 let shift = self.map(by_how_much);
                 let vec2type = self.ids.map_type(ValueType::Vec2);
-                let shifted_uv = self.builder.fadd(vec2type, None, shift, uv).unwrap();
+                let shifted_uv = self.builder.f_add(vec2type, None, shift, uv).unwrap();
                 let arg_id = self.args[&what];
                 let input_type = self.input_type[arg_id];
 
-                let value = self.ids.sample_arg_at(arg_id, ret, shifted_uv, input_type, self.builder);
+                let value =
+                    self.ids
+                        .sample_arg_at(arg_id, ret, shifted_uv, input_type, self.builder);
 
                 self.insert(ret, value);
                 self.set_type(ret, self.input_type[arg_id]);

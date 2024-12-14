@@ -3,14 +3,10 @@ use super::{PipelineDef, ShaderDef};
 use ir::{Address, Op, Operation, PipelineIR, ValueType};
 use log::error;
 use octo_runtime::{
-    TextureType as RTTextureType,
-    ValueType as RTValueType,
-    OctoModule,
-    ShaderPass,
-    TextureSize,
+    OctoModule, ShaderPass, TextureSize, TextureType as RTTextureType, ValueType as RTValueType,
 };
 use rspirv::binary::{Assemble, Disassemble};
-use rspirv::mr::*;
+use rspirv::dr::Builder;
 use spirv_headers as spirv;
 use std::collections::HashMap;
 
@@ -18,9 +14,9 @@ use shaderc::ShaderKind as Shader;
 
 static VERTEX: &str = include_str!("../basic_vertex.glsl");
 
+mod emit_std;
 mod ids;
 mod main_emitter;
-mod emit_std;
 
 use ids::SpirvIds;
 use main_emitter::MainEmitter;
@@ -78,9 +74,7 @@ fn map_type(typ: ir::ValueType) -> octo_runtime::ValueType {
         it::Int => rt::Int,
         it::Bool => rt::Bool,
         _ => panic!(),
-
     }
-
 }
 
 pub fn emit_spirv(module_name: &str, code: PipelineDef) -> OctoModule {
@@ -137,16 +131,17 @@ pub fn emit_spirv(module_name: &str, code: PipelineDef) -> OctoModule {
         module.textures.push((id, typ, size));
     }
 
-
     module.uniform_block_size = code.uniforms.iter().map(|x| uniform_size(x.0)).sum();
-    module.uniform_block = code.uniforms.iter().map(|x| (x.1.clone(), map_type(x.0))).collect();
-
+    module.uniform_block = code
+        .uniforms
+        .iter()
+        .map(|x| (x.1.clone(), map_type(x.0)))
+        .collect();
 
     module
 }
 
 fn emit_single_shader(info: ShaderDef, uniforms: &Vec<(ValueType, String)>) -> Vec<u32> {
-
     if true {
         println!("Emitting single fragment shader for:\n\n");
         for c in &info.code {
@@ -155,9 +150,12 @@ fn emit_single_shader(info: ShaderDef, uniforms: &Vec<(ValueType, String)>) -> V
     }
 
     let mut module = Builder::new();
-    module.capability(spirv::Capability::Shader);
+    module.capability(rspirv::spirv::Capability::Shader);
     let glsl = module.ext_inst_import("GLSL.std.450");
-    module.memory_model(spirv::AddressingModel::Logical, spirv::MemoryModel::GLSL450);
+    module.memory_model(
+        rspirv::spirv::AddressingModel::Logical,
+        rspirv::spirv::MemoryModel::GLSL450,
+    );
 
     let mut ids = SpirvIds::new();
 
@@ -167,12 +165,16 @@ fn emit_single_shader(info: ShaderDef, uniforms: &Vec<(ValueType, String)>) -> V
     let interface = ids.interface_ids();
 
     module.entry_point(
-        spirv::ExecutionModel::Fragment,
+        rspirv::spirv::ExecutionModel::Fragment,
         function_id,
         "main",
         &interface,
     );
-    module.execution_mode(function_id, spirv::ExecutionMode::OriginUpperLeft, &[]);
+    module.execution_mode(
+        function_id,
+        rspirv::spirv::ExecutionMode::OriginUpperLeft,
+        &[],
+    );
 
     ids.generate_types(&mut module, &info, uniforms);
     ids.decorate(&mut module, uniforms);
@@ -184,7 +186,7 @@ fn emit_single_shader(info: ShaderDef, uniforms: &Vec<(ValueType, String)>) -> V
         .begin_function(
             ids.map_type(ValueType::Void),
             Some(function_id),
-            spirv::FunctionControl::DONT_INLINE | spirv::FunctionControl::CONST,
+            rspirv::spirv::FunctionControl::DONT_INLINE | rspirv::spirv::FunctionControl::CONST,
             main_type,
         )
         .unwrap();
