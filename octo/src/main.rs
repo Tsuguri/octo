@@ -13,6 +13,7 @@ fn main() {
 
     let opt = Parameters::from_args();
 
+    println!("Processing files: {:?}", opt);
     let mut err = false;
     for file in opt.path {
         match process_file(&file) {
