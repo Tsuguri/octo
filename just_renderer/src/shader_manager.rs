@@ -7,6 +7,7 @@ use std::{
 
 pub struct ShaderManager {
     root_path: PathBuf,
+    #[allow(dead_code)]
     cache: HashMap<String, String>,
 }
 

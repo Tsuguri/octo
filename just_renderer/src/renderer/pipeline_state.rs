@@ -2,7 +2,6 @@ use crate::{
     bind_group_layouts::BindGroupLayouts,
     passes::{PostprocessingPass, SolidColorRenderer},
     shader_manager::ShaderManager,
-    texture::TextureData,
 };
 
 use super::{configuration::Configuration, gbuffer::GBuffer};

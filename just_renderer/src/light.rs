@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use encase::{ArrayLength, ShaderType};
 use glam::Vec3;
 

@@ -19,39 +19,46 @@ fn initial_renderer_configuration() -> Configuration {
 }
 
 struct GameApp {
-    renderer: Option<Renderer>,
-    scene: Option<Scene>,
+    state: Option<ApplicationState>,
+}
+
+struct ApplicationState {
+    renderer: Renderer,
+    scene: Scene,
     timer: Instant,
     last_frame: Instant,
 }
 
 impl GameApp {
     fn new() -> Self {
-        let now = Instant::now();
-        Self {
-            renderer: None,
-            scene: None,
-            timer: now,
-            last_frame: now,
-        }
+        Self { state: None }
     }
 
     fn initialize(&mut self, event_loop: &ActiveEventLoop) {
-        if self.renderer.is_some() {
+        if self.state.is_some() {
             return;
         }
 
+        self.state = Some(ApplicationState::initialize(event_loop));
+    }
+}
+
+impl ApplicationState {
+    fn initialize(event_loop: &ActiveEventLoop) -> Self {
         let mut renderer = pollster::block_on(Renderer::initialize(
             event_loop,
             initial_renderer_configuration(),
         ));
         let assets = pollster::block_on(game::resources::initialize_game_assets(&mut renderer));
         let scene = Scene::initialize_scene(&mut renderer, assets);
+        let now = Instant::now();
 
-        self.renderer = Some(renderer);
-        self.scene = Some(scene);
-        self.timer = Instant::now();
-        self.last_frame = self.timer;
+        Self {
+            renderer,
+            scene,
+            timer: now,
+            last_frame: now,
+        }
     }
 }
 
@@ -66,10 +73,10 @@ impl ApplicationHandler for GameApp {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        let Some(renderer) = self.renderer.as_mut() else {
+        let Some(state) = self.state.as_mut() else {
             return;
         };
-        if renderer.window.id() != window_id {
+        if state.renderer.window.id() != window_id {
             return;
         }
 
@@ -91,41 +98,39 @@ impl ApplicationHandler for GameApp {
             WindowEvent::KeyboardInput {
                 event:
                     KeyEvent {
-                        state,
+                        state: key_state,
                         physical_key: PhysicalKey::Code(key),
                         ..
                     },
                 ..
             } => {
-                if let Some(scene) = self.scene.as_mut() {
-                    scene.handle_keyboard_input(key, state);
-                }
+                state.scene.handle_keyboard_input(key, key_state);
             }
 
             WindowEvent::Resized(size) => {
                 log::trace!("WindowEvent::Resized: {:?}", size);
-                renderer.resize(&size);
+                state.renderer.resize(&size);
             }
             _ => {}
         }
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        let (Some(renderer), Some(scene)) = (self.renderer.as_mut(), self.scene.as_mut()) else {
+        let Some(state) = self.state.as_mut() else {
             return;
         };
 
-        let dt = self.last_frame.elapsed().as_secs_f32();
-        self.last_frame = Instant::now();
-        let total_time = self.timer.elapsed().as_secs_f32();
-        scene.update(renderer, total_time);
+        let dt = state.last_frame.elapsed().as_secs_f32();
+        state.last_frame = Instant::now();
+        let total_time = state.timer.elapsed().as_secs_f32();
+        state.scene.update(&mut state.renderer, total_time);
 
-        renderer.pre_render(dt, total_time);
-        match renderer.render() {
+        state.renderer.pre_render(dt, total_time);
+        match state.renderer.render() {
             Ok(()) => {}
             Err(()) => event_loop.exit(),
         }
-        renderer.post_render();
+        state.renderer.post_render();
     }
 }
 

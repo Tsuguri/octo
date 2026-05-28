@@ -67,6 +67,7 @@ struct NoiseGenerationJob {
 pub struct NoiseGenerator {
     compute_pipeline: wgpu::ComputePipeline,
     pending_jobs: Vec<NoiseGenerationJob>,
+    #[allow(dead_code)]
     bind_group_layout: wgpu::BindGroupLayout,
 }
 
@@ -122,6 +123,7 @@ impl NoiseGenerator {
         }
     }
 
+    #[allow(dead_code)]
     pub fn create_noise_texture(
         &mut self,
         device: &wgpu::Device,
@@ -188,7 +190,7 @@ impl NoiseGenerator {
 
     pub fn submit_jobs<'enc, 'a: 'enc>(&'a mut self, encoder: &'enc mut wgpu::CommandEncoder) {
         for NoiseGenerationJob {
-            buffer,
+            buffer: _buffer,
             bind_group,
             size,
         } in std::mem::replace(&mut self.pending_jobs, Vec::new())

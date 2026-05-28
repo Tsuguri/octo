@@ -149,6 +149,7 @@ impl TextureData {
 }
 
 #[derive(Debug, EnumCount, Clone, Copy)]
+#[allow(dead_code)]
 #[repr(u8)]
 pub enum BuiltInTexture {
     _Tree = 0,
