@@ -3,7 +3,8 @@ use std::f32::consts::PI;
 use glam::{Quat, Vec3};
 use just_renderer::winit::{event::ElementState, keyboard::KeyCode};
 use just_renderer::{
-    BuiltInModel, InstanceId, Light, LightId, LightStrength, ModelId, PointLightParameters, Renderer,
+    BuiltInModel, InstanceId, Light, LightId, LightStrength, ModelId, PointLightParameters,
+    Renderer,
 };
 
 use super::{camera_controller::OrthoCameraController, resources::GameAssets, GameModel};

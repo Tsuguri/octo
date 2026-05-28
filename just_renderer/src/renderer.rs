@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 pub use configuration::Configuration;
 use pipeline_state::PipelineState;
+pub use renderer_single_frame::OverlayRenderContext;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
@@ -366,12 +367,31 @@ impl Renderer {
     pub fn post_render(&mut self) {}
 
     pub fn render(&mut self) -> Result<(), ()> {
-        self.render_single_frame()
+        self.render_with_overlay(|_| Vec::new())
+    }
+
+    pub fn render_with_overlay(
+        &mut self,
+        overlay: impl FnOnce(OverlayRenderContext<'_>) -> Vec<wgpu::CommandBuffer>,
+    ) -> Result<(), ()> {
+        self.render_single_frame(overlay)
     }
 
     pub fn set_camera(&mut self, position: Vec3, rotation: Quat) {
         self.camera_data.position = position;
         self.camera_data.rotation = rotation;
+    }
+
+    pub fn device(&self) -> &wgpu::Device {
+        &self.device
+    }
+
+    pub fn surface_format(&self) -> wgpu::TextureFormat {
+        self.surface_config.format
+    }
+
+    pub fn surface_size(&self) -> winit::dpi::PhysicalSize<u32> {
+        self.size
     }
 
     fn recreate_pipeline(&mut self) {

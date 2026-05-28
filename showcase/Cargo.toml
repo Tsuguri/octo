@@ -10,6 +10,9 @@ strum = { version = "0.26", features = ["derive"] }
 glam = { version = "0.25", features = ["bytemuck"] }
 env_logger = "0.10"
 pollster = "0.3"
+egui = "0.34"
+egui-wgpu = "0.34"
+egui-winit = "0.34"
 
 [build-dependencies]
 anyhow = "1.0"

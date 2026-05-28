@@ -2,8 +2,19 @@ use crate::{model_data::ModelData, model_instance::ModelId};
 
 use super::Renderer;
 
+pub struct OverlayRenderContext<'a> {
+    pub device: &'a wgpu::Device,
+    pub queue: &'a wgpu::Queue,
+    pub encoder: &'a mut wgpu::CommandEncoder,
+    pub target: &'a wgpu::TextureView,
+    pub surface_size: winit::dpi::PhysicalSize<u32>,
+}
+
 impl Renderer {
-    pub(crate) fn render_single_frame(&mut self) -> Result<(), ()> {
+    pub(crate) fn render_single_frame(
+        &mut self,
+        overlay: impl FnOnce(OverlayRenderContext<'_>) -> Vec<wgpu::CommandBuffer>,
+    ) -> Result<(), ()> {
         let (output, should_resurface) = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(output) => (output, false),
             wgpu::CurrentSurfaceTexture::Suboptimal(output) => (output, true),
@@ -55,7 +66,20 @@ impl Renderer {
                     .render(&mut encoder, &view, &self.util_data_uniform);
             }
         }
-        self.queue.submit(std::iter::once(encoder.finish()));
+
+        let overlay_command_buffers = overlay(OverlayRenderContext {
+            device: &self.device,
+            queue: &self.queue,
+            encoder: &mut encoder,
+            target: &view,
+            surface_size: self.size,
+        });
+
+        self.queue.submit(
+            overlay_command_buffers
+                .into_iter()
+                .chain([encoder.finish()]),
+        );
         output.present();
         if should_resurface {
             self.resurface();

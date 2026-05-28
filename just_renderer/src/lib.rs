@@ -15,5 +15,6 @@ mod uniforms;
 pub use light::*;
 pub use material_library::MaterialId;
 pub use model_instance::{BuiltInModel, ModelId, ModelInstance};
-pub use renderer::{Configuration, InstanceId, LightId, Renderer};
+pub use renderer::{Configuration, InstanceId, LightId, OverlayRenderContext, Renderer};
+pub use wgpu;
 pub use winit;
