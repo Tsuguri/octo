@@ -14,6 +14,7 @@ bytemuck = { version = "1.12", features = ["derive"] }
 tobj = "4.0"
 encase = { version = "0.7", features = ["glam"] }
 winit = "0.30"
+octo_runtime = { path = "../octo_runtime" }
 
 [build-dependencies]
 anyhow = "1.0"

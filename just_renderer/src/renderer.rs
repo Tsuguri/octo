@@ -16,6 +16,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
 use glam::{Quat, Vec3, Vec4};
+use octo_runtime::OctoModule;
 
 use crate::id_set::IdSet;
 use crate::light::Light;
@@ -65,6 +66,7 @@ pub struct Renderer {
     shaders: ShaderManager,
 
     rt_configuration: RuntimeConfiguration,
+    octo_module: Option<OctoModule>,
 
     // all passes and textures that may depend on window size
     pipeline: Option<PipelineState>,
@@ -228,6 +230,7 @@ impl Renderer {
             materials,
             lights: LightsCollection::empty(),
             rt_configuration: Default::default(),
+            octo_module: None,
             #[cfg(target_arch = "wasm32")]
             url_origin,
         };
@@ -237,6 +240,15 @@ impl Renderer {
 
     pub fn runtime_configuration_mut(&mut self) -> &mut RuntimeConfiguration {
         &mut self.rt_configuration
+    }
+
+    pub fn set_octo_module(&mut self, module: OctoModule) {
+        log::info!("Loaded Octo module: {}", module.name);
+        self.octo_module = Some(module);
+    }
+
+    pub fn octo_module(&self) -> Option<&OctoModule> {
+        self.octo_module.as_ref()
     }
 
     pub async fn load_game_model(&mut self, model_id: u32, path: &str) {
