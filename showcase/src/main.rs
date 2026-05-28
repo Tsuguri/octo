@@ -1,4 +1,3 @@
-use just_game::run;
 use log::LevelFilter;
 
 fn main() {
@@ -8,5 +7,5 @@ fn main() {
         // .filter_module("just_game", LevelFilter::Trace)
         .init();
 
-    pollster::block_on(run());
+    just_game::run();
 }

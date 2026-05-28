@@ -1,7 +1,6 @@
 use super::ir;
 use super::{PipelineDef, ShaderDef};
 use ir::{Address, Op, Operation, PipelineIR, ValueType};
-use log::error;
 use octo_runtime::{
     OctoModule, ShaderPass, TextureSize, TextureType as RTTextureType, ValueType as RTValueType,
 };
@@ -10,10 +9,6 @@ use rspirv::dr::Builder;
 use spirv_headers as spirv;
 use std::collections::HashMap;
 
-use shaderc::ShaderKind as Shader;
-
-static VERTEX: &str = include_str!("../basic_vertex.glsl");
-
 mod emit_std;
 mod ids;
 mod main_emitter;
@@ -21,19 +16,126 @@ mod main_emitter;
 use ids::SpirvIds;
 use main_emitter::MainEmitter;
 
-// TODO: move this to library compilation stage (build.rs)
 fn create_basic_vertex() -> Vec<u32> {
-    let mut compiler = shaderc::Compiler::new()
-        .ok_or("shaderc not found!")
+    use rspirv::spirv::{
+        AddressingModel, BuiltIn, Capability, Decoration, ExecutionModel, FunctionControl,
+        MemoryModel, StorageClass,
+    };
+
+    let mut module = Builder::new();
+    module.capability(Capability::Shader);
+    module.memory_model(AddressingModel::Logical, MemoryModel::GLSL450);
+
+    let void_type = module.type_void();
+    let int_type = module.type_int(32, 1);
+    let float_type = module.type_float(32);
+    let vec2_type = module.type_vector(float_type, 2);
+    let vec4_type = module.type_vector(float_type, 4);
+
+    let vertex_index_pointer = module.type_pointer(None, StorageClass::Input, int_type);
+    let position_pointer = module.type_pointer(None, StorageClass::Output, vec4_type);
+    let uv_pointer = module.type_pointer(None, StorageClass::Output, vec2_type);
+
+    let vertex_index_location = module.id();
+    let position_location = module.id();
+    let uv_location = module.id();
+
+    module.variable(
+        vertex_index_pointer,
+        Some(vertex_index_location),
+        StorageClass::Input,
+        None,
+    );
+    module.variable(
+        position_pointer,
+        Some(position_location),
+        StorageClass::Output,
+        None,
+    );
+    module.variable(uv_pointer, Some(uv_location), StorageClass::Output, None);
+
+    module.decorate(
+        vertex_index_location,
+        Decoration::BuiltIn,
+        [BuiltIn::VertexIndex.into()],
+    );
+    module.decorate(
+        position_location,
+        Decoration::BuiltIn,
+        [BuiltIn::Position.into()],
+    );
+    module.decorate(uv_location, Decoration::Location, [0u32.into()]);
+
+    let int_one = module.constant_bit32(int_type, 1);
+    let int_two = module.constant_bit32(int_type, 2);
+    let float_zero = module.constant_bit32(float_type, f32::to_bits(0.0));
+    let float_one = module.constant_bit32(float_type, f32::to_bits(1.0));
+    let float_two = module.constant_bit32(float_type, f32::to_bits(2.0));
+    let float_neg_one = module.constant_bit32(float_type, f32::to_bits(-1.0));
+    let vec2_two = module.constant_composite(vec2_type, [float_two, float_two]);
+    let vec2_neg_one = module.constant_composite(vec2_type, [float_neg_one, float_neg_one]);
+
+    let function_id = module.id();
+    module.entry_point(
+        ExecutionModel::Vertex,
+        function_id,
+        "main",
+        &[vertex_index_location, position_location, uv_location],
+    );
+
+    let main_type = module.type_function(void_type, vec![]);
+    module
+        .begin_function(
+            void_type,
+            Some(function_id),
+            FunctionControl::NONE,
+            main_type,
+        )
         .unwrap();
-    let compilation_result = compiler
-        .compile_into_spirv(&VERTEX, Shader::Vertex, "basic_vertex", "main", None)
-        .map_err(|e| {
-            error!("{}", e);
-            "Couldn't compile fragment shader!"
-        })
+    module.begin_block(None).unwrap();
+
+    let vertex_index = module
+        .load(int_type, None, vertex_index_location, None, [])
         .unwrap();
-    compilation_result.as_binary().to_vec()
+    let shifted_vertex_index = module
+        .shift_left_logical(int_type, None, vertex_index, int_one)
+        .unwrap();
+    let uv_x_int = module
+        .bitwise_and(int_type, None, shifted_vertex_index, int_two)
+        .unwrap();
+    let uv_y_int = module
+        .bitwise_and(int_type, None, vertex_index, int_two)
+        .unwrap();
+    let uv_x = module.convert_s_to_f(float_type, None, uv_x_int).unwrap();
+    let uv_y = module.convert_s_to_f(float_type, None, uv_y_int).unwrap();
+    let uv = module
+        .composite_construct(vec2_type, None, [uv_x, uv_y])
+        .unwrap();
+
+    let scaled_uv = module.f_mul(vec2_type, None, uv, vec2_two).unwrap();
+    let position_xy = module
+        .f_add(vec2_type, None, scaled_uv, vec2_neg_one)
+        .unwrap();
+    let position_x = module
+        .composite_extract(float_type, None, position_xy, [0])
+        .unwrap();
+    let position_y = module
+        .composite_extract(float_type, None, position_xy, [1])
+        .unwrap();
+    let position = module
+        .composite_construct(
+            vec4_type,
+            None,
+            [position_x, position_y, float_zero, float_one],
+        )
+        .unwrap();
+
+    module.store(uv_location, uv, None, []).unwrap();
+    module.store(position_location, position, None, []).unwrap();
+    module.ret().unwrap();
+    module.end_function().unwrap();
+
+    module.module().assemble()
 }
 
 fn version() -> u32 {
@@ -209,4 +311,67 @@ fn emit_single_shader(info: ShaderDef, uniforms: &Vec<(ValueType, String)>) -> V
 
     //println!("{}", m.disassemble());
     m.assemble()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::create_basic_vertex;
+    use rspirv::dr::{load_words, Module, Operand};
+    use rspirv::spirv::{BuiltIn, Decoration, ExecutionModel};
+
+    fn decorated_builtin_id(module: &Module, built_in: BuiltIn) -> Option<u32> {
+        module.annotations.iter().find_map(|inst| match inst.operands.as_slice() {
+            [
+                Operand::IdRef(id),
+                Operand::Decoration(Decoration::BuiltIn),
+                Operand::BuiltIn(actual),
+            ] if *actual == built_in => Some(*id),
+            _ => None,
+        })
+    }
+
+    fn location_id(module: &Module, location: u32) -> Option<u32> {
+        module.annotations.iter().find_map(|inst| match inst.operands.as_slice() {
+            [
+                Operand::IdRef(id),
+                Operand::Decoration(Decoration::Location),
+                Operand::LiteralBit32(actual),
+            ] if *actual == location => Some(*id),
+            _ => None,
+        })
+    }
+
+    #[test]
+    fn basic_vertex_shader_declares_expected_interface() {
+        let words = create_basic_vertex();
+        let module = load_words(&words).expect("basic vertex SPIR-V should load");
+
+        let entry_point = module
+            .entry_points
+            .iter()
+            .find(|inst| {
+                matches!(
+                    inst.operands.as_slice(),
+                    [
+                        Operand::ExecutionModel(ExecutionModel::Vertex),
+                        Operand::IdRef(_),
+                        Operand::LiteralString(name),
+                        ..
+                    ] if name == "main"
+                )
+            })
+            .expect("basic vertex SPIR-V should contain a vertex main entry point");
+
+        let position_id = decorated_builtin_id(&module, BuiltIn::Position)
+            .expect("basic vertex SPIR-V should decorate gl_Position");
+        let vertex_index_id = decorated_builtin_id(&module, BuiltIn::VertexIndex)
+            .expect("basic vertex SPIR-V should decorate gl_VertexIndex");
+        let uv_id =
+            location_id(&module, 0).expect("basic vertex SPIR-V should decorate location 0 UV");
+
+        let interface = &entry_point.operands[3..];
+        assert!(interface.contains(&Operand::IdRef(position_id)));
+        assert!(interface.contains(&Operand::IdRef(vertex_index_id)));
+        assert!(interface.contains(&Operand::IdRef(uv_id)));
+    }
 }

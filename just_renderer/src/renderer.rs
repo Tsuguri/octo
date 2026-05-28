@@ -6,13 +6,13 @@ mod renderer_single_frame;
 mod runtime_configuration;
 
 use std::ops::AddAssign;
+use std::rc::Rc;
 use std::sync::Arc;
-use std::{collections::HashMap, rc::Rc};
 
 pub use configuration::Configuration;
 use pipeline_state::PipelineState;
-use winit::event_loop::EventLoop;
-use winit::window::WindowBuilder;
+use winit::event_loop::ActiveEventLoop;
+use winit::window::Window;
 
 use glam::{Quat, Vec3, Vec4};
 
@@ -90,11 +90,13 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub async fn initialize(event_loop: &EventLoop<()>, configuration: Configuration) -> Self {
-        let window = WindowBuilder::new()
-            .with_inner_size(winit::dpi::LogicalSize::new(1024, 800))
-            .with_title("wolololo")
-            .build(&event_loop)
+    pub async fn initialize(event_loop: &ActiveEventLoop, configuration: Configuration) -> Self {
+        let window = event_loop
+            .create_window(
+                Window::default_attributes()
+                    .with_inner_size(winit::dpi::LogicalSize::new(1024, 800))
+                    .with_title("wolololo"),
+            )
             .unwrap();
 
         let window = Arc::new(window);
@@ -106,15 +108,21 @@ impl Renderer {
             log::error!("shaders were not compiled successfully!! {}", err);
         }
 
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            #[cfg(target_arch = "wasm32")]
-            backends: wgpu::Backends::all(),
-            #[cfg(not(target_arch = "wasm32"))]
-            backends: wgpu::Backends::VULKAN,
-            ..Default::default()
-        });
+        let mut instance_descriptor = wgpu::InstanceDescriptor::new_with_display_handle(Box::new(
+            event_loop.owned_display_handle(),
+        ));
+        #[cfg(target_arch = "wasm32")]
+        {
+            instance_descriptor.backends = wgpu::Backends::all();
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            instance_descriptor.backends = wgpu::Backends::VULKAN;
+        }
 
-        let surface = unsafe { instance.create_surface(window.clone()) }.unwrap();
+        let instance = wgpu::Instance::new(instance_descriptor);
+
+        let surface = instance.create_surface(window.clone()).unwrap();
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -126,18 +134,13 @@ impl Renderer {
             .unwrap();
 
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits {
-                        max_push_constant_size: 64,
-                        ..Default::default()
-                    },
-                    memory_hints: Default::default(),
-                    label: None,
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: Default::default(),
+                label: None,
+                ..Default::default()
+            })
             .await
             .unwrap();
 
@@ -188,9 +191,9 @@ impl Renderer {
         )
         .unwrap();
 
-        let mut generators = Generators::initialize(&device, &bind_group_layouts);
+        let generators = Generators::initialize(&device, &bind_group_layouts);
 
-        let (builtin_models, mut builtin_textures) = Self::load_builtin_data(
+        let (builtin_models, builtin_textures) = Self::load_builtin_data(
             &device,
             &queue,
             #[cfg(target_arch = "wasm32")]
@@ -363,20 +366,7 @@ impl Renderer {
     pub fn post_render(&mut self) {}
 
     pub fn render(&mut self) -> Result<(), ()> {
-        match self.render_single_frame() {
-            Err(wgpu::SurfaceError::Lost) => {
-                self.resurface();
-                Ok(())
-            }
-            // The system is out of memory, we should probably quit
-            Err(wgpu::SurfaceError::OutOfMemory) => Err(()),
-            // All other errors (Outdated, Timeout) should be resolved by the next frame
-            Err(e) => {
-                eprintln!("{:?}", e);
-                Err(())
-            }
-            Ok(()) => Ok(()),
-        }
+        self.render_single_frame()
     }
 
     pub fn set_camera(&mut self, position: Vec3, rotation: Quat) {
@@ -425,7 +415,9 @@ impl Renderer {
     }
 
     pub fn resurface(&mut self) {
-        let size = self.size;
-        self.resize(&size);
+        if self.size.width > 0 && self.size.height > 0 {
+            self.surface.configure(&self.device, &self.surface_config);
+            self.recreate_pipeline();
+        }
     }
 }

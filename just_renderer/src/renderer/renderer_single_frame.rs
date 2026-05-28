@@ -3,8 +3,22 @@ use crate::{model_data::ModelData, model_instance::ModelId};
 use super::Renderer;
 
 impl Renderer {
-    pub(crate) fn render_single_frame(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let output = self.surface.get_current_texture()?;
+    pub(crate) fn render_single_frame(&mut self) -> Result<(), ()> {
+        let (output, should_resurface) = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(output) => (output, false),
+            wgpu::CurrentSurfaceTexture::Suboptimal(output) => (output, true),
+            wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
+                return Ok(());
+            }
+            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
+                self.resurface();
+                return Ok(());
+            }
+            wgpu::CurrentSurfaceTexture::Validation => {
+                log::error!("surface texture acquisition failed validation");
+                return Err(());
+            }
+        };
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -43,6 +57,9 @@ impl Renderer {
         }
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
+        if should_resurface {
+            self.resurface();
+        }
 
         Ok(())
     }

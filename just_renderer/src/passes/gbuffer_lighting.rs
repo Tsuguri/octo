@@ -60,11 +60,11 @@ impl PostprocessingPass {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Standard Pipeline"),
                 bind_group_layouts: &[
-                    &binding_layouts.single_uniform_group,
-                    &binding_layouts.postprocessing_sources,
-                    &binding_layouts.lights,
+                    Some(&binding_layouts.single_uniform_group),
+                    Some(&binding_layouts.postprocessing_sources),
+                    Some(&binding_layouts.lights),
                 ],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -102,7 +102,7 @@ impl PostprocessingPass {
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
-            multiview: None,
+            multiview_mask: None,
         });
 
         let source_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -204,6 +204,7 @@ impl PostprocessingPass {
             label: Some("postprocessing render pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: color_target,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -218,6 +219,7 @@ impl PostprocessingPass {
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
