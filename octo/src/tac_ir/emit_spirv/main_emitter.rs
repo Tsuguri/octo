@@ -1182,7 +1182,9 @@ impl<'a, I: std::iter::Iterator<Item = &'a Op>> MainEmitter<'a, I> {
             }
             Operation::Exit(val, _label) => {
                 let value_addr = self.value_map[&val];
-                self.ids.store_result(0, value_addr, self.builder);
+                let value_type = self.type_map[&val];
+                self.ids
+                    .store_result(0, value_addr, value_type, self.builder);
             }
             Operation::Invoke(function) => {
                 self.emit_invoke(function, ret);

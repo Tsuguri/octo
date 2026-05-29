@@ -105,15 +105,14 @@ impl OctoPostprocessState {
                 immediate_size: module.uniform_block_size as u32,
             });
 
-            let target_formats = Self::pass_target_formats(surface_format, module, &pass.output)?;
-            let targets: Vec<_> = target_formats
-                .iter()
-                .copied()
-                .map(|format| {
+            let target_states = Self::pass_target_states(surface_format, module, &pass.output)?;
+            let targets: Vec<_> = target_states
+                .into_iter()
+                .map(|(format, write_mask)| {
                     Some(wgpu::ColorTargetState {
                         format,
                         blend: None,
-                        write_mask: wgpu::ColorWrites::ALL,
+                        write_mask,
                     })
                 })
                 .collect();
@@ -507,13 +506,13 @@ impl OctoPostprocessState {
         )))
     }
 
-    fn pass_target_formats(
+    fn pass_target_states(
         surface_format: wgpu::TextureFormat,
         module: &OctoModule,
         output: &OutputType,
-    ) -> Result<Vec<wgpu::TextureFormat>, OctoPostprocessError> {
+    ) -> Result<Vec<(wgpu::TextureFormat, wgpu::ColorWrites)>, OctoPostprocessError> {
         match output {
-            OutputType::Result => Ok(vec![surface_format]),
+            OutputType::Result => Ok(vec![(surface_format, wgpu::ColorWrites::ALL)]),
             OutputType::Textures(ids) => ids
                 .iter()
                 .map(|id| {
@@ -527,7 +526,10 @@ impl OctoPostprocessState {
                                 id
                             ))
                         })?;
-                    Ok(Self::map_texture_format(*texture_type))
+                    Ok((
+                        Self::map_texture_format(*texture_type),
+                        wgpu::ColorWrites::ALL,
+                    ))
                 })
                 .collect(),
         }
@@ -537,7 +539,7 @@ impl OctoPostprocessState {
         match texture_type {
             TextureType::Float => wgpu::TextureFormat::R32Float,
             TextureType::Vec2 => wgpu::TextureFormat::Rg32Float,
-            TextureType::Vec3 | TextureType::Vec4 => wgpu::TextureFormat::Rgba32Float,
+            TextureType::Vec4 => wgpu::TextureFormat::Rgba32Float,
         }
     }
 }

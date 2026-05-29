@@ -10,7 +10,6 @@ pub type ShaderId = usize;
 pub enum TextureType {
     Float,
     Vec2,
-    Vec3,
     Vec4,
 }
 

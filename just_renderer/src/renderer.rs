@@ -19,7 +19,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
 use glam::{Quat, Vec3, Vec4};
-use octo_runtime::OctoModule;
+use octo_runtime::{OctoModule, ValueType};
 
 use crate::id_set::IdSet;
 use crate::light::Light;
@@ -59,6 +59,49 @@ impl AddAssign<u32> for LightId {
 pub type LightsCollection = IdSet<LightId, Light>;
 pub type ObjectsCollection = IdSet<InstanceId, ModelInstance>;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum OctoAutoUniformValue {
+    Vec2([f32; 2]),
+    Vec3([f32; 3]),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OctoAutoUniformKind {
+    CameraPos,
+    LightDir,
+    LightColor,
+    ViewSize,
+}
+
+#[derive(Debug, Clone)]
+struct OctoUniformMetadata {
+    name: String,
+    value_type: ValueType,
+    offset: usize,
+    size: usize,
+    auto_kind: Option<OctoAutoUniformKind>,
+}
+
+impl OctoAutoUniformKind {
+    fn from_name_and_type(name: &str, value_type: ValueType) -> Option<Self> {
+        match (name, value_type) {
+            ("camera_pos", ValueType::Vec3) => Some(Self::CameraPos),
+            ("lightDir", ValueType::Vec3) => Some(Self::LightDir),
+            ("lightColor", ValueType::Vec3) => Some(Self::LightColor),
+            ("view_size", ValueType::Vec2) => Some(Self::ViewSize),
+            _ => None,
+        }
+    }
+
+    fn expected_type_for_name(name: &str) -> Option<ValueType> {
+        match name {
+            "camera_pos" | "lightDir" | "lightColor" => Some(ValueType::Vec3),
+            "view_size" => Some(ValueType::Vec2),
+            _ => None,
+        }
+    }
+}
+
 pub struct Renderer {
     pub window: Arc<winit::window::Window>,
     surface: wgpu::Surface<'static>,
@@ -74,6 +117,7 @@ pub struct Renderer {
     octo_postprocess: Option<OctoPostprocessState>,
     octo_module_status: OctoModuleStatus,
     octo_uniform_bytes: Vec<u8>,
+    octo_uniform_metadata: Vec<OctoUniformMetadata>,
 
     // all passes and textures that may depend on window size
     pipeline: Option<PipelineState>,
@@ -251,6 +295,7 @@ impl Renderer {
             octo_postprocess: None,
             octo_module_status: OctoModuleStatus::Empty,
             octo_uniform_bytes: Vec::new(),
+            octo_uniform_metadata: Vec::new(),
             #[cfg(target_arch = "wasm32")]
             url_origin,
         };
@@ -265,6 +310,7 @@ impl Renderer {
     pub fn set_octo_module(&mut self, module: OctoModule) -> Result<(), OctoPostprocessError> {
         log::info!("Loaded Octo module: {}", module.name);
         self.octo_uniform_bytes = vec![0; module.uniform_block_size];
+        self.octo_uniform_metadata = Self::build_octo_uniform_metadata(&module);
         self.octo_module = Some(module);
         self.rebuild_octo_postprocess()
     }
@@ -287,6 +333,19 @@ impl Renderer {
 
     pub fn octo_module_status(&self) -> OctoModuleStatus {
         self.octo_module_status.clone()
+    }
+
+    pub fn is_octo_uniform_auto_filled(&self, name: &str, value_type: ValueType) -> bool {
+        OctoAutoUniformKind::from_name_and_type(name, value_type).is_some()
+    }
+
+    pub fn octo_auto_uniform_value(
+        &self,
+        name: &str,
+        value_type: ValueType,
+    ) -> Option<OctoAutoUniformValue> {
+        let kind = OctoAutoUniformKind::from_name_and_type(name, value_type)?;
+        self.octo_auto_value(kind)
     }
 
     pub async fn load_game_model(&mut self, model_id: u32, path: &str) {
@@ -412,6 +471,8 @@ impl Renderer {
                 &self.lights,
             );
         }
+
+        self.apply_octo_auto_uniforms();
     }
 
     pub fn post_render(&mut self) {}
@@ -469,6 +530,7 @@ impl Renderer {
             self.octo_postprocess = None;
             self.octo_module_status = OctoModuleStatus::Empty;
             self.octo_uniform_bytes.clear();
+            self.octo_uniform_metadata.clear();
             return Ok(());
         };
 
@@ -496,6 +558,91 @@ impl Renderer {
                     message: error.to_string(),
                 };
                 Err(error)
+            }
+        }
+    }
+
+    fn build_octo_uniform_metadata(module: &OctoModule) -> Vec<OctoUniformMetadata> {
+        let mut offset = 0usize;
+        module
+            .uniform_block
+            .iter()
+            .map(|(name, value_type)| {
+                if let Some(expected_type) = OctoAutoUniformKind::expected_type_for_name(name) {
+                    if expected_type != *value_type {
+                        log::warn!(
+                            "Octo uniform `{}` has type {:?}; expected {:?} for auto-fill",
+                            name,
+                            value_type,
+                            expected_type
+                        );
+                    }
+                }
+
+                let size = octo_uniform_size(*value_type);
+                let metadata = OctoUniformMetadata {
+                    name: name.clone(),
+                    value_type: *value_type,
+                    offset,
+                    size,
+                    auto_kind: OctoAutoUniformKind::from_name_and_type(name, *value_type),
+                };
+                offset += size;
+                metadata
+            })
+            .collect()
+    }
+
+    fn apply_octo_auto_uniforms(&mut self) {
+        if self.octo_uniform_bytes.is_empty() {
+            return;
+        }
+
+        let metadata = self.octo_uniform_metadata.clone();
+        for uniform in metadata {
+            let Some(kind) = uniform.auto_kind else {
+                continue;
+            };
+            let Some(value) = self.octo_auto_value(kind) else {
+                continue;
+            };
+            if uniform.offset + uniform.size > self.octo_uniform_bytes.len() {
+                log::error!(
+                    "Auto-filled Octo uniform `{}` ({:?}) exceeds uniform byte buffer",
+                    uniform.name,
+                    uniform.value_type
+                );
+                continue;
+            }
+            write_octo_auto_uniform_value(&mut self.octo_uniform_bytes, uniform.offset, value);
+        }
+
+        if let Some(octo_postprocess) = &mut self.octo_postprocess {
+            if let Err(error) = octo_postprocess.set_uniform_bytes(self.octo_uniform_bytes.clone())
+            {
+                log::error!("Couldn't upload auto-filled Octo uniforms: {}", error);
+            }
+        }
+    }
+
+    fn octo_auto_value(&self, kind: OctoAutoUniformKind) -> Option<OctoAutoUniformValue> {
+        match kind {
+            OctoAutoUniformKind::CameraPos => Some(OctoAutoUniformValue::Vec3(
+                self.camera_data.position.to_array(),
+            )),
+            OctoAutoUniformKind::ViewSize => Some(OctoAutoUniformValue::Vec2([
+                self.surface_config.width as f32,
+                self.surface_config.height as f32,
+            ])),
+            OctoAutoUniformKind::LightDir => {
+                let (direction, _) =
+                    octo_selected_light_values(self.lights.values(), self.camera_data.position)?;
+                Some(OctoAutoUniformValue::Vec3(direction.to_array()))
+            }
+            OctoAutoUniformKind::LightColor => {
+                let (_, color) =
+                    octo_selected_light_values(self.lights.values(), self.camera_data.position)?;
+                Some(OctoAutoUniformValue::Vec3(color.to_array()))
             }
         }
     }
@@ -528,5 +675,163 @@ impl Renderer {
             self.surface.configure(&self.device, &self.surface_config);
             self.recreate_pipeline();
         }
+    }
+}
+
+fn octo_uniform_size(value_type: ValueType) -> usize {
+    match value_type {
+        ValueType::Float
+        | ValueType::Vec2
+        | ValueType::Vec3
+        | ValueType::Vec4
+        | ValueType::Int
+        | ValueType::Bool => 16,
+        ValueType::Mat3 => 36,
+        ValueType::Mat4 => 64,
+    }
+}
+
+fn write_octo_auto_uniform_value(bytes: &mut [u8], offset: usize, value: OctoAutoUniformValue) {
+    match value {
+        OctoAutoUniformValue::Vec2(values) => write_octo_f32s(bytes, offset, &values),
+        OctoAutoUniformValue::Vec3(values) => write_octo_f32s(bytes, offset, &values),
+    }
+}
+
+fn write_octo_f32s<const N: usize>(bytes: &mut [u8], offset: usize, values: &[f32; N]) {
+    for (index, value) in values.iter().enumerate() {
+        let start = offset + index * std::mem::size_of::<f32>();
+        bytes[start..start + std::mem::size_of::<f32>()].copy_from_slice(&value.to_ne_bytes());
+    }
+}
+
+fn octo_selected_light_values<'a>(
+    lights: impl Iterator<Item = &'a Light>,
+    camera_pos: Vec3,
+) -> Option<(Vec3, Vec3)> {
+    let mut first_point = None;
+
+    for light in lights {
+        match light {
+            Light::Directional(data) => {
+                return Some((normalize_or_zero(-data.direction), data.colors.specular));
+            }
+            Light::Point(data) => {
+                first_point.get_or_insert_with(|| {
+                    (
+                        normalize_or_zero(data.pos - camera_pos),
+                        data.colors.specular,
+                    )
+                });
+            }
+        }
+    }
+
+    first_point
+}
+
+fn normalize_or_zero(value: Vec3) -> Vec3 {
+    if value.length_squared() > 0.0 {
+        value.normalize()
+    } else {
+        Vec3::ZERO
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::light::{DirectionalLightParameters, LightStrength, PointLightParameters};
+
+    fn colors(r: f32, g: f32, b: f32) -> LightStrength {
+        LightStrength {
+            ambient: Vec3::ZERO,
+            diffuse: Vec3::ZERO,
+            specular: Vec3::new(r, g, b),
+        }
+    }
+
+    fn assert_vec3_close(actual: Vec3, expected: Vec3) {
+        assert!(
+            actual.abs_diff_eq(expected, 0.0001),
+            "actual={actual:?}, expected={expected:?}"
+        );
+    }
+
+    #[test]
+    fn auto_uniform_metadata_matches_exact_known_names_and_types() {
+        let mut module = OctoModule::new();
+        module.uniform_block = vec![
+            ("camera_pos".to_owned(), ValueType::Vec3),
+            ("lightDir".to_owned(), ValueType::Float),
+            ("view_size".to_owned(), ValueType::Vec2),
+            ("exposure".to_owned(), ValueType::Float),
+        ];
+
+        let metadata = Renderer::build_octo_uniform_metadata(&module);
+
+        assert_eq!(metadata[0].offset, 0);
+        assert_eq!(metadata[1].offset, 16);
+        assert_eq!(metadata[2].offset, 32);
+        assert_eq!(metadata[3].offset, 48);
+        assert_eq!(metadata[0].auto_kind, Some(OctoAutoUniformKind::CameraPos));
+        assert_eq!(metadata[1].auto_kind, None);
+        assert_eq!(metadata[2].auto_kind, Some(OctoAutoUniformKind::ViewSize));
+        assert_eq!(metadata[3].auto_kind, None);
+    }
+
+    #[test]
+    fn auto_uniform_write_overwrites_only_padded_slot_values() {
+        let mut bytes = vec![0x7f; 48];
+
+        write_octo_auto_uniform_value(&mut bytes, 16, OctoAutoUniformValue::Vec3([1.0, 2.0, 3.0]));
+
+        assert!(bytes[..16].iter().all(|byte| *byte == 0x7f));
+        assert_eq!(&bytes[16..20], &1.0f32.to_ne_bytes());
+        assert_eq!(&bytes[20..24], &2.0f32.to_ne_bytes());
+        assert_eq!(&bytes[24..28], &3.0f32.to_ne_bytes());
+        assert!(bytes[28..48].iter().all(|byte| *byte == 0x7f));
+    }
+
+    #[test]
+    fn directional_light_is_preferred_over_point_light() {
+        let lights = [
+            Light::Point(PointLightParameters {
+                pos: Vec3::new(0.0, 0.0, 10.0),
+                colors: colors(1.0, 0.0, 0.0),
+                attenuation: Vec3::ONE,
+            }),
+            Light::Directional(DirectionalLightParameters {
+                direction: Vec3::new(0.0, -2.0, 0.0),
+                colors: colors(0.2, 0.4, 0.6),
+            }),
+        ];
+
+        let (direction, color) = octo_selected_light_values(lights.iter(), Vec3::ZERO).unwrap();
+
+        assert_vec3_close(direction, Vec3::Y);
+        assert_vec3_close(color, Vec3::new(0.2, 0.4, 0.6));
+    }
+
+    #[test]
+    fn point_light_direction_uses_camera_to_light() {
+        let lights = [Light::Point(PointLightParameters {
+            pos: Vec3::new(1.0, 2.0, 4.0),
+            colors: colors(0.3, 0.5, 0.7),
+            attenuation: Vec3::ONE,
+        })];
+
+        let (direction, color) =
+            octo_selected_light_values(lights.iter(), Vec3::new(1.0, 2.0, 1.0)).unwrap();
+
+        assert_vec3_close(direction, Vec3::Z);
+        assert_vec3_close(color, Vec3::new(0.3, 0.5, 0.7));
+    }
+
+    #[test]
+    fn missing_light_leaves_auto_light_values_unavailable() {
+        let lights = [];
+
+        assert!(octo_selected_light_values(lights.iter(), Vec3::ZERO).is_none());
     }
 }

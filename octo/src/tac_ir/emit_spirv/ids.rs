@@ -87,10 +87,10 @@ impl SpirvIds {
             .insert((true, ValueType::Vec2), id);
 
         for ret in &info.output_type {
-            let def = (false, *ret);
+            let def = (false, Self::output_storage_type(*ret));
             if !self.pointer_types_locations.contains_key(&def) {
                 //println!("looking for {}", *ret);
-                let contained_id = self.map_type(*ret);
+                let contained_id = self.map_type(Self::output_storage_type(*ret));
                 let id =
                     module.type_pointer(None, rspirv::spirv::StorageClass::Output, contained_id);
                 self.pointer_types_locations.insert(def, id);
@@ -326,7 +326,8 @@ impl SpirvIds {
         );
 
         for (id, loc) in self.output_locations.iter().enumerate() {
-            let type_id = self.pointer_types_locations[&(false, info.output_type[id])];
+            let type_id = self.pointer_types_locations
+                [&(false, Self::output_storage_type(info.output_type[id]))];
             module.variable(
                 type_id,
                 Some(*loc),
@@ -502,8 +503,33 @@ impl SpirvIds {
         }
     }
 
-    pub fn store_result(&mut self, id: usize, addr: SpirvAddress, module: &mut Builder) {
+    pub fn store_result(
+        &mut self,
+        id: usize,
+        addr: SpirvAddress,
+        value_type: ValueType,
+        module: &mut Builder,
+    ) {
         let uniform_addr = self.output_locations[id];
+        let addr = if value_type == ValueType::Vec3 {
+            let float_type = self.map_type(ValueType::Float);
+            let vec4_type = self.map_type(ValueType::Vec4);
+            let x = module
+                .composite_extract(float_type, None, addr, [0])
+                .unwrap();
+            let y = module
+                .composite_extract(float_type, None, addr, [1])
+                .unwrap();
+            let z = module
+                .composite_extract(float_type, None, addr, [2])
+                .unwrap();
+            let w = module.constant_bit32(float_type, f32::to_bits(0.0));
+            module
+                .composite_construct(vec4_type, None, [x, y, z, w])
+                .unwrap()
+        } else {
+            addr
+        };
         module.store(uniform_addr, addr, None, []).unwrap();
     }
 
@@ -610,6 +636,13 @@ impl SpirvIds {
                 self.uniform_access[id] = Some(load);
                 load
             }
+        }
+    }
+
+    fn output_storage_type(value_type: ValueType) -> ValueType {
+        match value_type {
+            ValueType::Vec3 => ValueType::Vec4,
+            _ => value_type,
         }
     }
 }

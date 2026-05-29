@@ -224,7 +224,7 @@ pub fn emit_spirv(module_name: &str, code: PipelineDef) -> OctoModule {
     for (id, tex) in code.textures.drain(0..code.textures.len()).enumerate() {
         let typ = match tex {
             ValueType::Vec2 => RTTextureType::Vec2,
-            ValueType::Vec3 => RTTextureType::Vec3,
+            ValueType::Vec3 => RTTextureType::Vec4,
             ValueType::Vec4 => RTTextureType::Vec4,
             _ => RTTextureType::Float,
         };
@@ -315,9 +315,13 @@ fn emit_single_shader(info: ShaderDef, uniforms: &Vec<(ValueType, String)>) -> V
 
 #[cfg(test)]
 mod tests {
-    use super::create_basic_vertex;
+    use super::{create_basic_vertex, emit_single_shader, emit_spirv};
+    use crate::tac_ir::ir::{Operation, ValueType};
+    use crate::tac_ir::split_passes::PipelineDef;
+    use crate::tac_ir::ShaderDef;
+    use octo_runtime::TextureType;
     use rspirv::dr::{load_words, Module, Operand};
-    use rspirv::spirv::{BuiltIn, Decoration, ExecutionModel};
+    use rspirv::spirv::{BuiltIn, Decoration, ExecutionModel, Op, StorageClass};
 
     fn decorated_builtin_id(module: &Module, built_in: BuiltIn) -> Option<u32> {
         module.annotations.iter().find_map(|inst| match inst.operands.as_slice() {
@@ -339,6 +343,100 @@ mod tests {
             ] if *actual == location => Some(*id),
             _ => None,
         })
+    }
+
+    fn output_location_id(module: &Module, location: u32) -> Option<u32> {
+        module.annotations.iter().find_map(|inst| match inst.operands.as_slice() {
+            [
+                Operand::IdRef(id),
+                Operand::Decoration(Decoration::Location),
+                Operand::LiteralBit32(actual),
+            ] if *actual == location && is_variable_storage_class(module, *id, StorageClass::Output) => {
+                Some(*id)
+            }
+            _ => None,
+        })
+    }
+
+    fn is_variable_storage_class(
+        module: &Module,
+        variable_id: u32,
+        storage_class: StorageClass,
+    ) -> bool {
+        module.types_global_values.iter().any(|inst| {
+            inst.class.opcode == Op::Variable
+                && inst.result_id == Some(variable_id)
+                && matches!(
+                    inst.operands.as_slice(),
+                    [Operand::StorageClass(actual), ..] if *actual == storage_class
+                )
+        })
+    }
+
+    fn vector_component_count(module: &Module, type_id: u32) -> Option<u32> {
+        module.types_global_values.iter().find_map(|inst| {
+            if inst.class.opcode == Op::TypeVector && inst.result_id == Some(type_id) {
+                match inst.operands.as_slice() {
+                    [Operand::IdRef(_component_type), Operand::LiteralBit32(count)] => Some(*count),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+    }
+
+    fn pointer_pointee(
+        module: &Module,
+        pointer_type_id: u32,
+        storage_class: StorageClass,
+    ) -> Option<u32> {
+        module.types_global_values.iter().find_map(|inst| {
+            if inst.class.opcode == Op::TypePointer && inst.result_id == Some(pointer_type_id) {
+                match inst.operands.as_slice() {
+                    [Operand::StorageClass(actual), Operand::IdRef(pointee)]
+                        if *actual == storage_class =>
+                    {
+                        Some(*pointee)
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+    }
+
+    fn float_zero_id(module: &Module) -> Option<u32> {
+        let float_type = module.types_global_values.iter().find_map(|inst| {
+            if inst.class.opcode == Op::TypeFloat {
+                match inst.operands.as_slice() {
+                    [Operand::LiteralBit32(32)] => inst.result_id,
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })?;
+
+        module.types_global_values.iter().find_map(|inst| {
+            if inst.class.opcode == Op::Constant && inst.result_type == Some(float_type) {
+                match inst.operands.as_slice() {
+                    [Operand::LiteralBit32(bits)] if *bits == f32::to_bits(0.0) => inst.result_id,
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+    }
+
+    fn function_instructions(module: &Module) -> impl Iterator<Item = &rspirv::dr::Instruction> {
+        module
+            .functions
+            .iter()
+            .flat_map(|function| function.blocks.iter())
+            .flat_map(|block| block.instructions.iter())
     }
 
     #[test]
@@ -373,5 +471,75 @@ mod tests {
         assert!(interface.contains(&Operand::IdRef(position_id)));
         assert!(interface.contains(&Operand::IdRef(vertex_index_id)));
         assert!(interface.contains(&Operand::IdRef(uv_id)));
+    }
+
+    #[test]
+    fn vec3_fragment_output_is_declared_as_vec4() {
+        let shader = ShaderDef {
+            input_type: vec![],
+            output_type: vec![ValueType::Vec3],
+            code: vec![
+                (1, Operation::Label),
+                (2, Operation::StoreVec3([0.25, 0.5, 0.75])),
+                (3, Operation::Exit(2, 1)),
+            ],
+        };
+
+        let words = emit_single_shader(shader, &vec![]);
+        let module = load_words(&words).expect("fragment SPIR-V should load");
+        let output_id =
+            output_location_id(&module, 0).expect("fragment output should use location 0");
+        let output_var = module
+            .types_global_values
+            .iter()
+            .find(|inst| inst.class.opcode == Op::Variable && inst.result_id == Some(output_id))
+            .expect("location 0 output should be declared as a variable");
+        let output_pointer = output_var
+            .result_type
+            .expect("output variable should have a pointer type");
+        let output_type = pointer_pointee(&module, output_pointer, StorageClass::Output)
+            .expect("output variable should point to an output type");
+
+        assert_eq!(vector_component_count(&module, output_type), Some(4));
+    }
+
+    #[test]
+    fn vec3_fragment_output_store_pads_with_zero_alpha() {
+        let shader = ShaderDef {
+            input_type: vec![],
+            output_type: vec![ValueType::Vec3],
+            code: vec![
+                (1, Operation::Label),
+                (2, Operation::StoreVec3([0.25, 0.5, 0.75])),
+                (3, Operation::Exit(2, 1)),
+            ],
+        };
+
+        let words = emit_single_shader(shader, &vec![]);
+        let module = load_words(&words).expect("fragment SPIR-V should load");
+        let zero = float_zero_id(&module).expect("fragment SPIR-V should contain float zero");
+
+        let pads_with_zero = function_instructions(&module).any(|inst| {
+            inst.class.opcode == Op::CompositeConstruct
+                && matches!(inst.operands.last(), Some(Operand::IdRef(id)) if *id == zero)
+        });
+
+        assert!(pads_with_zero);
+    }
+
+    #[test]
+    fn vec3_pipeline_texture_is_exported_as_vec4_texture() {
+        let module = emit_spirv(
+            "vec3_texture",
+            PipelineDef {
+                shaders: vec![],
+                passes: vec![],
+                textures: vec![ValueType::Vec3],
+                args: vec![],
+                uniforms: vec![],
+            },
+        );
+
+        assert_eq!(module.textures[0].1, TextureType::Vec4);
     }
 }

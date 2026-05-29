@@ -17,8 +17,8 @@ pub use material_library::MaterialId;
 pub use model_instance::{BuiltInModel, ModelId, ModelInstance};
 pub use octo_runtime::{OctoModule, ValueType};
 pub use renderer::{
-    Configuration, InstanceId, LightId, OctoModuleStatus, OctoPostprocessError,
-    OverlayRenderContext, Renderer,
+    Configuration, InstanceId, LightId, OctoAutoUniformValue, OctoModuleStatus,
+    OctoPostprocessError, OverlayRenderContext, Renderer,
 };
 pub use wgpu;
 pub use winit;

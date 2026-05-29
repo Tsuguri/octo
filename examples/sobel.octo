@@ -18,5 +18,5 @@ with {
     let final = round(length(a));
 
 
-    return vec4(final, final, final, 1.0);
+    return vec4(albedo.x + final, albedo.y + final, albedo.z + final, 1.0);
 }

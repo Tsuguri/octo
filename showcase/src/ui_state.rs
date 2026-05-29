@@ -1,7 +1,8 @@
 use game::Scene;
 use just_renderer::winit::{event::WindowEvent, window::Window};
 use just_renderer::{
-    wgpu, OctoModule, OctoModuleStatus, OverlayRenderContext, Renderer, ValueType,
+    wgpu, OctoAutoUniformValue, OctoModule, OctoModuleStatus, OverlayRenderContext, Renderer,
+    ValueType,
 };
 use std::sync::mpsc::{Receiver, TryRecvError};
 
@@ -14,7 +15,16 @@ struct UiUniformState {
 }
 
 impl UiUniformState {
-    fn from_module(module: &OctoModule) -> Self {
+    fn from_module(module: &OctoModule, renderer: &Renderer) -> Self {
+        Self::from_module_with_auto_classifier(module, |name, value_type| {
+            renderer.is_octo_uniform_auto_filled(name, value_type)
+        })
+    }
+
+    fn from_module_with_auto_classifier(
+        module: &OctoModule,
+        is_auto_filled: impl Fn(&str, ValueType) -> bool,
+    ) -> Self {
         Self {
             values: module
                 .uniform_block
@@ -22,8 +32,15 @@ impl UiUniformState {
                 .map(|(name, value_type)| UiUniform {
                     name: name.clone(),
                     value: UniformValue::default_for(*value_type),
+                    auto_filled: is_auto_filled(name, *value_type),
                 })
                 .collect(),
+        }
+    }
+
+    fn sync_auto_values(&mut self, renderer: &Renderer) {
+        for uniform in &mut self.values {
+            uniform.sync_auto_value(renderer);
         }
     }
 
@@ -39,6 +56,7 @@ impl UiUniformState {
 struct UiUniform {
     name: String,
     value: UniformValue,
+    auto_filled: bool,
 }
 
 impl UiUniform {
@@ -46,9 +64,25 @@ impl UiUniform {
         let mut changed = false;
         ui.horizontal_wrapped(|ui| {
             ui.label(&self.name);
-            changed = self.value.draw(ui);
+            if self.auto_filled {
+                ui.add_enabled_ui(false, |ui| {
+                    self.value.draw(ui);
+                });
+            } else {
+                changed = self.value.draw(ui);
+            }
         });
         changed
+    }
+
+    fn sync_auto_value(&mut self, renderer: &Renderer) {
+        if !self.auto_filled {
+            return;
+        }
+
+        if let Some(value) = renderer.octo_auto_uniform_value(&self.name, self.value.value_type()) {
+            self.value.set_auto_value(value);
+        }
     }
 }
 
@@ -96,6 +130,27 @@ impl UniformValue {
             Self::Mat4(values) => draw_f32_slice(ui, values),
             Self::Int(value) => ui.add(egui::DragValue::new(value)).changed(),
             Self::Bool(value) => ui.checkbox(value, "").changed(),
+        }
+    }
+
+    fn value_type(&self) -> ValueType {
+        match self {
+            Self::Float(_) => ValueType::Float,
+            Self::Vec2(_) => ValueType::Vec2,
+            Self::Vec3(_) => ValueType::Vec3,
+            Self::Vec4(_) => ValueType::Vec4,
+            Self::Mat3(_) => ValueType::Mat3,
+            Self::Mat4(_) => ValueType::Mat4,
+            Self::Int(_) => ValueType::Int,
+            Self::Bool(_) => ValueType::Bool,
+        }
+    }
+
+    fn set_auto_value(&mut self, value: OctoAutoUniformValue) {
+        match (self, value) {
+            (Self::Vec2(target), OctoAutoUniformValue::Vec2(value)) => *target = value,
+            (Self::Vec3(target), OctoAutoUniformValue::Vec3(value)) => *target = value,
+            _ => {}
         }
     }
 
@@ -153,7 +208,7 @@ mod tests {
             ("transform".to_owned(), ValueType::Mat3),
         ];
 
-        let uniforms = UiUniformState::from_module(&module);
+        let uniforms = UiUniformState::from_module_with_auto_classifier(&module, |_, _| false);
         let bytes = uniforms.bytes();
 
         assert_eq!(bytes.len(), 68);
@@ -162,6 +217,44 @@ mod tests {
         assert_eq!(&bytes[32..36], &1.0f32.to_ne_bytes());
         assert_eq!(&bytes[48..52], &1.0f32.to_ne_bytes());
         assert_eq!(&bytes[64..68], &1.0f32.to_ne_bytes());
+    }
+
+    #[test]
+    fn auto_uniforms_are_marked_by_exact_name_and_type() {
+        let mut module = OctoModule::new();
+        module.uniform_block = vec![
+            ("camera_pos".to_owned(), ValueType::Vec3),
+            ("lightDir".to_owned(), ValueType::Float),
+            ("view_size".to_owned(), ValueType::Vec2),
+            ("exposure".to_owned(), ValueType::Float),
+        ];
+
+        let uniforms =
+            UiUniformState::from_module_with_auto_classifier(&module, |name, value_type| {
+                matches!(
+                    (name, value_type),
+                    ("camera_pos", ValueType::Vec3) | ("view_size", ValueType::Vec2)
+                )
+            });
+
+        assert!(uniforms.values[0].auto_filled);
+        assert!(!uniforms.values[1].auto_filled);
+        assert!(uniforms.values[2].auto_filled);
+        assert!(!uniforms.values[3].auto_filled);
+    }
+
+    #[test]
+    fn auto_values_update_matching_uniform_value_types() {
+        let mut vec2 = UniformValue::Vec2([0.0, 0.0]);
+        vec2.set_auto_value(OctoAutoUniformValue::Vec2([1280.0, 720.0]));
+        assert!(matches!(vec2, UniformValue::Vec2([1280.0, 720.0])));
+
+        let mut vec3 = UniformValue::Vec3([0.0, 0.0, 0.0]);
+        vec3.set_auto_value(OctoAutoUniformValue::Vec3([1.0, 2.0, 3.0]));
+        assert!(matches!(vec3, UniformValue::Vec3([1.0, 2.0, 3.0])));
+
+        vec3.set_auto_value(OctoAutoUniformValue::Vec2([9.0, 9.0]));
+        assert!(matches!(vec3, UniformValue::Vec3([1.0, 2.0, 3.0])));
     }
 }
 
@@ -338,7 +431,7 @@ impl UiState {
 
         match receiver.try_recv() {
             Ok(Ok(Some(module))) => {
-                self.uniforms = Some(UiUniformState::from_module(&module));
+                self.uniforms = Some(UiUniformState::from_module(&module, renderer));
                 match renderer.set_octo_module(module) {
                     Ok(()) => {
                         if let Some(uniforms) = &self.uniforms {
@@ -397,6 +490,8 @@ impl UiState {
         let Some(uniforms) = &mut self.uniforms else {
             return;
         };
+
+        uniforms.sync_auto_values(renderer);
 
         if uniforms.values.is_empty() {
             return;
