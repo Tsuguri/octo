@@ -1,8 +1,8 @@
 use octo_runtime as or;
 use std::collections::{HashMap, HashSet};
 
-use super::ir::{Address, Op, Operation, PipelineIR, ValueType, PhiRecord};
-use super::utils::{find_loop, LoopCode, PeekableCode, find_if_else, IfElseCode};
+use super::ir::{Address, Op, Operation, PhiRecord, PipelineIR, ValueType};
+use super::utils::{find_if_else, find_loop, IfElseCode, LoopCode, PeekableCode};
 
 #[derive(Debug, Clone)]
 pub struct ShaderDef {
@@ -86,15 +86,14 @@ pub fn split(program: PipelineIR) -> PipelineDef {
             passes: vec![the_only_pass],
             textures: vec![],
             args: inputs,
-            uniforms
+            uniforms,
         };
     }
 
     let dependencies = prepare_dependencies(&operations);
 
     for (op, val, index, block) in &syncs {
-        if dependencies.contains_key(op) {
-        }
+        if dependencies.contains_key(op) {}
     }
 
     let types = check_types(&operations, &inputs, &uniforms);
@@ -107,11 +106,9 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         }
     };
 
-    syncs.push((last_op.0, exit_value, operations.len()-1, 100000));
-
+    syncs.push((last_op.0, exit_value, operations.len() - 1, 100000));
 
     let mut programs: Vec<Vec<(Address, Operation)>> = Vec::with_capacity(syncs.len() + 1);
-
 
     for (sync_operation, synced_value, index, block_label_at_split) in &syncs {
         //println!("generating program for syncing {}", synced_value);
@@ -131,7 +128,11 @@ pub fn split(program: PipelineIR) -> PipelineDef {
             }
         }
 
-        let new_program = operations.iter().filter(|x| used.contains(&x.0)).cloned().collect();
+        let new_program = operations
+            .iter()
+            .filter(|x| used.contains(&x.0))
+            .cloned()
+            .collect();
 
         //println!("program generating {}: {:?}", synced_value, new_program);
         programs.push(new_program);
@@ -143,13 +144,14 @@ pub fn split(program: PipelineIR) -> PipelineDef {
 
     for (id, program) in programs.iter().enumerate() {
         let mut deps = Vec::new();
-        let program_inputs: Vec<_> = program.iter().filter_map(|x| {
-            match x.1 {
+        let program_inputs: Vec<_> = program
+            .iter()
+            .filter_map(|x| match x.1 {
                 Operation::Arg(y) => {
                     println!("looking for type for: {}", y);
                     let t = types[&x.0];
                     Some((InputTexture::Arg(y), t))
-                },
+                }
                 Operation::Sync(val) => {
                     let sc = syncs.iter().enumerate().find(|(id, s)| s.1 == val);
                     match sc {
@@ -161,10 +163,10 @@ pub fn split(program: PipelineIR) -> PipelineDef {
                         }
                     }
                 }
-                _=> None
-            }
-        }).collect();
-        let (t, ret) = if id ==syncs.len()-1 {
+                _ => None,
+            })
+            .collect();
+        let (t, ret) = if id == syncs.len() - 1 {
             (*outputs.first().unwrap(), OutputTexture::Result)
         } else {
             let sc = syncs[id];
@@ -178,59 +180,65 @@ pub fn split(program: PipelineIR) -> PipelineDef {
 
         let mut labels = HashSet::new();
 
-        program.iter().for_each(|a| {
-            match a.1 {
-                Operation::Label => {labels.insert(a.0);},
-                _=>(),
+        program.iter().for_each(|a| match a.1 {
+            Operation::Label => {
+                labels.insert(a.0);
             }
+            _ => (),
         });
 
-        let mut shader_code: Vec<_> = std::iter::once((1, Operation::Label)).chain(program.iter().map(|x| {
-            let op = match x.1 {
-                Operation::Label => {
-                    label_stack.push(x.0);
-                    last_label = x.0;
-                    x.1
-                }
-                Operation::Arg(num)=>{
-                    let id = program_in.iter().enumerate().find(|(id, value)| {
-                        match value {
-                            InputTexture::Arg(num2) if num==*num2 => true,
-                            _ => false,
-                        }
-                    }).unwrap();
-                    Operation::Arg(id.0)
-
-                },
-                Operation::Sync(addr) =>{
-                    let sc = syncs.iter().enumerate().find(|(id, s)| s.1 == addr);
-                    let sc_id = match sc {
-                        None => panic!("Internal compiler error"),
-                        Some(t) => {
-                            t.0
-                        }
-                    };
-                    let id = program_in.iter().enumerate().find(|(id, value)| {
-                        match value {
-                            InputTexture::Generated(num2) if sc_id==*num2 => true,
-                            _ => false,
-                        }
-                    }).unwrap();
-                    Operation::Arg(id.0)
-                },
-                Operation::Phi(record) => {
-                    let mut record = record;
-                    if !labels.contains(&record.old_label) {
-                        record.old_label = 1;
+        let mut shader_code: Vec<_> = std::iter::once((1, Operation::Label))
+            .chain(program.iter().map(|x| {
+                let op = match x.1 {
+                    Operation::Label => {
+                        label_stack.push(x.0);
+                        last_label = x.0;
+                        x.1
                     }
+                    Operation::Arg(num) => {
+                        let id = program_in
+                            .iter()
+                            .enumerate()
+                            .find(|(id, value)| match value {
+                                InputTexture::Arg(num2) if num == *num2 => true,
+                                _ => false,
+                            })
+                            .unwrap();
+                        Operation::Arg(id.0)
+                    }
+                    Operation::Sync(addr) => {
+                        let sc = syncs.iter().enumerate().find(|(id, s)| s.1 == addr);
+                        let sc_id = match sc {
+                            None => panic!("Internal compiler error"),
+                            Some(t) => t.0,
+                        };
+                        let id = program_in
+                            .iter()
+                            .enumerate()
+                            .find(|(id, value)| match value {
+                                InputTexture::Generated(num2) if sc_id == *num2 => true,
+                                _ => false,
+                            })
+                            .unwrap();
+                        Operation::Arg(id.0)
+                    }
+                    Operation::Phi(record) => {
+                        let mut record = record;
+                        if !labels.contains(&record.old_label) {
+                            record.old_label = 1;
+                        }
 
-                    Operation::Phi(record)
-                }
-                a => a
-            };
-            (x.0, op)
-        })).collect();
-        shader_code.push((shader_code.last().unwrap().0 + 1, Operation::Exit(syncs[id].1, last_label)));
+                        Operation::Phi(record)
+                    }
+                    a => a,
+                };
+                (x.0, op)
+            }))
+            .collect();
+        shader_code.push((
+            shader_code.last().unwrap().0 + 1,
+            Operation::Exit(syncs[id].1, last_label),
+        ));
 
         println!("Generated shader: {:?}", shader_code);
 
@@ -241,22 +249,19 @@ pub fn split(program: PipelineIR) -> PipelineDef {
 
         let pp_ir = super::optimalizations::remove_unused_operations(pp_ir);
         let (shader_code, ..) = pp_ir.take();
-        
 
-
-        shaders.push(ShaderDef{
+        shaders.push(ShaderDef {
             code: shader_code,
             input_type: shader_inputs,
             output_type: vec![t],
         });
 
-        shader_passes.push(ShaderPass{
+        shader_passes.push(ShaderPass {
             shader_id: id,
             input: program_inputs.iter().map(|x| x.0).collect(),
             output: ret,
-            dependencies: if deps.len() == 0 {None} else {Some(deps)},
+            dependencies: if deps.len() == 0 { None } else { Some(deps) },
         });
-
     }
     syncs.pop();
 
@@ -270,20 +275,25 @@ pub fn split(program: PipelineIR) -> PipelineDef {
         passes: shader_passes,
         textures: textures,
         args: inputs,
-        uniforms
+        uniforms,
     };
 }
 
 // Address of operation, address of synced value and index in operations vector, label at which split happened
 fn find_syncs(program: &Vec<(Address, Operation)>) -> Vec<(Address, Address, usize, Address)> {
     let mut current_label = 0;
-    program.iter().enumerate().filter_map(|(id, elem)| {
-        match elem.1 {
-            Operation::Label => {current_label = elem.0; None},
+    program
+        .iter()
+        .enumerate()
+        .filter_map(|(id, elem)| match elem.1 {
+            Operation::Label => {
+                current_label = elem.0;
+                None
+            }
             Operation::Sync(x) => Some((elem.0, x, id, current_label)),
-            _ => None
-        }
-    }).collect()
+            _ => None,
+        })
+        .collect()
 }
 
 fn prepare_dependencies(program: &Vec<(Address, Operation)>) -> HashMap<Address, Vec<Address>> {
@@ -294,37 +304,78 @@ fn prepare_dependencies(program: &Vec<(Address, Operation)>) -> HashMap<Address,
         let ret_addr = op.0;
         let op = op.1;
         match op {
-            Add(a,b) => {usage.insert(ret_addr,vec![a,b]);},
-            Sub(a,b) => {usage.insert(ret_addr,vec![a,b]);},
-            Mul(a,b) => {usage.insert(ret_addr,vec![a,b]);},
-            Div(a,b) => {usage.insert(ret_addr,vec![a,b]);},
-            Less(a,b) => {usage.insert(ret_addr,vec![a,b]);},
-            LessEq(a,b) => {usage.insert(ret_addr,vec![a,b]);},
-            And(a,b) => {usage.insert(ret_addr,vec![a,b]);},
-            Or(a,b) => {usage.insert(ret_addr,vec![a,b]);},
-            Eq(a,b) => {usage.insert(ret_addr,vec![a,b]);},
-            Neq(a,b) => {usage.insert(ret_addr,vec![a,b]);},
-            Neg(a) => {usage.insert(ret_addr, vec![a]);},
+            Add(a, b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            Sub(a, b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            Mul(a, b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            Div(a, b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            Less(a, b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            LessEq(a, b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            And(a, b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            Or(a, b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            Eq(a, b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            Neq(a, b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            Neg(a) => {
+                usage.insert(ret_addr, vec![a]);
+            }
             Sync(a) => {
                 // doing nothing as we have Sync nodes specified and will be building dependency trees starting from synced values
-            },
-            Store(a) => {usage.insert(ret_addr, vec![a]);},
-            Shift(a,b) => {usage.insert(ret_addr,vec![a,b]);},
-            ExtractComponent(a,..) => {usage.insert(ret_addr,vec![a]);},
-            StoreComponent(a, .., b) => {usage.insert(ret_addr,vec![a, b]);},
-            ConstructVec2(a,b) => {usage.insert(ret_addr,vec![a,b]);},
-            ConstructVec3(a,b,c) => {usage.insert(ret_addr,vec![a,b,c]);},
-            ConstructVec4(a,b,c,d) => {usage.insert(ret_addr,vec![a,b,c,d]);},
+            }
+            Store(a) => {
+                usage.insert(ret_addr, vec![a]);
+            }
+            Shift(a, b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            ExtractComponent(a, ..) => {
+                usage.insert(ret_addr, vec![a]);
+            }
+            StoreComponent(a, .., b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            ConstructVec2(a, b) => {
+                usage.insert(ret_addr, vec![a, b]);
+            }
+            ConstructVec3(a, b, c) => {
+                usage.insert(ret_addr, vec![a, b, c]);
+            }
+            ConstructVec4(a, b, c, d) => {
+                usage.insert(ret_addr, vec![a, b, c, d]);
+            }
             Jump(..) => (),
             JumpIfElse(a, ..) => {
                 usage.insert(ret_addr, vec![a]);
-            },
-            LoopMerge(..) => {
-            },
-            Invoke(op) => {usage.insert(ret_addr,op.deps());},
-            Phi(PhiRecord{new, old, ..}) =>{usage.insert(ret_addr, vec![new, old]);},
+            }
+            LoopMerge(..) => {}
+            Invoke(op) => {
+                usage.insert(ret_addr, op.deps());
+            }
+            Phi(PhiRecord { new, old, .. }) => {
+                usage.insert(ret_addr, vec![new, old]);
+            }
 
-            Exit(a, ..) => {usage.insert(ret_addr, vec![a]);},
+            Exit(a, ..) => {
+                usage.insert(ret_addr, vec![a]);
+            }
 
             Label => (),
             Arg(..) => (),
@@ -342,7 +393,10 @@ fn prepare_dependencies(program: &Vec<(Address, Operation)>) -> HashMap<Address,
     usage
 }
 
-fn find_loops_dependencies(program: &Vec<(Address, Operation)>, deps: &mut HashMap<Address, Vec<Address>>) {
+fn find_loops_dependencies(
+    program: &Vec<(Address, Operation)>,
+    deps: &mut HashMap<Address, Vec<Address>>,
+) {
     let mut peekable = PeekableCode::new(program.iter());
     let mut last_label = 0;
     let mut last_jump = 0;
@@ -378,42 +432,52 @@ fn find_loops_dependencies(program: &Vec<(Address, Operation)>, deps: &mut HashM
                 assert!(*result_code.last().unwrap() == (loop_data.entry_label, Operation::Label));
                 result_code.pop();
                 phi_nodes.iter().for_each(|elem| {
-                    deps.get_mut(&elem.0).unwrap().push(loop_data.loop_merge_label);
+                    deps.get_mut(&elem.0)
+                        .unwrap()
+                        .push(loop_data.loop_merge_label);
                 });
                 mark_loop_dependencies(ret, &loop_data, deps);
                 find_loops_dependencies(&loop_data.body, deps);
                 result_code.clear();
             }
             _ => (),
-
         }
     }
 }
 
-fn mark_conditional_dependencies(condition_address: Address, if_else_data: &IfElseCode, deps: &mut HashMap<Address, Vec<Address>>) {
+fn mark_conditional_dependencies(
+    condition_address: Address,
+    if_else_data: &IfElseCode,
+    deps: &mut HashMap<Address, Vec<Address>>,
+) {
     if_else_data.phi_nodes.iter().for_each(|elem| {
         deps.get_mut(&elem.0).unwrap().push(condition_address);
     });
 
-    deps.get_mut(&condition_address).unwrap().extend(&[if_else_data.if_label, if_else_data.end_label, if_else_data.if_jump_end_label]);
+    deps.get_mut(&condition_address).unwrap().extend(&[
+        if_else_data.if_label,
+        if_else_data.end_label,
+        if_else_data.if_jump_end_label,
+    ]);
     match if_else_data.else_label {
-        None => {},
+        None => {}
         Some(x) => {
             deps.get_mut(&condition_address).unwrap().extend(&[x]);
         }
     }
     match if_else_data.else_jump_end_label {
-        None => {},
+        None => {}
         Some(x) => {
             deps.get_mut(&condition_address).unwrap().extend(&[x]);
         }
     }
-
-
 }
 
-fn mark_loop_dependencies(loop_address: Address, loop_data: &LoopCode, deps: &mut HashMap<Address, Vec<Address>>) {
-
+fn mark_loop_dependencies(
+    loop_address: Address,
+    loop_data: &LoopCode,
+    deps: &mut HashMap<Address, Vec<Address>>,
+) {
     let dependencies = vec![
         loop_data.entry_label_jump,
         loop_data.entry_label,
@@ -427,11 +491,15 @@ fn mark_loop_dependencies(loop_address: Address, loop_data: &LoopCode, deps: &mu
         loop_data.jump_start_label,
         loop_data.exit_label,
     ];
-    
+
     deps.insert(loop_address, dependencies);
 }
 
-fn check_types(operations: &Vec<(Address, Operation)>, input_types: &Vec<(ValueType, String)>, uniforms: &Vec<(ValueType, String)>) -> HashMap<Address, ValueType> {
+fn check_types(
+    operations: &Vec<(Address, Operation)>,
+    input_types: &Vec<(ValueType, String)>,
+    uniforms: &Vec<(ValueType, String)>,
+) -> HashMap<Address, ValueType> {
     let mut types: HashMap<Address, ValueType> = HashMap::new();
 
     for (ret_addr, op) in operations {
@@ -460,7 +528,7 @@ fn check_types(operations: &Vec<(Address, Operation)>, input_types: &Vec<(ValueT
                 let b_type = types[&b];
                 use ValueType::*;
                 match (a_type, b_type) {
-                    (a,b) if a == b => a,
+                    (a, b) if a == b => a,
                     (Vec2, Float) => Vec2,
                     (Vec3, Float) => Vec3,
                     (Vec4, Float) => Vec4,
@@ -468,7 +536,7 @@ fn check_types(operations: &Vec<(Address, Operation)>, input_types: &Vec<(ValueT
                     (Mat4, Vec4) => Vec4,
                     _ => panic!(),
                 }
-            },
+            }
             Less(..) => ValueType::Bool,
             LessEq(..) => ValueType::Bool,
             Eq(..) => ValueType::Bool,
@@ -477,7 +545,7 @@ fn check_types(operations: &Vec<(Address, Operation)>, input_types: &Vec<(ValueT
             Or(..) => ValueType::Bool,
             Neg(val) => types[&val],
             Label => continue,
-            Exit(val,..) => types[&val],
+            Exit(val, ..) => types[&val],
             Sync(a) => types[&a],
             Shift(a, ..) => types[&a],
             Phi(record) => types[&record.old],
@@ -489,10 +557,8 @@ fn check_types(operations: &Vec<(Address, Operation)>, input_types: &Vec<(ValueT
                 //println!("checking deps: {:?}", deps);
                 types[&deps[0]]
             }
-
         };
         types.insert(*ret_addr, typ);
-
     }
 
     types

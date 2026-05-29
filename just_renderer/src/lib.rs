@@ -15,7 +15,10 @@ mod uniforms;
 pub use light::*;
 pub use material_library::MaterialId;
 pub use model_instance::{BuiltInModel, ModelId, ModelInstance};
-pub use octo_runtime::OctoModule;
-pub use renderer::{Configuration, InstanceId, LightId, OverlayRenderContext, Renderer};
+pub use octo_runtime::{OctoModule, ValueType};
+pub use renderer::{
+    Configuration, InstanceId, LightId, OctoModuleStatus, OctoPostprocessError,
+    OverlayRenderContext, Renderer,
+};
 pub use wgpu;
 pub use winit;

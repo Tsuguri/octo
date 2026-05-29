@@ -1,12 +1,6 @@
 use super::ast;
-use super::ir::{
-    Address, 
-    ConstantValue, 
-    Operation, 
-    PipelineIR,
-    StdFunction,
-};
 use super::emit_builtins::emit_builtin;
+use super::ir::{Address, ConstantValue, Operation, PipelineIR, StdFunction};
 
 use super::code::{Code, PhiCollection};
 
@@ -58,7 +52,7 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
             let ret_add = emit_expression(*exp, code);
             code.exit(ret_add);
         }
-        ast::Statement::Assignment(storage,exp) => {
+        ast::Statement::Assignment(storage, exp) => {
             let addr = emit_expression(*exp, code);
             match storage {
                 ast::ValueStorage::Creation(name) => {
@@ -66,33 +60,46 @@ fn emit_statement(statement: ast::Statement, code: &mut Code) {
                     code.store(&name.val, addr, true);
                 }
                 ast::ValueStorage::Existing(path) => {
-
-                    if path.len() ==1 {
+                    if path.len() == 1 {
                         let addr = code.push(Operation::Store(addr));
                         code.store(&path[0].val, addr, false);
                     } else {
                         if path.len() > 2 {
                             panic!("nested field assignment expression is not supported yet");
                         }
-                       
+
                         let mut current_val = code.get(&path[0].val);
 
-                        let field_ids: Vec<_> = path[1].val.chars().map(|x| get_field_id(x)).collect();
+                        let field_ids: Vec<_> =
+                            path[1].val.chars().map(|x| get_field_id(x)).collect();
 
                         if field_ids.len() == 1 {
-                            current_val = code.push(Operation::StoreComponent(current_val, field_ids[0], addr));
+                            current_val = code.push(Operation::StoreComponent(
+                                current_val,
+                                field_ids[0],
+                                addr,
+                            ));
                         } else {
                             // very primitive...
-                            let fields: Vec<_> = field_ids.iter().enumerate().map(|(i, field)| (field, code.push(Operation::ExtractComponent(addr, i)))).collect();
-                            for (field_id, component_addr) in fields{
-                                current_val = code.push(Operation::StoreComponent(current_val, *field_id, component_addr));
+                            let fields: Vec<_> = field_ids
+                                .iter()
+                                .enumerate()
+                                .map(|(i, field)| {
+                                    (field, code.push(Operation::ExtractComponent(addr, i)))
+                                })
+                                .collect();
+                            for (field_id, component_addr) in fields {
+                                current_val = code.push(Operation::StoreComponent(
+                                    current_val,
+                                    *field_id,
+                                    component_addr,
+                                ));
                             }
                         }
 
                         code.store(&path[0].val, current_val, false);
                     }
                 }
-
             }
         }
         ast::Statement::For(stat, exp1, exp2, block) => {
@@ -332,9 +339,7 @@ fn emit_expression(exp: ast::Expression, code: &mut Code) -> Address {
             }
             emit_invocation(&name.val, &addresses, code)
         }
-        Access(value, field) => {
-            emit_access(*value, field.val, code)
-        }
+        Access(value, field) => emit_access(*value, field.val, code),
     }
 }
 
@@ -354,7 +359,7 @@ fn get_field_id(field: char) -> Address {
         'g' | 'y' | 'v' => 1,
         'b' | 'z' => 2,
         'a' | 'w' => 3,
-        _ => unreachable!()
+        _ => unreachable!(),
     }
 }
 
@@ -365,38 +370,53 @@ fn get_field(field: char, value: Address, code: &mut Code) -> Address {
 
 fn emit_access(value: ast::Expression, field: String, code: &mut Code) -> Address {
     let value_address = emit_expression(value, code);
-    let extracted_components = field.chars().map(|x| get_field(x, value_address, code)).collect::<Vec<_>>();
+    let extracted_components = field
+        .chars()
+        .map(|x| get_field(x, value_address, code))
+        .collect::<Vec<_>>();
 
     match extracted_components.len() {
         1 => extracted_components[0],
-        2 => {
-            code.push(Operation::ConstructVec2(extracted_components[0], extracted_components[1]))
-        },
-        3 => {
-            code.push(Operation::ConstructVec3(extracted_components[0], extracted_components[1], extracted_components[2]))
-        },
-        _ => unreachable!()
+        2 => code.push(Operation::ConstructVec2(
+            extracted_components[0],
+            extracted_components[1],
+        )),
+        3 => code.push(Operation::ConstructVec3(
+            extracted_components[0],
+            extracted_components[1],
+            extracted_components[2],
+        )),
+        _ => unreachable!(),
     }
 }
 
-fn emit_constructor(name: &str, addresses: &Vec<Address>, code: &mut Code) -> Address{
+fn emit_constructor(name: &str, addresses: &Vec<Address>, code: &mut Code) -> Address {
     match name {
-        "vec2"=>{
-            assert!(addresses.len()==2);
+        "vec2" => {
+            assert!(addresses.len() == 2);
             code.push(Operation::ConstructVec2(addresses[0], addresses[1]))
         }
-        "vec3"=>{
-            assert!(addresses.len()==3);
-            code.push(Operation::ConstructVec3(addresses[0], addresses[1], addresses[2]))
+        "vec3" => {
+            assert!(addresses.len() == 3);
+            code.push(Operation::ConstructVec3(
+                addresses[0],
+                addresses[1],
+                addresses[2],
+            ))
         }
         "vec4" => {
-            assert!(addresses.len()==4);
-            code.push(Operation::ConstructVec4(addresses[0], addresses[1], addresses[2], addresses[3]))
+            assert!(addresses.len() == 4);
+            code.push(Operation::ConstructVec4(
+                addresses[0],
+                addresses[1],
+                addresses[2],
+                addresses[3],
+            ))
         }
-        _=>panic!("not implemented")
+        _ => panic!("not implemented"),
     }
 }
-fn emit_invocation(name: &str, addresses: &Vec<Address>, code: &mut Code) -> Address{
+fn emit_invocation(name: &str, addresses: &Vec<Address>, code: &mut Code) -> Address {
     if TYPE_SET.contains(name) {
         //println!("hehe");
         emit_constructor(name, addresses, code)

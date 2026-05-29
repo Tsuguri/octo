@@ -1,11 +1,11 @@
 mod code;
+mod emit_builtins;
 mod emit_ir_from_ast;
 mod emit_spirv;
 mod ir;
 mod optimalizations;
-mod split_passes;
-mod emit_builtins;
 mod special_builtins;
+mod split_passes;
 mod utils;
 
 use super::ast;

@@ -29,7 +29,12 @@ impl PipelineIR {
             uniforms: prev.uniforms.clone(),
         }
     }
-    pub fn construct(code: Vec<Op>, inputs: Vec<(ValueType, String)>, outputs: Vec<ValueType>, uniforms: Vec<(ValueType, String)>) -> Self {
+    pub fn construct(
+        code: Vec<Op>,
+        inputs: Vec<(ValueType, String)>,
+        outputs: Vec<ValueType>,
+        uniforms: Vec<(ValueType, String)>,
+    ) -> Self {
         PipelineIR {
             code,
             inputs,
@@ -42,7 +47,14 @@ impl PipelineIR {
         self.code.iter()
     }
 
-    pub fn take(self) -> (Vec<Op>, Vec<(ValueType, String)>, Vec<ValueType>, Vec<(ValueType, String)>) {
+    pub fn take(
+        self,
+    ) -> (
+        Vec<Op>,
+        Vec<(ValueType, String)>,
+        Vec<ValueType>,
+        Vec<(ValueType, String)>,
+    ) {
         (self.code, self.inputs, self.outputs, self.uniforms)
     }
 }
@@ -138,19 +150,19 @@ impl StdFunction {
             Asinh(a) => vec![a],
             Acosh(a) => vec![a],
             Atanh(a) => vec![a],
-            Atan2(a,b) => vec![a,b],
-            Pow(a,b) => vec![a,b],
+            Atan2(a, b) => vec![a, b],
+            Pow(a, b) => vec![a, b],
             Exp(a) => vec![a],
             Log(a) => vec![a],
             Exp2(a) => vec![a],
             Log2(a) => vec![a],
             Sqrt(a) => vec![a],
-            Dot(a,b) => vec![a,b],
-            Min(a,b) => vec![a,b],
-            Max(a,b) => vec![a,b],
-            Clamp(a,b,c) => vec![a,b,c],
+            Dot(a, b) => vec![a, b],
+            Min(a, b) => vec![a, b],
+            Max(a, b) => vec![a, b],
+            Clamp(a, b, c) => vec![a, b, c],
             Length(a) => vec![a],
-            Cross(a,b) => vec![a,b],
+            Cross(a, b) => vec![a, b],
             Normalize(a) => vec![a],
         }
     }
@@ -211,8 +223,6 @@ impl Operation {
             _ => false,
         }
     }
-
-    
 }
 
 impl std::string::ToString for Operation {
@@ -268,58 +278,136 @@ macro_rules! replace {
 
 pub fn replace_invoke(op: &mut StdFunction, from: Address, to: Address) {
     match op {
-        StdFunction::Abs(x) =>{replace!(x, from, to);}
-        StdFunction::Sin(x) =>{replace!(x, from, to);}
-        StdFunction::Cos(x) =>{replace!(x, from, to);}
-        StdFunction::Tan(x) =>{replace!(x, from, to);}
-        StdFunction::Round(x) =>{replace!(x, from, to);}
-        StdFunction::Trunc(x) =>{replace!(x, from, to);}
-        StdFunction::Sign(x) =>{replace!(x, from, to);}
-        StdFunction::Sinh(x) =>{replace!(x, from, to);}
-        StdFunction::Cosh(x) =>{replace!(x, from, to);}
-        StdFunction::Tanh(x) =>{replace!(x, from, to);}
-        StdFunction::Floor(x) =>{replace!(x, from, to);}
-        StdFunction::Ceil(x) =>{replace!(x, from, to);}
-        StdFunction::Fract(x) =>{replace!(x, from, to);}
-        StdFunction::Radians(x) =>{replace!(x, from, to);}
-        StdFunction::Degrees(x) =>{replace!(x, from, to);}
-        StdFunction::Asin(x) =>{replace!(x, from, to);}
-        StdFunction::Acos(x) =>{replace!(x, from, to);}
-        StdFunction::Asinh(x) =>{replace!(x, from, to);}
-        StdFunction::Acosh(x) =>{replace!(x, from, to);}
-        StdFunction::Atan(x) =>{replace!(x, from, to);}
-        StdFunction::Atanh(x) =>{replace!(x, from, to);}
-        StdFunction::Atan2(x,y) =>{replace!(x, from, to); replace!(y, from, to);}
-        StdFunction::Pow(x,y) =>{replace!(x, from, to); replace!(y, from, to);}
-        StdFunction::Exp(x) =>{replace!(x, from, to);}
-        StdFunction::Log(x) =>{replace!(x, from, to);}
-        StdFunction::Exp2(x) =>{replace!(x, from, to);}
-        StdFunction::Log2(x) =>{replace!(x, from, to);}
-        StdFunction::Sqrt(x) =>{replace!(x, from, to);}
-        StdFunction::Dot(x,y) =>{replace!(x, from, to); replace!(y, from, to);}
-        StdFunction::Min(x,y) =>{replace!(x, from, to); replace!(y, from, to);}
-        StdFunction::Max(x,y) =>{replace!(x, from, to); replace!(y, from, to);}
-        StdFunction::Clamp(x,y,z) =>{replace!(x, from, to); replace!(y, from, to); replace!(z, from, to)}
-        StdFunction::Length(x) =>{replace!(x, from, to);}
-        StdFunction::Cross(x,y) =>{replace!(x, from, to); replace!(y, from, to);}
-        StdFunction::Normalize(x) =>{replace!(x, from, to);}
+        StdFunction::Abs(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Sin(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Cos(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Tan(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Round(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Trunc(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Sign(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Sinh(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Cosh(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Tanh(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Floor(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Ceil(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Fract(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Radians(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Degrees(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Asin(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Acos(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Asinh(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Acosh(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Atan(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Atanh(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Atan2(x, y) => {
+            replace!(x, from, to);
+            replace!(y, from, to);
+        }
+        StdFunction::Pow(x, y) => {
+            replace!(x, from, to);
+            replace!(y, from, to);
+        }
+        StdFunction::Exp(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Log(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Exp2(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Log2(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Sqrt(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Dot(x, y) => {
+            replace!(x, from, to);
+            replace!(y, from, to);
+        }
+        StdFunction::Min(x, y) => {
+            replace!(x, from, to);
+            replace!(y, from, to);
+        }
+        StdFunction::Max(x, y) => {
+            replace!(x, from, to);
+            replace!(y, from, to);
+        }
+        StdFunction::Clamp(x, y, z) => {
+            replace!(x, from, to);
+            replace!(y, from, to);
+            replace!(z, from, to)
+        }
+        StdFunction::Length(x) => {
+            replace!(x, from, to);
+        }
+        StdFunction::Cross(x, y) => {
+            replace!(x, from, to);
+            replace!(y, from, to);
+        }
+        StdFunction::Normalize(x) => {
+            replace!(x, from, to);
+        }
     }
 }
 
 pub fn replace(op: &mut (Address, Operation), from: Address, to: Address, replace_result: bool) {
     if replace_result {
-        op.0 = if op.0 == from { to } else {op.0};
+        op.0 = if op.0 == from { to } else { op.0 };
     }
 
     match &mut op.1 {
-        Operation::Arg(..)=>(),
-        Operation::Uniform(..)=>(),
-        Operation::StoreInt(..)=>(),
-        Operation::StoreFloat(..)=>(),
-        Operation::StoreVec2(..)=>(),
-        Operation::StoreVec3(..)=>(),
-        Operation::StoreVec4(..)=>(),
-        Operation::StoreBool(..)=>(),
+        Operation::Arg(..) => (),
+        Operation::Uniform(..) => (),
+        Operation::StoreInt(..) => (),
+        Operation::StoreFloat(..) => (),
+        Operation::StoreVec2(..) => (),
+        Operation::StoreVec3(..) => (),
+        Operation::StoreVec4(..) => (),
+        Operation::StoreBool(..) => (),
         Operation::Label => (),
         Operation::ConstructVec2(a, b) => {
             replace!(a, from, to);
@@ -355,46 +443,46 @@ pub fn replace(op: &mut (Address, Operation), from: Address, to: Address, replac
             replace!(l, from, to);
             replace!(r, from, to);
         }
-        Operation::Sub(l, r)=>{
+        Operation::Sub(l, r) => {
             replace!(l, from, to);
             replace!(r, from, to);
-        },
-        Operation::Mul(l, r)=>{
+        }
+        Operation::Mul(l, r) => {
             replace!(l, from, to);
             replace!(r, from, to);
-        },
-        Operation::Div(l, r)=>{
+        }
+        Operation::Div(l, r) => {
             replace!(l, from, to);
             replace!(r, from, to);
-        },
-        Operation::Less(l, r)=>{
+        }
+        Operation::Less(l, r) => {
             replace!(l, from, to);
             replace!(r, from, to);
-        },
-        Operation::LessEq(l, r)=>{
+        }
+        Operation::LessEq(l, r) => {
             replace!(l, from, to);
             replace!(r, from, to);
-        },
-        Operation::Eq(l, r)=>{
+        }
+        Operation::Eq(l, r) => {
             replace!(l, from, to);
             replace!(r, from, to);
-        },
-        Operation::Neq(l, r)=>{
+        }
+        Operation::Neq(l, r) => {
             replace!(l, from, to);
             replace!(r, from, to);
-        },
-        Operation::And(l, r)=>{
+        }
+        Operation::And(l, r) => {
             replace!(l, from, to);
             replace!(r, from, to);
-        },
-        Operation::Or(l, r)=>{
+        }
+        Operation::Or(l, r) => {
             replace!(l, from, to);
             replace!(r, from, to);
-        },
-        Operation::Shift(l, r)=>{
+        }
+        Operation::Shift(l, r) => {
             replace!(l, from, to);
             replace!(r, from, to);
-        },
+        }
         Operation::Phi(l) => {
             let left = &mut l.new;
             let right = &mut l.old;
@@ -404,29 +492,26 @@ pub fn replace(op: &mut (Address, Operation), from: Address, to: Address, replac
         }
         Operation::Jump(a) => {
             replace!(a, from, to)
-        },
+        }
         Operation::Neg(a) => {
             replace!(a, from, to)
-        },
+        }
         Operation::Exit(a, b) => {
             //println!("replacing in exit: {} into {} with a:{} and b:{}", from, to, a, b);
             replace!(a, from, to);
             replace!(b, from, to);
-        },
+        }
         Operation::Store(a) => {
             replace!(a, from, to)
-        },
+        }
         Operation::Sync(a) => {
             replace!(a, from, to)
-        },
+        }
         Operation::JumpIfElse(a, b, c) => {
             replace!(a, from, to);
             replace!(b, from, to);
             replace!(c, from, to);
-        },
-
+        }
         //_ => (),
     }
-
 }
-

@@ -1,7 +1,7 @@
-use super::ir::*;
-use super::super::utils::{PeekableCode, find_loop, LoopCode};
-use super::ConstantPropagationContext;
+use super::super::utils::{find_loop, LoopCode, PeekableCode};
 use super::constants_propagation::propagate_constant_operation;
+use super::ir::*;
+use super::ConstantPropagationContext;
 
 use std::collections::HashMap;
 
@@ -35,24 +35,21 @@ pub fn unroll_synced_loop(code: PipelineIR) -> PipelineIR {
             StoreBool(val) => {
                 constants.store_const(ret, ConstantValue::Bool(val));
             }
-            Store(addr) => {
-                match constants.get_const(&addr) {
-                    None => (),
-                    Some(val) => {
-                        constants.copy_const(ret, val);
-                    }
+            Store(addr) => match constants.get_const(&addr) {
+                None => (),
+                Some(val) => {
+                    constants.copy_const(ret, val);
                 }
             },
             _ => (),
         }
     }
-    
+
     let mut peekable = PeekableCode::new(code.iter());
 
     let mut result_code = Vec::new();
 
     let mut address_map = HashMap::new();
-
 
     let mut last_label = 0;
 
@@ -90,12 +87,16 @@ pub fn unroll_synced_loop(code: PipelineIR) -> PipelineIR {
                 assert!(*result_code.last().unwrap() == (loop_data.entry_label, Operation::Label));
                 result_code.pop();
 
-                let var_map = unroll_loop(&mut result_code, loop_data, phi_nodes, &mut constants, &mut max_id);
+                let var_map = unroll_loop(
+                    &mut result_code,
+                    loop_data,
+                    phi_nodes,
+                    &mut constants,
+                    &mut max_id,
+                );
                 address_map.extend(var_map);
-
             }
             _ => (),
-
         }
     }
     //println!("final address map: {:?}", address_map);
@@ -106,7 +107,7 @@ pub fn unroll_synced_loop(code: PipelineIR) -> PipelineIR {
 fn contains_sync(loop_code: &LoopCode) -> bool {
     loop_code.body.iter().any(|x| match x.1 {
         Operation::Sync(_) => true,
-        _ => false
+        _ => false,
     })
 }
 
@@ -117,11 +118,10 @@ fn unroll_loop(
     constants: &mut ConstantPropagationContext,
     max_id: &mut Address,
 ) -> HashMap<Address, Address> {
-
     result_code.push((loop_data.entry_label, Operation::Label));
 
     let mut new_id = || {
-        *max_id+=1;
+        *max_id += 1;
         *max_id
     };
     let max_iterations = 100;
@@ -139,13 +139,13 @@ fn unroll_loop(
     let mut label = loop_data.entry_label;
 
     loop {
-
         if max_iterations <= iter {
             // TODO: proper error handling.
             panic!("Code contains loop with sync that couldn't be statically unrolled.");
         }
 
-        let mut condition_operations : Vec<_> = loop_data.condition.clone().into_iter().rev().collect();
+        let mut condition_operations: Vec<_> =
+            loop_data.condition.clone().into_iter().rev().collect();
 
         while let Some(op) = condition_operations.pop() {
             let mut op = op;
@@ -157,7 +157,14 @@ fn unroll_loop(
             address_map.insert(op.0, new_addr);
             op.0 = new_addr;
 
-            let new_op = match propagate_constant_operation(constants, &mut condition_operations, op.1, op.0, &mut address_map, &mut label) {
+            let new_op = match propagate_constant_operation(
+                constants,
+                &mut condition_operations,
+                op.1,
+                op.0,
+                &mut address_map,
+                &mut label,
+            ) {
                 None => continue,
                 Some(ops) => ops,
             };
@@ -170,11 +177,11 @@ fn unroll_loop(
             Operation::JumpIfElse(..) => {
                 panic!("For loop with sync couldn't be unrolled");
             }
-            _=> {
+            _ => {
                 //println!("iteration: {}", iter);
                 //println!("result: {:#?}", result_code);
                 panic!(format!("Unexpected operation: {:?}", condition_op.1));
-            },
+            }
         };
 
         if !condition_met {
@@ -182,14 +189,19 @@ fn unroll_loop(
             break;
         }
 
-        let mut operations: Vec<_> = loop_data.body.clone().into_iter().chain(loop_data.continue_code.clone().into_iter()).rev().collect();
+        let mut operations: Vec<_> = loop_data
+            .body
+            .clone()
+            .into_iter()
+            .chain(loop_data.continue_code.clone().into_iter())
+            .rev()
+            .collect();
 
         for op in operations.iter_mut() {
             let new_addr = new_id();
             address_map.insert(op.0, new_addr);
             op.0 = new_addr;
         }
-
 
         while let Some(op) = operations.pop() {
             let mut op = op;
@@ -198,7 +210,14 @@ fn unroll_loop(
                 replace(&mut op, *from, *to, false);
             }
 
-            let new_op = match propagate_constant_operation(constants, &mut operations, op.1, op.0, &mut address_map, &mut label) {
+            let new_op = match propagate_constant_operation(
+                constants,
+                &mut operations,
+                op.1,
+                op.0,
+                &mut address_map,
+                &mut label,
+            ) {
                 None => continue, // should never happen here? maybe?
                 Some(ops) => ops,
             };
@@ -210,8 +229,6 @@ fn unroll_loop(
             address_map.insert(phi.0, new_addr);
         }
 
-
-
         /*
 
         // emit phi and map in address_map
@@ -219,12 +236,12 @@ fn unroll_loop(
             let new_add = address_map[&phi.1.new];
             println!("Phi {} is now {}", phi.0, new_add);
             address_map.insert(phi.0, new_add);
-            
+
         }
 
         label = current_label;
         */
-        iter+=1;
+        iter += 1;
     }
 
     //println!("label on exit: {} into {}", loop_data.exit_label, label);
@@ -232,4 +249,3 @@ fn unroll_loop(
 
     return address_map;
 }
-

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-wgpu = "29"
+wgpu = { version = "29", features = ["spirv"] }
 image = { version = "0.24", default-features = true }
 cfg-if = "1.0"
 log = "0.4"

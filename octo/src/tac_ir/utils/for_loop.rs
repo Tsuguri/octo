@@ -25,11 +25,20 @@ pub struct LoopCode {
 impl LoopCode {
     pub fn emit(self) -> impl std::iter::Iterator<Item = Op> {
         let mut ops = Vec::new();
-        ops.push((self.loop_merge_label, Operation::LoopMerge(self.continue_label, self.exit_label)));
-        ops.push((self.condition_jump_label, Operation::Jump(self.condition_label)));
+        ops.push((
+            self.loop_merge_label,
+            Operation::LoopMerge(self.continue_label, self.exit_label),
+        ));
+        ops.push((
+            self.condition_jump_label,
+            Operation::Jump(self.condition_label),
+        ));
         ops.push((self.condition_label, Operation::Label));
         ops.extend(self.condition.into_iter());
-        ops.push((self.condition_check_label, Operation::JumpIfElse(self.condition_value, self.body_label, self.exit_label)));
+        ops.push((
+            self.condition_check_label,
+            Operation::JumpIfElse(self.condition_value, self.body_label, self.exit_label),
+        ));
         ops.push((self.body_label, Operation::Label));
         ops.extend(self.body.into_iter());
         ops.push((self.jump_cont_label, Operation::Jump(self.continue_label)));
@@ -91,7 +100,7 @@ pub fn find_loop<'b, I: std::iter::Iterator<Item = &'b Op>>(
     let body_label = body_label;
 
     let v = code.next().unwrap();
-    println!("v: {:?}, body_label: {}",v, body_label);
+    println!("v: {:?}, body_label: {}", v, body_label);
     match v.1 {
         Operation::Label => {
             assert!(v.0 == body_label);
@@ -112,7 +121,7 @@ pub fn find_loop<'b, I: std::iter::Iterator<Item = &'b Op>>(
             Operation::Jump(x) if x == cont_label => {
                 jump_cont_label = op.0;
                 break;
-            },
+            }
             _ => {
                 // entry inside a block
                 body_code.push(*op);
@@ -145,7 +154,7 @@ pub fn find_loop<'b, I: std::iter::Iterator<Item = &'b Op>>(
             Operation::Jump(x) if x == current_block => {
                 jump_start_label = op.0;
                 break;
-            },
+            }
             _ => {
                 // entry inside a block
                 cont_code.push(*op);

@@ -26,26 +26,26 @@ pub enum ValueType {
     Bool,
 }
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum OutputType {
     Result,
     Textures(Vec<TextureId>),
 }
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum InputType {
     ProvidedTexture(TextureId),
     PipelineTexture(TextureId),
 }
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum TextureSize {
     Original,
     Scaled(f32),
     Custom(u32, u32),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ShaderPass {
     pub id: PassId,
     pub input: Vec<InputType>,
@@ -54,7 +54,7 @@ pub struct ShaderPass {
     pub dependencies: Option<Vec<PassId>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OctoModule {
     pub name: String,
     pub version: u32,

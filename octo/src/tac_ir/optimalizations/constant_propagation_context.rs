@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use super::ir::{Address, ConstantValue, Operation, PhiRecord, PipelineIR};
 
-pub struct ConstantPropagationContext
-{
+pub struct ConstantPropagationContext {
     constants: HashMap<Address, ConstantValue>,
 }
 
@@ -26,7 +25,7 @@ impl ConstantPropagationContext {
 
     pub fn copy_const(&mut self, add: Address, value: ConstantValue) -> Operation {
         self.store_const(add, value);
-        
+
         use ConstantValue::*;
         let op = match value {
             Int(v) => Operation::StoreInt(v),
@@ -37,6 +36,5 @@ impl ConstantPropagationContext {
             Bool(v) => Operation::StoreBool(v),
         };
         op
-
     }
 }

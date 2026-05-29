@@ -59,7 +59,7 @@ pub fn find_if_else<'b, I: std::iter::Iterator<Item = &'b Op>>(
             panic!();
         }
     };
-    let if_jump_end_label = true_code[true_code.len()-1].0;
+    let if_jump_end_label = true_code[true_code.len() - 1].0;
     true_code.pop();
     println!(
         "labels: start: {}, else: {}, end: {}",

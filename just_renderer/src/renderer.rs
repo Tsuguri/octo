@@ -1,6 +1,8 @@
+mod blit;
 mod builtin_assets;
 mod configuration;
 pub mod gbuffer;
+mod octo_postprocess;
 mod pipeline_state;
 mod renderer_single_frame;
 mod runtime_configuration;
@@ -10,6 +12,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 pub use configuration::Configuration;
+pub use octo_postprocess::{OctoModuleStatus, OctoPostprocessError};
 use pipeline_state::PipelineState;
 pub use renderer_single_frame::OverlayRenderContext;
 use winit::event_loop::ActiveEventLoop;
@@ -32,6 +35,7 @@ use crate::{
     uniforms::{Model, ModelUniform, UtilData, UtilDataUniform},
 };
 
+use self::octo_postprocess::OctoPostprocessState;
 use self::runtime_configuration::RuntimeConfiguration;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Default)]
@@ -67,6 +71,9 @@ pub struct Renderer {
 
     rt_configuration: RuntimeConfiguration,
     octo_module: Option<OctoModule>,
+    octo_postprocess: Option<OctoPostprocessState>,
+    octo_module_status: OctoModuleStatus,
+    octo_uniform_bytes: Vec<u8>,
 
     // all passes and textures that may depend on window size
     pipeline: Option<PipelineState>,
@@ -136,10 +143,20 @@ impl Renderer {
             .await
             .unwrap();
 
+        let optional_features = wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::IMMEDIATES;
+        let required_features = adapter.features() & optional_features;
+        let mut required_limits = wgpu::Limits::default();
+        if required_features.contains(wgpu::Features::TEXTURE_BINDING_ARRAY) {
+            required_limits.max_binding_array_elements_per_shader_stage = 8;
+        }
+        if required_features.contains(wgpu::Features::IMMEDIATES) {
+            required_limits.max_immediate_size = adapter.limits().max_immediate_size;
+        }
+
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::default(),
+                required_features,
+                required_limits,
                 memory_hints: Default::default(),
                 label: None,
                 ..Default::default()
@@ -231,6 +248,9 @@ impl Renderer {
             lights: LightsCollection::empty(),
             rt_configuration: Default::default(),
             octo_module: None,
+            octo_postprocess: None,
+            octo_module_status: OctoModuleStatus::Empty,
+            octo_uniform_bytes: Vec::new(),
             #[cfg(target_arch = "wasm32")]
             url_origin,
         };
@@ -242,13 +262,31 @@ impl Renderer {
         &mut self.rt_configuration
     }
 
-    pub fn set_octo_module(&mut self, module: OctoModule) {
+    pub fn set_octo_module(&mut self, module: OctoModule) -> Result<(), OctoPostprocessError> {
         log::info!("Loaded Octo module: {}", module.name);
+        self.octo_uniform_bytes = vec![0; module.uniform_block_size];
         self.octo_module = Some(module);
+        self.rebuild_octo_postprocess()
+    }
+
+    pub fn set_octo_uniform_bytes(&mut self, bytes: Vec<u8>) -> Result<(), OctoPostprocessError> {
+        let Some(octo_postprocess) = &mut self.octo_postprocess else {
+            return Err(OctoPostprocessError::new(
+                "no ready octo module to receive uniforms",
+            ));
+        };
+
+        octo_postprocess.set_uniform_bytes(bytes.clone())?;
+        self.octo_uniform_bytes = bytes;
+        Ok(())
     }
 
     pub fn octo_module(&self) -> Option<&OctoModule> {
         self.octo_module.as_ref()
+    }
+
+    pub fn octo_module_status(&self) -> OctoModuleStatus {
+        self.octo_module_status.clone()
     }
 
     pub async fn load_game_model(&mut self, model_id: u32, path: &str) {
@@ -421,6 +459,45 @@ impl Renderer {
                 None
             }
         };
+        if self.octo_module.is_some() {
+            let _ = self.rebuild_octo_postprocess();
+        }
+    }
+
+    fn rebuild_octo_postprocess(&mut self) -> Result<(), OctoPostprocessError> {
+        let Some(module) = self.octo_module.as_ref() else {
+            self.octo_postprocess = None;
+            self.octo_module_status = OctoModuleStatus::Empty;
+            self.octo_uniform_bytes.clear();
+            return Ok(());
+        };
+
+        match OctoPostprocessState::create(
+            &self.device,
+            self.surface_config.format,
+            self.size,
+            module,
+        ) {
+            Ok(mut octo_postprocess) => {
+                if !self.octo_uniform_bytes.is_empty() {
+                    octo_postprocess.set_uniform_bytes(self.octo_uniform_bytes.clone())?;
+                }
+                let name = octo_postprocess.name().to_owned();
+                log::info!("Octo postprocessing pipeline is ready: {}", name);
+                self.octo_postprocess = Some(octo_postprocess);
+                self.octo_module_status = OctoModuleStatus::Ready { name };
+                Ok(())
+            }
+            Err(error) => {
+                log::error!("Couldn't prepare Octo postprocessing: {}", error);
+                self.octo_postprocess = None;
+                self.octo_module_status = OctoModuleStatus::Error {
+                    name: module.name.clone(),
+                    message: error.to_string(),
+                };
+                Err(error)
+            }
+        }
     }
 
     pub fn change_configuration(&mut self, new_configuration: Configuration) {

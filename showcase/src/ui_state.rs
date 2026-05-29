@@ -1,11 +1,169 @@
 use game::Scene;
 use just_renderer::winit::{event::WindowEvent, window::Window};
-use just_renderer::{wgpu, OctoModule, OverlayRenderContext, Renderer};
+use just_renderer::{
+    wgpu, OctoModule, OctoModuleStatus, OverlayRenderContext, Renderer, ValueType,
+};
 use std::sync::mpsc::{Receiver, TryRecvError};
 
 use crate::game;
 
 type LoadResult = Result<Option<OctoModule>, String>;
+
+struct UiUniformState {
+    values: Vec<UiUniform>,
+}
+
+impl UiUniformState {
+    fn from_module(module: &OctoModule) -> Self {
+        Self {
+            values: module
+                .uniform_block
+                .iter()
+                .map(|(name, value_type)| UiUniform {
+                    name: name.clone(),
+                    value: UniformValue::default_for(*value_type),
+                })
+                .collect(),
+        }
+    }
+
+    fn bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        for uniform in &self.values {
+            uniform.value.write_bytes(&mut bytes);
+        }
+        bytes
+    }
+}
+
+struct UiUniform {
+    name: String,
+    value: UniformValue,
+}
+
+impl UiUniform {
+    fn draw(&mut self, ui: &mut egui::Ui) -> bool {
+        let mut changed = false;
+        ui.horizontal_wrapped(|ui| {
+            ui.label(&self.name);
+            changed = self.value.draw(ui);
+        });
+        changed
+    }
+}
+
+enum UniformValue {
+    Float(f32),
+    Vec2([f32; 2]),
+    Vec3([f32; 3]),
+    Vec4([f32; 4]),
+    Mat3([f32; 9]),
+    Mat4([f32; 16]),
+    Int(i32),
+    Bool(bool),
+}
+
+impl UniformValue {
+    fn default_for(value_type: ValueType) -> Self {
+        match value_type {
+            ValueType::Float => Self::Float(0.0),
+            ValueType::Vec2 => Self::Vec2([0.0; 2]),
+            ValueType::Vec3 => Self::Vec3([0.0; 3]),
+            ValueType::Vec4 => Self::Vec4([0.0; 4]),
+            ValueType::Mat3 => Self::Mat3([
+                1.0, 0.0, 0.0, //
+                0.0, 1.0, 0.0, //
+                0.0, 0.0, 1.0,
+            ]),
+            ValueType::Mat4 => Self::Mat4([
+                1.0, 0.0, 0.0, 0.0, //
+                0.0, 1.0, 0.0, 0.0, //
+                0.0, 0.0, 1.0, 0.0, //
+                0.0, 0.0, 0.0, 1.0,
+            ]),
+            ValueType::Int => Self::Int(0),
+            ValueType::Bool => Self::Bool(false),
+        }
+    }
+
+    fn draw(&mut self, ui: &mut egui::Ui) -> bool {
+        match self {
+            Self::Float(value) => ui.add(egui::DragValue::new(value).speed(0.01)).changed(),
+            Self::Vec2(values) => draw_f32_slice(ui, values),
+            Self::Vec3(values) => draw_f32_slice(ui, values),
+            Self::Vec4(values) => draw_f32_slice(ui, values),
+            Self::Mat3(values) => draw_f32_slice(ui, values),
+            Self::Mat4(values) => draw_f32_slice(ui, values),
+            Self::Int(value) => ui.add(egui::DragValue::new(value)).changed(),
+            Self::Bool(value) => ui.checkbox(value, "").changed(),
+        }
+    }
+
+    fn write_bytes(&self, bytes: &mut Vec<u8>) {
+        match self {
+            Self::Float(value) => write_padded(bytes, &value.to_ne_bytes(), 16),
+            Self::Vec2(values) => write_f32s_padded(bytes, values, 16),
+            Self::Vec3(values) => write_f32s_padded(bytes, values, 16),
+            Self::Vec4(values) => write_f32s_padded(bytes, values, 16),
+            Self::Mat3(values) => write_f32s_padded(bytes, values, 36),
+            Self::Mat4(values) => write_f32s_padded(bytes, values, 64),
+            Self::Int(value) => write_padded(bytes, &value.to_ne_bytes(), 16),
+            Self::Bool(value) => {
+                let value = u32::from(*value);
+                write_padded(bytes, &value.to_ne_bytes(), 16);
+            }
+        }
+    }
+}
+
+fn draw_f32_slice<const N: usize>(ui: &mut egui::Ui, values: &mut [f32; N]) -> bool {
+    let mut changed = false;
+    for value in values {
+        changed |= ui
+            .add(egui::DragValue::new(value).speed(0.01).max_decimals(3))
+            .changed();
+    }
+    changed
+}
+
+fn write_f32s_padded<const N: usize>(bytes: &mut Vec<u8>, values: &[f32; N], padded_size: usize) {
+    let start = bytes.len();
+    for value in values {
+        bytes.extend_from_slice(&value.to_ne_bytes());
+    }
+    bytes.resize(start + padded_size, 0);
+}
+
+fn write_padded(bytes: &mut Vec<u8>, value: &[u8], padded_size: usize) {
+    let start = bytes.len();
+    bytes.extend_from_slice(value);
+    bytes.resize(start + padded_size, 0);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn packs_uniforms_with_octo_padding() {
+        let mut module = OctoModule::new();
+        module.uniform_block = vec![
+            ("exposure".to_owned(), ValueType::Float),
+            ("enabled".to_owned(), ValueType::Bool),
+            ("transform".to_owned(), ValueType::Mat3),
+        ];
+
+        let uniforms = UiUniformState::from_module(&module);
+        let bytes = uniforms.bytes();
+
+        assert_eq!(bytes.len(), 68);
+        assert_eq!(&bytes[0..4], &0.0f32.to_ne_bytes());
+        assert_eq!(&bytes[16..20], &0u32.to_ne_bytes());
+        assert_eq!(&bytes[32..36], &1.0f32.to_ne_bytes());
+        assert_eq!(&bytes[48..52], &1.0f32.to_ne_bytes());
+        assert_eq!(&bytes[64..68], &1.0f32.to_ne_bytes());
+    }
+}
 
 pub(crate) struct UiOutput {
     textures_delta: egui::TexturesDelta,
@@ -20,6 +178,7 @@ pub(crate) struct UiState {
     pending_texture_frees: Vec<egui::TextureId>,
     load_error: Option<String>,
     pending_load: Option<Receiver<LoadResult>>,
+    uniforms: Option<UiUniformState>,
 }
 
 impl UiState {
@@ -46,6 +205,7 @@ impl UiState {
             pending_texture_frees: Vec::new(),
             load_error: None,
             pending_load: None,
+            uniforms: None,
         }
     }
 
@@ -108,6 +268,10 @@ impl UiState {
                         self.load_error = Some(error);
                     }
                 }
+
+                ui.separator();
+                self.draw_octo_status(ui, renderer);
+                self.draw_uniforms(ui, renderer);
             });
 
         if let Some(error) = self.load_error.clone() {
@@ -174,8 +338,20 @@ impl UiState {
 
         match receiver.try_recv() {
             Ok(Ok(Some(module))) => {
-                renderer.set_octo_module(module);
-                self.load_error = None;
+                self.uniforms = Some(UiUniformState::from_module(&module));
+                match renderer.set_octo_module(module) {
+                    Ok(()) => {
+                        if let Some(uniforms) = &self.uniforms {
+                            if let Err(error) = renderer.set_octo_uniform_bytes(uniforms.bytes()) {
+                                log::error!("Couldn't upload Octo uniforms: {}", error);
+                            }
+                        }
+                        self.load_error = None;
+                    }
+                    Err(error) => {
+                        log::error!("Couldn't prepare Octo module: {}", error);
+                    }
+                }
                 self.pending_load = None;
             }
             Ok(Ok(None)) => {
@@ -200,6 +376,45 @@ impl UiState {
         let data = std::fs::read_to_string(path)
             .map_err(|error| format!("couldn't read file: {error}"))?;
         serde_json::from_str(&data).map_err(|error| format!("couldn't deserialize module: {error}"))
+    }
+
+    fn draw_octo_status(&self, ui: &mut egui::Ui, renderer: &Renderer) {
+        match renderer.octo_module_status() {
+            OctoModuleStatus::Empty => {
+                ui.label("No Octo module loaded");
+            }
+            OctoModuleStatus::Ready { name } => {
+                ui.label(format!("Octo module: {name}"));
+            }
+            OctoModuleStatus::Error { name, message } => {
+                ui.label(format!("Octo module: {name}"));
+                ui.colored_label(egui::Color32::LIGHT_RED, message);
+            }
+        }
+    }
+
+    fn draw_uniforms(&mut self, ui: &mut egui::Ui, renderer: &mut Renderer) {
+        let Some(uniforms) = &mut self.uniforms else {
+            return;
+        };
+
+        if uniforms.values.is_empty() {
+            return;
+        }
+
+        ui.separator();
+        ui.label("Uniforms");
+
+        let mut changed = false;
+        for uniform in &mut uniforms.values {
+            changed |= uniform.draw(ui);
+        }
+
+        if changed {
+            if let Err(error) = renderer.set_octo_uniform_bytes(uniforms.bytes()) {
+                log::error!("Couldn't upload Octo uniforms: {}", error);
+            }
+        }
     }
 
     pub(crate) fn render(

@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use serde_yaml;
 use std::io::Write;
 
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Type {
     Float,
@@ -16,7 +15,7 @@ pub enum Type {
 }
 
 impl std::fmt::Display for Type {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>)-> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use Type::*;
         match *self {
             Float => write!(f, "Float"),
@@ -27,7 +26,6 @@ impl std::fmt::Display for Type {
             Bool => write!(f, "Bool"),
             Void => write!(f, "Void"),
             Unknown => write!(f, "Unknown"),
-
         }
     }
 }
@@ -48,7 +46,7 @@ struct Prototype {
 #[derive(Debug, Serialize, Deserialize)]
 enum SpirvCommand {
     Single(u32),
-    Dual(u32, u32)
+    Dual(u32, u32),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -65,10 +63,10 @@ struct Function {
 
 impl Function {
     pub fn params(&self) -> u32 {
-        if self.pass_through.len() > 0{
+        if self.pass_through.len() > 0 {
             return 1u32;
         }
-        if self.prototypes.len()>0 {
+        if self.prototypes.len() > 0 {
             let first = &self.prototypes[0];
             return first.i.len() as u32;
         }
@@ -77,29 +75,28 @@ impl Function {
     pub fn is_dot(&self) -> bool {
         match self.comm {
             SpirvCommand::Dual(..) => false,
-            SpirvCommand::Single(x) => x==0,
+            SpirvCommand::Single(x) => x == 0,
         }
     }
-
 }
 type Funcs = Vec<Function>;
 
 use askama::Template; // bring trait in scope
 
 #[derive(Template)] // this will generate the code...
-#[template(path = "protos.rs", escape="none")]
+#[template(path = "protos.rs", escape = "none")]
 struct PrototypesTemplate<'a> {
     data: &'a Funcs,
 }
 
 #[derive(Template)] // this will generate the code...
-#[template(path = "emit_builtin.rs", escape="none")]
+#[template(path = "emit_builtin.rs", escape = "none")]
 struct BuiltinEmitTemplates<'a> {
     data: &'a Funcs,
 }
 
 #[derive(Template)]
-#[template(path = "builtin_spirv.rs", escape="none")]
+#[template(path = "builtin_spirv.rs", escape = "none")]
 struct SpirvEmitTemplates<'a> {
     data: &'a Funcs,
 }
@@ -107,23 +104,22 @@ struct SpirvEmitTemplates<'a> {
 fn main() {
     let in_path = "src/prototypes/protos.yaml";
 
-    let en = SpirvCommand::Dual(2,3);
-    println!("{}",serde_yaml::to_string(&en).unwrap());
-
+    let en = SpirvCommand::Dual(2, 3);
+    println!("{}", serde_yaml::to_string(&en).unwrap());
 
     let prototypes_list_data = std::fs::read_to_string(&in_path).unwrap();
     let protos: Funcs = serde_yaml::from_str(&prototypes_list_data).unwrap();
 
     let out_path = "src/prototypes/protos.rs";
-    let template = PrototypesTemplate {data: &protos};
+    let template = PrototypesTemplate { data: &protos };
     std::fs::write(&out_path, &template.render().unwrap());
 
     let out_path = "src/tac_ir/emit_builtins.rs";
-    let template = BuiltinEmitTemplates{data: &protos};
+    let template = BuiltinEmitTemplates { data: &protos };
     std::fs::write(&out_path, &template.render().unwrap());
 
     let out_path = "src/tac_ir/emit_spirv/emit_std.rs";
-    let template = SpirvEmitTemplates{data: &protos};
+    let template = SpirvEmitTemplates { data: &protos };
     std::fs::write(&out_path, &template.render().unwrap());
 
     println!("cargo:rerun-if-changed=src/prototypes/protos.yaml");

@@ -61,10 +61,33 @@ impl Renderer {
                     }
                 }
 
-                pipeline
-                    .postprocessing
-                    .render(&mut encoder, &view, &self.util_data_uniform);
+                pipeline.postprocessing.render(
+                    &mut encoder,
+                    &pipeline.scene_color.view,
+                    &self.util_data_uniform,
+                );
+
+                if let Some(octo_postprocess) = &self.octo_postprocess {
+                    octo_postprocess.render(
+                        &self.device,
+                        &mut encoder,
+                        &pipeline.scene_color,
+                        &view,
+                    );
+                } else {
+                    pipeline.blit_pass.render(
+                        &self.device,
+                        &mut encoder,
+                        &pipeline.scene_color,
+                        &view,
+                    );
+                }
             }
+        } else if let Some(pipeline) = &self.pipeline {
+            pipeline.clear_scene_color(&mut encoder);
+            pipeline
+                .blit_pass
+                .render(&self.device, &mut encoder, &pipeline.scene_color, &view);
         }
 
         let overlay_command_buffers = overlay(OverlayRenderContext {

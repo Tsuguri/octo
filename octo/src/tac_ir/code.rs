@@ -1,5 +1,4 @@
-
-use super::ir::{Address, ConstantValue, Op, Operation, PhiRecord, PipelineIR, replace};
+use super::ir::{replace, Address, ConstantValue, Op, Operation, PhiRecord, PipelineIR};
 
 use std::collections::HashMap;
 
@@ -38,7 +37,6 @@ impl PhiObserver {
                 rec.new = new_addr;
             }
         }
-
     }
 }
 
@@ -187,7 +185,10 @@ impl Code {
         }
         //println!("storing {} into {}", name, add);
         if create {
-            self.variables.last_mut().unwrap().insert(name.to_owned(), add);
+            self.variables
+                .last_mut()
+                .unwrap()
+                .insert(name.to_owned(), add);
         } else {
             self.store_new_address(name.to_owned(), add);
         }
@@ -199,13 +200,23 @@ impl Code {
 
     pub fn update_variable_by_address(&mut self, old_addr: Address, new_addr: Address) {
         use std::iter::*;
-        let name = self.variables.iter().flatten().find(|(_key, value)| if **value == old_addr {return true;} else {return false;}).map(|(key, value)| (key.clone(), *value));
+        let name = self
+            .variables
+            .iter()
+            .flatten()
+            .find(|(_key, value)| {
+                if **value == old_addr {
+                    return true;
+                } else {
+                    return false;
+                }
+            })
+            .map(|(key, value)| (key.clone(), *value));
         match name {
             Some((name_string, current_address)) => {
                 assert!(current_address == old_addr);
                 self.store(&name_string, new_addr, false);
-
-            },
+            }
             None => (),
         }
     }

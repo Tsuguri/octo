@@ -1,7 +1,7 @@
 mod for_loop;
-mod peekable_code;
 mod if_else;
+mod peekable_code;
 
-pub use peekable_code::PeekableCode;
-pub use for_loop::{LoopCode,find_loop};
+pub use for_loop::{find_loop, LoopCode};
 pub use if_else::{find_if_else, IfElseCode};
+pub use peekable_code::PeekableCode;
